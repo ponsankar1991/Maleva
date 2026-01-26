@@ -1,0 +1,29 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+  application:
+    name: Maleva
+  redis:
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
+  session:
+    # Disable Redis-backed HTTP session store so the application doesn't fail when Redis is unreachable
+    store-type: none
+  datasource:
+    # Default JDBC URL includes encrypt=true and trustServerCertificate=true to avoid SSL certificate path errors
+    # For production, prefer to set trustServerCertificate=false and import the server certificate into the JVM truststore
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1433;databaseName=Maleva;encrypt=true;trustServerCertificate=true}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:YourStrong!Passw0rd}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
+
+jwt:
+  secret: changeit
+  expiration: 3600

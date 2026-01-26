@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      # SPRING_DATASOURCE_* can be provided via .env or environment; defaults still apply in compose if not provided
+      - JVM_OPTS=-Xms256m -Xmx512m
+    volumes:
+      # Mount a local config file to override application properties during development (optional)
+      - ./config/application.yaml:/app/config/application.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Notes:
+# - Copy .env.example to .env and fill values before running `docker compose up`.
+# - For Windows/macOS Docker Desktop, `host.docker.internal` maps to the host machine; when running on Linux, use the host IP or a bridge network that can reach your SQL Server.
+# - The compose stack now only starts Redis locally; your existing SQL Server will be used as the database.
