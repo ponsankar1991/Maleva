@@ -1,0 +1,317 @@
+{
+  "info": {
+    "_postman_id": "b22d7f5a-7c2c-4def-93e1-5e07667702aa",
+    "name": "Maleva API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "/api/login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "id": "ff18dea0-670c-46e8-a6b0-b858eef738a5",
+            "exec": [
+              "try {\r",
+              "    const json = pm.response.json();\r",
+              "    \r",
+              "    if (json && json.token && typeof json.token === \"string\" && json.token.length > 0) {\r",
+              "        pm.collectionVariables.set(\"token\", json.token);\r",
+              "        \r",
+              "        pm.test(\"Token extracted and stored in environment\", () => {\r",
+              "            pm.expect(json.token).to.be.a(\"string\").and.not.be.empty;\r",
+              "            pm.expect(pm.environment.get(\"token\")).to.eql(json.token);\r",
+              "        });\r",
+              "    } else {\r",
+              "        pm.test(\"Token not found in response\", () => {\r",
+              "            pm.expect.fail(\"Response did not contain a valid 'token' field\");\r",
+              "        });\r",
+              "    }\r",
+              "} catch (e) {\r",
+              "    pm.test(\"Response is not valid JSON\", () => {\r",
+              "        pm.expect.fail(\"Failed to parse response JSON: \" + e.message);\r",
+              "    });\r",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "id": "68a1f0e2-8490-422c-8de6-762e3f9839ae",
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "id": "6b85e73d-469f-4c40-b0c2-5b86268287ce",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"alice\",\"password\":\"secret\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/login",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "login"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
+    },
+    {
+      "name": "logout",
+      "id": "cb5d96af-df67-416a-8ac7-506fa6e70533",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/logout",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "logout"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
+    },
+    {
+      "name": "Get customer",
+      "id": "f8685930-88dd-45af-bee7-bd9076200983",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/customers/20",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "customers",
+            "20"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
+    },
+    {
+      "name": "Create customer",
+      "id": "8b288554-0443-4eee-94d5-0f9514bbd472",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n   \r\n    \"companyRefId\": 6,\r\n    \"customerName\": \"AIRIA SDN BHD Test\",\r\n    \"cNumberDisplay\": \"C000000016\",\r\n    \"cNumber\": 16,\r\n    \"address1\": \"NO.31 JALAN BERANGAN,42000 PELABUHAN KLANG, SELANGOR DARUL EHSAN.MALAYSIA\",\r\n    \"address2\": \"\",\r\n    \"city\": \"ACCOUNT DEPT\",\r\n    \"zipcode\": \"42000\",\r\n    \"country\": \"\",\r\n    \"symbolRefid\": 4,\r\n    \"paymentTermsRefid\": 1,\r\n    \"gstNo\": \"\",\r\n    \"email\": \"kavitha@airia.com.my\",\r\n    \"mobileNo\": \"\",\r\n    \"userName\": \"\",\r\n    \"password\": \"\",\r\n    \"latitude\": \"\",\r\n    \"longitude\": \"\",\r\n    \"tokenId\": \"\",\r\n    \"oEmail\": \"airia@airia.com.my\",\r\n    \"oName\": \"KAVITHA\",\r\n    \"oPhone\": \"+60127068594\",\r\n    \"aEmail\": \"account2@airia.com.my\",\r\n    \"aName\": \"\",\r\n    \"aPhone\": \"\",\r\n    \"active\": 1,\r\n    \"createdDate\": \"2024-03-26T13:00:24.667\",\r\n    \"modifiedDate\": \"2025-09-08T16:17:08.453\",\r\n    \"modifiedBy\": \"SA\",\r\n    \"aEmail1\": \"purchase@airia.com.my\",\r\n    \"oEmail1\": \"\",\r\n    \"state\": \"SELANGOR\",\r\n    \"address3\": \"\",\r\n    \"personId\": \"\",\r\n    \"openingBalance\": null,\r\n    \"accountRefid\": 164,\r\n    \"tinNo\": \"\",\r\n    \"sstNo\": \"\",\r\n    \"msicCode\": \"\",\r\n    \"serviceTaxType\": \"\",\r\n    \"bankName\": \"\",\r\n    \"accountNo\": \"\",\r\n    \"companyCode\": \"700-A057\",\r\n    \"updateId\": \"4c9941ad-14bf-436a-96e6-6ba3216c9c06\",\r\n    \"tintype\": \"Company (Malaysia)\",\r\n    \"customerTin\": \"C2872356020\",\r\n    \"eInvoice\": \"Follow E-Invoice Settings\",\r\n    \"exemptionNo\": \"\",\r\n    \"expiryDate\": null,\r\n    \"exemptionDetails\": \"\",\r\n    \"registrationNo\": \"198201000425\",\r\n    \"customerCity\": \"ACCOUNT DEPT\",\r\n    \"countryId\": 158\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/customers",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "customers"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
+    },
+    {
+      "name": "update customer",
+      "id": "bbc75d62-546f-4eb7-9a16-ea118b80a964",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n   \r\n    \"companyRefId\": 6,\r\n    \"customerName\": \"AIRIA SDN BHD Test updated\",\r\n    \"cNumberDisplay\": \"C000000016\",\r\n    \"cNumber\": 16,\r\n    \"address1\": \"NO.31 JALAN BERANGAN,42000 PELABUHAN KLANG, SELANGOR DARUL EHSAN.MALAYSIA\",\r\n    \"address2\": \"\",\r\n    \"city\": \"ACCOUNT DEPT\",\r\n    \"zipcode\": \"42000\",\r\n    \"country\": \"\",\r\n    \"symbolRefid\": 4,\r\n    \"paymentTermsRefid\": 1,\r\n    \"gstNo\": \"\",\r\n    \"email\": \"kavitha@airia.com.my\",\r\n    \"mobileNo\": \"\",\r\n    \"userName\": \"\",\r\n    \"password\": \"\",\r\n    \"latitude\": \"\",\r\n    \"longitude\": \"\",\r\n    \"tokenId\": \"\",\r\n    \"oEmail\": \"airia@airia.com.my\",\r\n    \"oName\": \"KAVITHA\",\r\n    \"oPhone\": \"+60127068594\",\r\n    \"aEmail\": \"account2@airia.com.my\",\r\n    \"aName\": \"\",\r\n    \"aPhone\": \"\",\r\n    \"active\": 1,\r\n    \"createdDate\": \"2024-03-26T13:00:24.667\",\r\n    \"modifiedDate\": \"2025-09-08T16:17:08.453\",\r\n    \"modifiedBy\": \"SA\",\r\n    \"aEmail1\": \"purchase@airia.com.my\",\r\n    \"oEmail1\": \"\",\r\n    \"state\": \"SELANGOR\",\r\n    \"address3\": \"\",\r\n    \"personId\": \"\",\r\n    \"openingBalance\": null,\r\n    \"accountRefid\": 164,\r\n    \"tinNo\": \"\",\r\n    \"sstNo\": \"\",\r\n    \"msicCode\": \"\",\r\n    \"serviceTaxType\": \"\",\r\n    \"bankName\": \"\",\r\n    \"accountNo\": \"\",\r\n    \"companyCode\": \"700-A057\",\r\n    \"updateId\": \"4c9941ad-14bf-436a-96e6-6ba3216c9c06\",\r\n    \"tintype\": \"Company (Malaysia)\",\r\n    \"customerTin\": \"C2872356020\",\r\n    \"eInvoice\": \"Follow E-Invoice Settings\",\r\n    \"exemptionNo\": \"\",\r\n    \"expiryDate\": null,\r\n    \"exemptionDetails\": \"\",\r\n    \"registrationNo\": \"198201000425\",\r\n    \"customerCity\": \"ACCOUNT DEPT\",\r\n    \"countryId\": 158\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/customers/1070",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "customers",
+            "1070"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
+    },
+    {
+      "name": "user register",
+      "id": "b8843c79-98be-4410-a705-ca51b3a4c5e6",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"companyRefId\":6,\"userId\":\"alice\",\"password\":\"secret\",\"priv\":\"USER\",\"modifiedBy\":\"init\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/users/register",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "users",
+            "register"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "id": "652460c1-8ab1-4eec-9c9d-34fa0ab943ef",
+      "key": "BaseURL",
+      "value": ""
+    },
+    {
+      "id": "e92bc551-af0e-4884-bb62-e101ea827983",
+      "key": "token",
+      "value": ""
+    }
+  ]
+}
