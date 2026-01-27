@@ -1,9 +1,9 @@
 spring:
+  application:
+    name: Maleva
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-  application:
-    name: Maleva
   redis:
     host: ${SPRING_REDIS_HOST:localhost}
     port: ${SPRING_REDIS_PORT:6379}
@@ -18,11 +18,22 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:Kassamy@123}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
+    show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
+    # Explicit Spring Boot alias for the physical naming strategy to use annotated names verbatim
+    naming:
+      physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    # Also provide the direct property (redundant but explicit)
     properties:
       hibernate:
         dialect: org.hibernate.dialect.SQLServerDialect
+        physical_naming_strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 jwt:
   secret: changeit
