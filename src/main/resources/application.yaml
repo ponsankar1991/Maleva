@@ -13,9 +13,9 @@ spring:
   datasource:
     # Default JDBC URL includes encrypt=true and trustServerCertificate=true to avoid SSL certificate path errors
     # For production, prefer to set trustServerCertificate=false and import the server certificate into the JVM truststore
-    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1433;databaseName=Maleva;encrypt=true;trustServerCertificate=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=DemoMaleva;encrypt=true;trustServerCertificate=true}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:YourStrong!Passw0rd}
+    password: ${SPRING_DATASOURCE_PASSWORD:Kassamy@123}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
     hibernate:
