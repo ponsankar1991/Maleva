@@ -1,0 +1,25 @@
+# Windows container runtime Dockerfile for the Maleva application
+# Usage:
+# 1) Build the WAR locally: .\mvnw.cmd -DskipTests package
+# 2) Build the image on a Windows host running Docker in "Windows containers" mode:
+#    docker build -f Dockerfile.windows -t maleva-api-windows:latest .
+# 3) Run:
+#    docker run --rm -p 8080:8080 --env-file .env --name maleva-api-windows maleva-api-windows:latest
+
+# Note: This Dockerfile is a runtime image only. It expects the WAR to exist at target\api-0.0.1-SNAPSHOT.war
+# Windows base image (match the Windows Server Core / host compatibility):
+FROM mcr.microsoft.com/openjdk/jre:17-windowsservercore-ltsc2022
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
+
+# Create app directory
+RUN New-Item -ItemType Directory -Path C:\app | Out-Null
+WORKDIR C:\app
+
+# Copy pre-built WAR from repo target directory (must be created prior to docker build)
+COPY target\api-0.0.1-SNAPSHOT.war C:\app\app.war
+
+EXPOSE 8080
+
+# Entry point: run the Spring Boot JAR
+ENTRYPOINT ["java", "-jar", "C:\\app\\app.war"]

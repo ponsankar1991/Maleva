@@ -21,16 +21,27 @@ public class JwtService {
         this.expirationSeconds = expirationSeconds;
     }
 
+    // Backwards-compatible single-arg token generator (no role)
     public String generateToken(String subject) {
+        return generateToken(subject, null);
+    }
+
+    // New generator includes roleId as a numeric claim when provided
+    public String generateToken(String subject, Integer roleId) {
         Instant now = Instant.now();
         Date issuedAt = Date.from(now);
         Date expiresAt = Date.from(now.plusSeconds(expirationSeconds));
 
-        return JWT.create()
+        com.auth0.jwt.JWTCreator.Builder builder = JWT.create()
                 .withSubject(subject)
                 .withIssuedAt(issuedAt)
-                .withExpiresAt(expiresAt)
-                .sign(algorithm);
+                .withExpiresAt(expiresAt);
+
+        if (roleId != null) {
+            builder.withClaim("roleId", roleId);
+        }
+
+        return builder.sign(algorithm);
     }
 
     public boolean validateToken(String token) {
@@ -47,9 +58,24 @@ public class JwtService {
         return jwt.getSubject();
     }
 
+    public Integer getRoleId(String token) {
+        DecodedJWT jwt = JWT.decode(token);
+        if (jwt.getClaim("roleId").isNull()) return null;
+        try {
+            return jwt.getClaim("roleId").asInt();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public long getExpiresAtMillis(String token) {
         DecodedJWT jwt = JWT.decode(token);
         Date expires = jwt.getExpiresAt();
         return expires != null ? expires.getTime() : -1L;
+    }
+
+    // expose configured expiration (seconds) for callers that need to store TTLs
+    public long getExpirationSeconds() {
+        return expirationSeconds;
     }
 }

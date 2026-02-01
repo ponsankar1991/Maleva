@@ -71,12 +71,11 @@
           }
         },
         "url": {
-          "raw": "http://localhost:8080/api/login",
+          "raw": "http://{{host}}/api/login",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{host}}"
           ],
-          "port": "8080",
           "path": [
             "api",
             "login"
@@ -300,16 +299,49 @@
         "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
       },
       "response": []
+    },
+    {
+      "name": "employees",
+      "id": "ea478dda-bb62-4ef1-885b-cb477d9dc299",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/customers/20",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "customers",
+            "20"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
     }
   ],
   "variable": [
     {
-      "id": "652460c1-8ab1-4eec-9c9d-34fa0ab943ef",
-      "key": "BaseURL",
-      "value": ""
-    },
-    {
-      "id": "e92bc551-af0e-4884-bb62-e101ea827983",
+      "id": "6aea60c5-3858-4e06-8726-ad8366411cd6",
       "key": "token",
       "value": ""
     }

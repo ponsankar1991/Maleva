@@ -18,33 +18,14 @@ import java.util.Map;
 @RequestMapping("/api")
 public class AuthController {
 
-    private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final TokenStore tokenStore;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService, TokenStore tokenStore) {
-        this.authenticationManager = authenticationManager;
+    public AuthController( JwtService jwtService, TokenStore tokenStore) {
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@Validated @RequestBody LoginRequest request) {
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
-
-        String subject = auth.getName();
-        if (subject == null) subject = request.getUsername();
-
-        String token = jwtService.generateToken(subject);
-        tokenStore.storeToken(token, 3600);
-
-        return ResponseEntity.ok(Map.of(
-                "token", token,
-                "expiresIn", 3600
-        ));
-    }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {

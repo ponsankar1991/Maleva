@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.windows
+    image: maleva-api-windows:latest
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # forward Redis/DB env vars from .env if present; these are optional and should point to reachable services
+      - SPRING_REDIS_HOST=${SPRING_REDIS_HOST}
+      - SPRING_REDIS_PORT=${SPRING_REDIS_PORT}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+    volumes:
+      # Optional: mount a local config directory to override application.yaml in the container
+      - ./config:/app/config:ro
+    healthcheck:
+      # Use PowerShell Invoke-WebRequest inside the Windows container to check the actuator health endpoint
+      test: ["CMD", "powershell", "-Command", "try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:8080/actuator/health' -TimeoutSec 5; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+# Notes:
+# - This compose file is intended for Windows hosts running Docker in Windows containers mode.
+# - It expects you to build the WAR locally (\target\api-0.0.1-SNAPSHOT.war) before building the image.
+# - Redis and SQL Server should be reachable from the Windows container (use host.docker.internal for host services on Docker Desktop, or provide reachable hostnames/IPs in .env).
+# - Running Redis as a Windows container is uncommon; it's recommended to use an external Redis (or run redis on Linux and connect across hosts/networks).

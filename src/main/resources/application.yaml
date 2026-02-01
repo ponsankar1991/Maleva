@@ -4,6 +4,10 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+  # Disable Spring Boot Docker Compose dev-services so the app runs standalone
+  docker:
+    compose:
+      enabled: false
   redis:
     host: ${SPRING_REDIS_HOST:localhost}
     port: ${SPRING_REDIS_PORT:6379}
@@ -38,3 +42,6 @@ logging:
 jwt:
   secret: changeit
   expiration: 3600
+security:
+  password-encoding:
+    enabled: false

@@ -3,11 +3,13 @@ package my.maleva.api.config;
 import my.maleva.api.auth.JwtAuthenticationFilter;
 import my.maleva.api.auth.JwtService;
 import my.maleva.api.auth.TokenStore;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,11 +20,19 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+    @Value("${security.password-encoding.enabled:true}")
+    private boolean passwordEncodingEnabled;
 
     // Keep a PasswordEncoder bean available for services (BCrypt)
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        if (passwordEncodingEnabled) {
+            return new BCryptPasswordEncoder();
+        }
+        // NoOpPasswordEncoder is intentionally used only for development/testing when encoding is disabled
+        @SuppressWarnings("deprecation")
+        PasswordEncoder encoder = NoOpPasswordEncoder.getInstance();
+        return encoder;
     }
 
     // UserDetailsService is provided by a DB-backed AppUserDetailsService (component) instead of in-memory here.
