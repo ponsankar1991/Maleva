@@ -3,6 +3,7 @@ package my.maleva.api.controller;
 import my.maleva.api.dto.CustomerDto;
 import my.maleva.api.service.CustomerService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -10,6 +11,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/customers")
+//@PreAuthorize("hasRole('SUPRERADMIN')")
+@PreAuthorize("hasAnyRole('SUPRERADMIN','ADMIN')")
 public class CustomerController {
 
     private final CustomerService service;
