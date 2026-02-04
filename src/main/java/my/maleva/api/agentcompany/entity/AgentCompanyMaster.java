@@ -1,4 +1,4 @@
-package com.maleva.agentcompany.entity;
+package my.maleva.api.agentcompany.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

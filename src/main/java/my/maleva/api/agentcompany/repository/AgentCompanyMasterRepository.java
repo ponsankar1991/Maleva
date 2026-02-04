@@ -1,6 +1,6 @@
-package com.maleva.agentcompany.repository;
+package my.maleva.api.agentcompany.repository;
 
-import com.maleva.agentcompany.entity.AgentCompanyMaster;
+import my.maleva.api.agentcompany.entity.AgentCompanyMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

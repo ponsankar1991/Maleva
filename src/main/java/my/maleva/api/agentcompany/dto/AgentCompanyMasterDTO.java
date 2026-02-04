@@ -1,4 +1,4 @@
-package com.maleva.agentcompany.dto;
+package my.maleva.api.agentcompany.dto;
 
 import java.time.LocalDateTime;
 

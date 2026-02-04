@@ -1,12 +1,11 @@
-package com.maleva.agentcompany.controller;
+package my.maleva.api.agentcompany.controller;
 
-import com.maleva.agentcompany.dto.AgentCompanyMasterDTO;
-import com.maleva.agentcompany.entity.AgentCompanyMaster;
-import com.maleva.agentcompany.mapper.AgentCompanyMasterMapper;
-import com.maleva.agentcompany.repository.AgentCompanyMasterRepository;
+import my.maleva.api.agentcompany.dto.AgentCompanyMasterDTO;
+import my.maleva.api.agentcompany.entity.AgentCompanyMaster;
+import my.maleva.api.agentcompany.mapper.AgentCompanyMasterMapper;
+import my.maleva.api.agentcompany.repository.AgentCompanyMasterRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatus;
 
 import java.net.URI;
 import java.util.List;

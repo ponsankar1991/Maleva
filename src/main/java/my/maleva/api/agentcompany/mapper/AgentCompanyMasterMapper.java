@@ -1,7 +1,7 @@
-package com.maleva.agentcompany.mapper;
+package my.maleva.api.agentcompany.mapper;
 
-import com.maleva.agentcompany.entity.AgentCompanyMaster;
-import com.maleva.agentcompany.dto.AgentCompanyMasterDTO;
+import my.maleva.api.agentcompany.entity.AgentCompanyMaster;
+import my.maleva.api.agentcompany.dto.AgentCompanyMasterDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 
