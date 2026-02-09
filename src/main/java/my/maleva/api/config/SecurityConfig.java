@@ -23,6 +23,38 @@ public class SecurityConfig {
     @Value("${security.password-encoding.enabled:true}")
     private boolean passwordEncodingEnabled;
 
+
+
+
+    @Bean
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+
+        org.springframework.web.cors.CorsConfiguration config =
+                new org.springframework.web.cors.CorsConfiguration();
+
+        config.setAllowedOrigins(java.util.List.of(
+                "http://localhost:3000",
+                "http://localhost:5173"
+        ));
+
+        config.setAllowedMethods(java.util.List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
+
+        config.setAllowedHeaders(java.util.List.of(
+                "Authorization",
+                "Content-Type"
+        ));
+
+        config.setAllowCredentials(true);
+
+        org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
+                new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
     // Keep a PasswordEncoder bean available for services (BCrypt)
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -57,12 +89,18 @@ public class SecurityConfig {
         }
     }
 
+
+
+
+
+
     // Security filter chain: register JWT filter and secure endpoints
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, TokenStore tokenStore) {
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, tokenStore);
 
         http
+                .cors(cors -> {})
                 .csrf(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(authorize -> authorize
