@@ -63,7 +63,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"username\":\"alice\",\"password\":\"secret\"}",
+          "raw": "{\"userId\":\"MAGES\",\"password\":\"7151\"}",
           "options": {
             "raw": {
               "language": "json"
@@ -71,13 +71,14 @@
           }
         },
         "url": {
-          "raw": "http://{{host}}/api/login",
+          "raw": "http://{{host}}/api/auth/login",
           "protocol": "http",
           "host": [
             "{{host}}"
           ],
           "path": [
             "api",
+            "auth",
             "login"
           ]
         },
@@ -144,12 +145,11 @@
           }
         ],
         "url": {
-          "raw": "http://localhost:8080/api/customers/20",
+          "raw": "http://{{host}}/api/customers/20",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{host}}"
           ],
-          "port": "8080",
           "path": [
             "api",
             "customers",
@@ -341,7 +341,7 @@
   ],
   "variable": [
     {
-      "id": "ae2056de-1efd-489b-a577-22358d14da93",
+      "id": "2b9a0fc8-0158-408f-8806-d3bc958782e7",
       "key": "token",
       "value": ""
     }
