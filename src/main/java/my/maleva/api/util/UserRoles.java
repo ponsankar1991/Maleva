@@ -7,7 +7,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public enum UserRoles {
-    SUPRERADMIN(100),
+    SUPERADMIN(100),
     ADMIN(200),
     CUSTOMERSERVICE(300),
     OPERATIONADMIN(400),
