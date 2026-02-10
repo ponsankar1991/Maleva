@@ -58,6 +58,19 @@ public class CustomerController {
         );
     }
 
+
+
+    @PutMapping("/{id}/soft-delete")
+    public ResponseEntity<ApiResponse<Void>> softDelete(
+            @PathVariable Integer id
+    )
+    {
+        customerService.softDelete(id);
+        return ResponseEntity.ok(
+                ApiResponse.success("Customer deleted", null)
+        );
+    }
+
     /* ================= GET BY ID ================= */
 
     @GetMapping("/{id}")
@@ -85,8 +98,6 @@ public class CustomerController {
                 )
         );
     }
-
-
     @PostMapping("/select")
     public ResponseEntity<ApiResponse<?>> selectCustomer(
             @RequestBody CustomerSelectRequest request

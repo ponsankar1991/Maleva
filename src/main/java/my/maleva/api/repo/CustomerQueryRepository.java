@@ -43,13 +43,9 @@ public class CustomerQueryRepository {
                     sql.append(" AND S.MobileNo LIKE :keyword");
                     params.put("keyword", "%" + req.getKeyword() + "%");
                 }
-                case "Id" -> {
-                    sql.append(" AND S.Id = :id");
-                    params.put("id", Integer.parseInt(req.getKeyword()));
-                }
+
             }
         }
-
         Long count = jdbc.queryForObject(sql.toString(), params, Long.class);
         return count != null ? count : 0L;
     }
@@ -59,26 +55,21 @@ public class CustomerQueryRepository {
        SELECT QUERY
        ========================= */
     public List<CustomerSelectDto> findCustomers(CustomerSelectRequest req) {
-
         StringBuilder sql = new StringBuilder("""
-            SELECT
-                S.Id,
-                S.CompanyRefId,
-                S.CustomerName,
-                S.MobileNo,
-                S.Email,
-                S.Created_Date,
-                A.SName AS SName,
-                SM.TermsName AS TermsName,
-                Ag.AccountCode AS AccountCode,
-                CM.Country AS CMName
-            FROM Customer S
-            INNER JOIN SymbolMaster A ON S.SymbolRefid = A.Id
-            INNER JOIN PaymentTermsMaster SM ON S.PaymentTermsRefid = SM.Id
-            INNER JOIN AccountsGroupMaster Ag ON Ag.Id = S.AccountRefid
-            LEFT JOIN CountryMaster CM ON S.countryId = CM.Id
-            WHERE S.CompanyRefId = :companyId
-              AND S.Active != 2
+           SELECT
+                                           S.*,
+                                           A.SName AS SName,
+                                           SM.TermsName AS TermsName,
+                                           Ag.AccountCode AS AccountCode,
+                                           CM.Country AS CMName,
+                                           S.countryId AS countryId
+                                       FROM Customer S
+                                       INNER JOIN SymbolMaster A ON S.SymbolRefid = A.Id
+                                       INNER JOIN PaymentTermsMaster SM ON S.PaymentTermsRefid = SM.Id
+                                       INNER JOIN AccountsGroupMaster Ag ON Ag.Id = S.AccountRefid
+                                       LEFT JOIN CountryMaster CM ON S.countryId = CM.Id
+                                       WHERE S.CompanyRefId = :companyId
+                                         AND S.Active != 2
         """);
 
         Map<String, Object> params = new HashMap<>();
@@ -102,7 +93,7 @@ public class CustomerQueryRepository {
         }
 
         sql.append("""
-            ORDER BY S.CustomerName
+            ORDER BY S.Id
             OFFSET :startIndex ROWS
             FETCH NEXT :pageCount ROWS ONLY
         """);
@@ -111,19 +102,72 @@ public class CustomerQueryRepository {
         params.put("pageCount", req.getPageCount());
 
         return jdbc.query(sql.toString(), params, (rs, rowNum) -> {
-            var ts = rs.getTimestamp("Created_Date");
+            var createdTs = rs.getTimestamp("Created_Date");
+            var modifiedTs = rs.getTimestamp("Modified_Date");
+
             return CustomerSelectDto.builder()
                     .id(rs.getInt("Id"))
                     .companyRefId(rs.getInt("CompanyRefId"))
+
+                    .cNumberDisplay(rs.getString("CNumberDisplay"))
+                    .cNumber(rs.getInt("CNumber"))
                     .customerName(rs.getString("CustomerName"))
-                    .mobileNo(rs.getString("MobileNo"))
+
+
+                    .address1(rs.getString("Address1"))
+                    .address2(rs.getString("Address2"))
+                    .address3(rs.getString("Address3"))
+                    .city(rs.getString("City"))
+                    .state(rs.getString("State"))
+                    .zipcode(rs.getString("Zipcode"))
+                    .countryId(rs.getInt("countryId"))
                     .email(rs.getString("Email"))
+                    .mobileNo(rs.getString("MobileNo"))
+                    .userName(rs.getString("UserName"))
+                    .password(rs.getString("Password"))
+                    .latitude(rs.getString("Latitude"))
+                    .longitude(rs.getString("longitude"))
+                    .gstNo(rs.getString("GSTNO"))
+                    .tinNo(rs.getString("TinNo"))
+                    .sstNo(rs.getString("SSTNo"))
+                    .tinType(rs.getString("Tintype"))
+                    .customerTin(rs.getString("CustomerTin"))
+                    .bankName(rs.getString("BankName"))
+                    .accountNo(rs.getString("AccountNo"))
+                    .active(rs.getInt("Active"))
+                    .createdDate(createdTs != null ? createdTs.toLocalDateTime() : null)
+                    .modifiedDate(modifiedTs != null ? modifiedTs.toLocalDateTime() : null)
                     .sName(rs.getString("SName"))
                     .termsName(rs.getString("TermsName"))
                     .accountCode(rs.getString("AccountCode"))
-                    .country(rs.getString("CMName"))
-                    .createdDate(ts != null ? ts.toLocalDateTime() : null)
+                    .cmName(rs.getString("CMName"))
+                    .personId(rs.getString("PersonId"))
+                    .tokenId(rs.getString("TokenId"))
+                    .oEmail(rs.getString("OEmail"))
+                    .oEmail1(rs.getString("OEmail1"))
+                    .oName(rs.getString("OName"))
+                    .oPhone(rs.getString("OPhone"))
+
+                    .aEmail(rs.getString("AEmail"))
+                    .aEmail1(rs.getString("AEmail1"))
+                    .aName(rs.getString("AName"))
+                    .aPhone(rs.getString("APhone"))
+
+                    .companyCode(rs.getString("CompanyCode"))
+                    .expiryDate(rs.getString("ExpiryDate"))
+                    .updateId(rs.getString("UpdateId"))
+                    .customerCity(rs.getString("CustomerCity"))
+
+                    .serviceTaxType(rs.getString("ServiceTaxType"))
+                    .msicCode(rs.getString("MsicCode"))
+                    .registrationNo(rs.getString("RegistrationNo"))
+                    .exemptionNo(rs.getString("ExemptionNo"))
+                    .exemptionDetails(rs.getString("ExemptionDetails"))
+                    .symbolRefId(rs.getInt("SymbolRefid"))
+                    .paymentTermsRefId(rs.getInt("PaymentTermsRefid"))
+                    .eInvoice(rs.getString("eInvoice"))
                     .build();
         });
+
     }
 }

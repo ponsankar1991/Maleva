@@ -17,6 +17,6 @@ public interface CustomerService {
     List<CustomerDto> findAll(String name);
 
     void delete(Integer id);
-
+    void softDelete(Integer customerId);
     CustomerSelectResult selectCustomer(CustomerSelectRequest request);
 }

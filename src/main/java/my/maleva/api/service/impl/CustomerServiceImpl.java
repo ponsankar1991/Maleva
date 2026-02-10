@@ -81,6 +81,14 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
 
+    @Override
+    public void softDelete(Integer customerId) {
+        Customer customer = repository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        customer.setActive(2);
+        repository.save(customer);
+    }
+
 
 
     @Override
