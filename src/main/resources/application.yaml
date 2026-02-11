@@ -48,3 +48,24 @@ jwt:
 security:
   password-encoding:
     enabled: false
+
+
+
+qne:
+  enabled: true
+  demo: false
+  view: false
+  report-view: true
+
+  base-url: https://api.qne.cloud/api
+
+  db:
+    trial: OUCMLM_TRIAL_V1
+    live: OUCMLM
+
+  control-codes:
+    customer: 700-0000
+    supplier: 800-2000
+
+
+

@@ -17,7 +17,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 public class AuthController {
-
     private final JwtService jwtService;
     private final TokenStore tokenStore;
 
@@ -25,8 +24,6 @@ public class AuthController {
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
     }
-
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
