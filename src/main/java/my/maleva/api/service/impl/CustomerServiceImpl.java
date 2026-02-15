@@ -4,6 +4,7 @@ import my.maleva.api.dto.CustomerDto;
 import my.maleva.api.dto.request.CustomerSelectRequest;
 import my.maleva.api.dto.response.CustomerSelectDto;
 import my.maleva.api.dto.response.CustomerSelectResult;
+import my.maleva.api.mapper.CustomerMapper;
 import my.maleva.api.model.Customer;
 import my.maleva.api.repo.CustomerQueryRepository;
 import my.maleva.api.repo.CustomerRepository;
@@ -20,20 +21,23 @@ import java.util.stream.Collectors;
 public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository repository;
-    private  final CustomerQueryRepository queryRepository;
-    public CustomerServiceImpl(CustomerRepository repository, CustomerQueryRepository queryRepository) {
+    private final CustomerQueryRepository queryRepository;
+    private final CustomerMapper mapper;
+
+    public CustomerServiceImpl(CustomerRepository repository, CustomerQueryRepository queryRepository, CustomerMapper mapper) {
         this.repository = repository;
         this.queryRepository = queryRepository;
+        this.mapper = mapper;
     }
 
     @Override
     public CustomerDto create(CustomerDto dto) {
-        Customer entity = toEntity(dto);
+        Customer entity = mapper.toEntity(dto);
         LocalDateTime now = LocalDateTime.now();
         entity.setCreatedDate(now);
         entity.setModifiedDate(now);
         Customer saved = repository.save(entity);
-        return toDto(saved);
+        return mapper.toDto(saved);
     }
 
     @Override
@@ -41,11 +45,11 @@ public class CustomerServiceImpl implements CustomerService {
         Customer existing = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
 
-        copyDtoToEntity(dto, existing);
+        mapper.updateFromDto(dto, existing);
         existing.setModifiedDate(LocalDateTime.now());
 
         Customer saved = repository.save(existing);
-        return toDto(saved);
+        return mapper.toDto(saved);
     }
 
     @Override
@@ -53,7 +57,7 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerDto getById(Integer id) {
         Customer c = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
-        return toDto(c);
+        return mapper.toDto(c);
     }
 
     @Override
@@ -66,7 +70,7 @@ public class CustomerServiceImpl implements CustomerService {
         } else {
             list = repository.findByCustomerNameContainingIgnoreCase(name);
         }
-        return list.stream().map(this::toDto).collect(Collectors.toList());
+        return list.stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
     @Override
@@ -97,43 +101,5 @@ public class CustomerServiceImpl implements CustomerService {
             throw new RuntimeException("Customer not found: " + id);
         }
         repository.deleteById(id);
-    }
-
-    /* ===================== MAPPING ===================== */
-
-    private CustomerDto toDto(Customer c) {
-        if (c == null) return null;
-        return CustomerDto.builder()
-                .id(c.getId())
-                .companyRefId(c.getCompanyRefId())
-                .customerName(c.getCustomerName())
-                .email(c.getEmail())
-                .mobileNo(c.getMobileNo())
-                .active(c.getActive())
-                .createdDate(c.getCreatedDate())
-                .modifiedDate(c.getModifiedDate())
-                .build();
-    }
-
-    private Customer toEntity(CustomerDto d) {
-        if (d == null) return null;
-        return Customer.builder()
-                .id(d.getId())
-                .companyRefId(d.getCompanyRefId())
-                .customerName(d.getCustomerName())
-                .email(d.getEmail())
-                .mobileNo(d.getMobileNo())
-                .active(d.getActive())
-                .createdDate(d.getCreatedDate())
-                .modifiedDate(d.getModifiedDate())
-                .build();
-    }
-
-    private void copyDtoToEntity(CustomerDto d, Customer c) {
-        c.setCompanyRefId(d.getCompanyRefId());
-        c.setCustomerName(d.getCustomerName());
-        c.setEmail(d.getEmail());
-        c.setMobileNo(d.getMobileNo());
-        c.setActive(d.getActive());
     }
 }
