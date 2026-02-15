@@ -337,11 +337,48 @@
         "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
       },
       "response": []
+    },
+    {
+      "name": "Get customer select",
+      "id": "e994e28e-dfe0-4f9b-a44d-3c1e9c7878b3",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/customers/20",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "customers",
+            "20"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
+      },
+      "response": []
     }
   ],
   "variable": [
     {
-      "id": "2b9a0fc8-0158-408f-8806-d3bc958782e7",
+      "id": "0a959b64-85f3-4ca4-b449-d481fb0690ad",
       "key": "token",
       "value": ""
     }
