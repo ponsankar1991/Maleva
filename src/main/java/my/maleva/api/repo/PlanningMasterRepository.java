@@ -16,12 +16,12 @@ public interface PlanningMasterRepository extends JpaRepository<PlanningMaster, 
     /**
      * Find all planning records by company ID
      */
-    List<PlanningMaster> findByCompanyRefIdAndActivNot(Integer companyRefId, Integer active);
+    List<PlanningMaster> findByCompanyRefIdAndActiveNot(Integer companyRefId, Integer active);
 
     /**
      * Find planning records by company and employee
      */
-    List<PlanningMaster> findByCompanyRefIdAndEmployeeRefIdAndActivNot(
+    List<PlanningMaster> findByCompanyRefIdAndEmployeeRefIdAndActiveNot(
             Integer companyRefId, Integer employeeRefId, Integer active);
 
     /**

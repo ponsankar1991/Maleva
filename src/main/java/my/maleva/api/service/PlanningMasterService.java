@@ -37,7 +37,7 @@ public class PlanningMasterService {
      * Get all planning records by company (non-deleted)
      */
     public List<PlanningMasterDto> listAll() {
-        return planningMasterRepository.findByCompanyRefIdAndActivNot(0, 2)
+        return planningMasterRepository.findByCompanyRefIdAndActiveNot(0, 2)
                 .stream()
                 .map(planningMasterMapper::toDto)
                 .collect(Collectors.toList());
@@ -240,7 +240,7 @@ public class PlanningMasterService {
      * Get planning records by employee
      */
     public List<PlanningMasterDto> getByCompanyAndEmployee(Integer companyId, Integer employeeId) {
-        return planningMasterRepository.findByCompanyRefIdAndEmployeeRefIdAndActivNot(companyId, employeeId, 2)
+        return planningMasterRepository.findByCompanyRefIdAndEmployeeRefIdAndActiveNot(companyId, employeeId, 2)
                 .stream()
                 .map(planningMasterMapper::toDto)
                 .collect(Collectors.toList());
