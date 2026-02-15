@@ -38,15 +38,8 @@ public class AgentController {
         AgentDto saved = service.create(dto);
         return ResponseEntity.created(URI.create("/api/agents/" + saved.getId())).body(saved);
     }
-
     @PutMapping("/{id}")
     public AgentDto update(@PathVariable Integer id, @Valid @RequestBody AgentDto dto) {
         return service.update(id, dto);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
     }
 }

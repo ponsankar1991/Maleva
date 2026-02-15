@@ -5,6 +5,7 @@ import my.maleva.api.service.AppUserService;
 import my.maleva.api.service.EmployeeMasterService;
 import my.maleva.api.auth.JwtService;
 import my.maleva.api.auth.TokenStore;
+import my.maleva.api.util.UserRoles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,10 +50,13 @@ public class AuthUserController {
         // fetch user to obtain roleId
         var dto = employeeMasterService.findByUserName(userName);
         Integer roleId = dto == null ? null : dto.getRoleId();
-
+        String EmployeeName = dto ==null? null:dto.getEmployeeName();
+        Integer UserId =dto == null? null :dto.getId();
         String token = jwtService.generateToken(userName, roleId);
+        String roleName = null;
+        if (roleId != null)
+        {roleName = UserRoles.fromId(roleId).map(Enum::name).orElse(null);}
         tokenStore.storeToken(token, jwtService.getExpirationSeconds());
-
-        return ResponseEntity.ok(Map.of("token", token, "roleId", roleId));
+        return ResponseEntity.ok(Map.of("token", token, "roleId", roleId,"userName",EmployeeName,"UserId",UserId,"rolename",roleName));
     }
 }
