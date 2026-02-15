@@ -36,11 +36,21 @@ spring:
 
 server:
   port: 8082
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
 
 logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+file:
+  upload:
+    upload-dir: ${FILE_UPLOAD_DIR:uploads}
+    max-file-size: ${FILE_MAX_SIZE:10485760}
+    max-files: ${FILE_MAX_FILES:10}
 
 jwt:
   secret: changeit
