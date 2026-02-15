@@ -21,7 +21,6 @@ public class AppUserController {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
     }
-
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AppUserDto dto) {
         if (dto.getUserId() == null || dto.getPassword() == null) {

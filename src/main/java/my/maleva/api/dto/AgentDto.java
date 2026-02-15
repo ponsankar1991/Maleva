@@ -25,7 +25,7 @@ public class AgentDto {
 
     @NotBlank
     @Size(max = 500)
-    private String agentName;
+    private String Name;
 
     @NotBlank
     @Size(max = 300)
