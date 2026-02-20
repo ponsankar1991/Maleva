@@ -1,20 +1,27 @@
 package my.maleva.api.controller;
 
+import my.maleva.api.common.ApiResponse;
 import my.maleva.api.dto.JobTypeMasterDto;
 import my.maleva.api.service.JobTypeMasterService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.List;
 
+/**
+ * REST Controller for Job Type Master operations
+ * Handles CRUD operations and filtering for Job Types
+ */
 @RestController
 @RequestMapping("/api/job-type-master")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPRERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN')")
 public class JobTypeMasterController {
 
     private final JobTypeMasterService service;
@@ -23,30 +30,100 @@ public class JobTypeMasterController {
         this.service = service;
     }
 
+    /**
+     * Get all job types
+     * @return List of all job types
+     */
     @GetMapping
-    public List<JobTypeMasterDto> list() {
-        return service.listAll();
+    public ResponseEntity<ApiResponse<List<JobTypeMasterDto>>> list() {
+        List<JobTypeMasterDto> jobTypes = service.listAll();
+
+        if (jobTypes.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success("No Job Types Found", jobTypes));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success("Job Types Retrieved Successfully", jobTypes));
     }
 
+    /**
+     * Get job types by company ID
+     * @param companyId Company ID to filter by
+     * @return Job types for the specified company
+     */
+    @GetMapping("/jobtypes/{companyId}")
+    public ResponseEntity<ApiResponse<List<JobTypeMasterDto>>> getByCompanyId(
+            @PathVariable @NotNull Integer companyId) {
+        return service.getJobTypes(companyId);
+    }
+
+    /**
+     * Get job type by ID
+     * @param id Job Type ID
+     * @return Job type details
+     */
     @GetMapping("/{id}")
-    public JobTypeMasterDto get(@PathVariable Integer id) {
-        return service.getById(id);
+    public ResponseEntity<ApiResponse<JobTypeMasterDto>> get(@PathVariable @NotNull Integer id) {
+        try {
+            JobTypeMasterDto jobType = service.getById(id);
+            return ResponseEntity.ok(ApiResponse.success("Job Type Retrieved Successfully", jobType));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.failure(HttpStatus.NOT_FOUND, e.getMessage()));
+        }
     }
 
+    /**
+     * Create a new job type
+     * @param dto Job Type data to create
+     * @return Created job type with HTTP 201
+     */
     @PostMapping
-    public ResponseEntity<JobTypeMasterDto> create(@Valid @RequestBody JobTypeMasterDto dto) {
-        JobTypeMasterDto saved = service.create(dto);
-        return ResponseEntity.created(URI.create("/api/job-type-master/" + saved.getId())).body(saved);
+    public ResponseEntity<ApiResponse<JobTypeMasterDto>> create(@Valid @RequestBody JobTypeMasterDto dto) {
+        try {
+            JobTypeMasterDto saved = service.create(dto);
+            return ResponseEntity
+                    .created(URI.create("/api/job-type-master/" + saved.getId()))
+                    .body(ApiResponse.success("Job Type Created Successfully", saved));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.failure(HttpStatus.BAD_REQUEST, e.getMessage()));
+        }
     }
 
+    /**
+     * Update an existing job type
+     * @param id Job Type ID to update
+     * @param dto Updated job type data
+     * @return Updated job type
+     */
     @PutMapping("/{id}")
-    public JobTypeMasterDto update(@PathVariable Integer id, @Valid @RequestBody JobTypeMasterDto dto) {
-        return service.update(id, dto);
+    public ResponseEntity<ApiResponse<JobTypeMasterDto>> update(
+            @PathVariable @NotNull Integer id,
+            @Valid @RequestBody JobTypeMasterDto dto) {
+        try {
+            JobTypeMasterDto updated = service.update(id, dto);
+            return ResponseEntity.ok(ApiResponse.success("Job Type Updated Successfully", updated));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.failure(HttpStatus.BAD_REQUEST, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.failure(HttpStatus.NOT_FOUND, e.getMessage()));
+        }
     }
 
+    /**
+     * Delete a job type by ID
+     * @param id Job Type ID to delete
+     * @return HTTP 204 No Content on success
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> delete(@PathVariable @NotNull Integer id) {
+        try {
+            service.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 }

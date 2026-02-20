@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/card-masters")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPRERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
 public class CardMasterController {
 
     private final CardMasterService service;

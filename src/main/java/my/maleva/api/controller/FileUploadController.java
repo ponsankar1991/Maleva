@@ -15,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/file-uploads")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPRERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
 public class FileUploadController {
 
     private final FileUploadService fileUploadService;

@@ -1,10 +1,31 @@
 package my.maleva.api.agentcompany.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
+/**
+ * JPA Entity for AgentCompanyMaster table.
+ * Represents an agent company in the system.
+ *
+ * Fields:
+ * - Id: Primary key (auto-generated identity)
+ * - CompanyRefId: Foreign key reference to Company
+ * - Name: Agent company name (max 100 characters)
+ * - DFlag: Deletion flag (default 0)
+ * - CreatedDate: Record creation timestamp
+ * - ModifiedDate: Record modification timestamp
+ * - ModifiedBy: User who last modified the record
+ * - Active: Status flag (1=active, 2=deleted/inactive)
+ */
 @Entity
 @Table(name = "AgentCompanyMaster")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AgentCompanyMaster {
 
     @Id
@@ -21,7 +42,7 @@ public class AgentCompanyMaster {
     @Column(name = "DFlag", nullable = false)
     private Integer dFlag;
 
-    @Column(name = "Created_Date", nullable = false)
+    @Column(name = "Created_Date", nullable = false, updatable = false)
     private LocalDateTime createdDate;
 
     @Column(name = "Modified_Date", nullable = false)
@@ -32,71 +53,4 @@ public class AgentCompanyMaster {
 
     @Column(name = "Active", nullable = false)
     private Integer active;
-
-    // ...existing code...
-    // getters and setters
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Integer getCompanyRefId() {
-        return companyRefId;
-    }
-
-    public void setCompanyRefId(Integer companyRefId) {
-        this.companyRefId = companyRefId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Integer getDFlag() {
-        return dFlag;
-    }
-
-    public void setDFlag(Integer dFlag) {
-        this.dFlag = dFlag;
-    }
-
-    public LocalDateTime getCreatedDate() {
-        return createdDate;
-    }
-
-    public void setCreatedDate(LocalDateTime createdDate) {
-        this.createdDate = createdDate;
-    }
-
-    public LocalDateTime getModifiedDate() {
-        return modifiedDate;
-    }
-
-    public void setModifiedDate(LocalDateTime modifiedDate) {
-        this.modifiedDate = modifiedDate;
-    }
-
-    public String getModifiedBy() {
-        return modifiedBy;
-    }
-
-    public void setModifiedBy(String modifiedBy) {
-        this.modifiedBy = modifiedBy;
-    }
-
-    public Integer getActive() {
-        return active;
-    }
-
-    public void setActive(Integer active) {
-        this.active = active;
-    }
 }

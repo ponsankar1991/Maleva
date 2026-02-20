@@ -56,4 +56,38 @@ public class AgentService {
         Agent ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Agent not found: " + id));
         repository.delete(ent);
     }
+
+    /**
+     * Select all agents for a company with optional filtering by AgentCompanyRefId.
+     * Equivalent to the .NET SelectAgentAll method.
+     *
+     * SQL Equivalent:
+     * SELECT S.*, A.Name as SName, Ag.AccountCode
+     * FROM Agent S
+     * INNER JOIN AgentCompanyMaster A ON S.AgentCompanyRefId = A.Id
+     * INNER JOIN AccountsGroupMaster Ag ON Ag.Id = S.AccountRefId
+     * WHERE S.CompanyRefId = :companyRefId AND S.Active != 2
+     * [AND S.AgentCompanyRefId = :jobId IF jobId != 0]
+     * ORDER BY S.AgentName ASC
+     *
+     * @param companyRefId The company reference ID (required, > 0)
+     * @param jobId The agent company reference ID for filtering (optional, 0 means no filter)
+     * @return List of AgentDtos sorted by agentName, filtered by Active != 2
+     */
+    public List<AgentDto> selectAgentAll(Integer companyRefId, Integer jobId) {
+        List<Agent> agents;
+
+        // Apply conditional filtering based on jobId
+        if (jobId != null && jobId != 0) {
+            // Filter by both companyRefId and agentCompanyRefId (jobId)
+            agents = repository.findByCompanyRefIdAndAgentCompanyRefIdActiveNot2(companyRefId, jobId);
+        } else {
+            // Filter by companyRefId only
+            agents = repository.findByCompanyRefIdActiveNot2(companyRefId);
+        }
+        // Map entities to DTOs and return (already sorted in query)
+        return agents.stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

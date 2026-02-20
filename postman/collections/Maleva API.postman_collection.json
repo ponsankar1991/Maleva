@@ -374,6 +374,55 @@
         "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
       },
       "response": []
+that ''    },
+    {
+      "name": "Agent Select All",
+      "id": "a1b2c3d4-e5f6-47ab-89cd-ef1234567890",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/agents/select-all?companyRefId=5&jobId=0",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "agents",
+            "select-all"
+          ],
+          "query": [
+            {
+              "key": "companyRefId",
+              "value": "5",
+              "description": "Company reference ID (required, must be > 0)"
+            },
+            {
+              "key": "jobId",
+              "value": "0",
+              "description": "Agent Company Reference ID for filtering (optional, 0 = no filter)"
+            }
+          ]
+        },
+        "description": "Select all agents for a specific company with optional filtering by agent company\n\nParameters:\n- companyRefId: Company ID (required, > 0)\n- jobId: Agent company ID for filtering (optional, 0 = no filter)\n\nReturns:\n- ok: true/false\n- message: Response message\n- data: List of agents (filtered by Active != 2, sorted by name)\n- count: Total number of agents returned\n- error: Error message (null on success)"
+      },
+      "response": []
     }
   ],
   "variable": [

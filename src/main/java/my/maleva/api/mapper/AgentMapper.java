@@ -8,6 +8,7 @@ import my.maleva.api.dto.AgentDto;
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface AgentMapper {
 
+    @Mapping(source = "agentName", target = "Name")
     AgentDto toDto(Agent entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

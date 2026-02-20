@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/enquiry-masters")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPRERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
 public class EnquiryMasterController {
 
     private final EnquiryMasterService service;

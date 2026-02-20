@@ -27,6 +27,18 @@ public class JobStatusMasterService {
         return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
+    // Added: list active job statuses for a company (active == 1)
+    public List<JobStatusMasterDto> listByCompanyAndActive(Integer companyId, Integer active) {
+        if (companyId == null || companyId <= 0) {
+            throw new IllegalArgumentException("Invalid company ID");
+        }
+
+        return repository.findByCompanyRefIdAndActive(companyId, active)
+                .stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     public JobStatusMasterDto getById(Integer id) {
         JobStatusMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("JobStatusMaster not found: " + id));
         return mapper.toDto(ent);
