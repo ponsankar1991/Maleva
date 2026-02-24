@@ -92,4 +92,44 @@ public class EmployeeMasterService {
     public EmployeeMasterDto findByUserName(String userName) {
         return repository.findByUserNameAndActive(userName,1).map(mapper::toDto).orElse(null);
     }
+
+    /**
+     * Get active employees for a company filtered by role IDs.
+     * This is a combo list API endpoint that returns employee details filtered by company and role IDs.
+     *
+     * @param companyRefId The company ID to filter by
+     * @param roleId First role ID to filter (optional)
+     * @param roleId1 Second role ID to filter (optional)
+     * @return List of employees matching the filter criteria with only Active=1 status
+     */
+    @Transactional(readOnly = true)
+    public List<EmployeeMasterDto> getEmployeesByCompanyAndRoles(Integer companyRefId, Integer roleId, Integer roleId1) {
+        List<Integer> roleIdList = new java.util.ArrayList<>();
+
+        // Add roleId if provided
+        if (roleId != null && roleId > 0) {
+            roleIdList.add(roleId);
+        }
+
+        // Add roleId1 if provided
+        if (roleId1 != null && roleId1 > 0) {
+            roleIdList.add(roleId1);
+        }
+
+        List<EmployeeMaster> employees;
+
+        // Query employees based on filters
+        if (roleIdList.isEmpty()) {
+            // If no role filters provided, get all active employees for the company
+            employees = repository.findByCompanyRefIdAndActive(companyRefId, 1);
+        } else {
+            // Get employees with specific role IDs
+            employees = repository.findByCompanyAndRoleIds(companyRefId, roleIdList);
+        }
+
+        // Convert to DTO and return
+        return employees.stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

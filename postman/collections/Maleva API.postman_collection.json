@@ -374,7 +374,7 @@
         "description": "Generated from cURL: curl -X POST http://localhost:8080/api/login -H \"Content-Type: application/json\" -d '{\"username\":\"user\",\"password\":\"password\"}'\r\n"
       },
       "response": []
-that ''    },
+    },
     {
       "name": "Agent Select All",
       "id": "a1b2c3d4-e5f6-47ab-89cd-ef1234567890",
@@ -421,6 +421,45 @@ that ''    },
           ]
         },
         "description": "Select all agents for a specific company with optional filtering by agent company\n\nParameters:\n- companyRefId: Company ID (required, > 0)\n- jobId: Agent company ID for filtering (optional, 0 = no filter)\n\nReturns:\n- ok: true/false\n- message: Response message\n- data: List of agents (filtered by Active != 2, sorted by name)\n- count: Total number of agents returned\n- error: Error message (null on success)"
+      },
+      "response": []
+    },
+    {
+      "name": "GetProductList - Get Products for Company",
+      "id": "product-list-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/item-masters/company/1/products",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "item-masters",
+            "company",
+            "1",
+            "products"
+          ]
+        },
+        "description": "Get all active products (Activestatus=1) for company. Returns: Id, ProductName, SaleRate, PurRate, MRP, Productcode. Sorted by product name"
       },
       "response": []
     }

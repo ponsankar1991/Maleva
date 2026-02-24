@@ -29,7 +29,7 @@ public class ItemMasterDto {
 
     @NotBlank
     @Size(max = 100)
-    private String pName;
+    private String PName;
 
     @Size(max = 100)
     private String printName;

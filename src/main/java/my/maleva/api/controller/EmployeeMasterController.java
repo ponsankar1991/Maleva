@@ -48,4 +48,22 @@ public class EmployeeMasterController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Get employees for a specific company filtered by role IDs.
+     * Returns only active employees (Active=1).
+     *
+     * @param companyRefId The company ID to filter by (required)
+     * @param roleId First role ID filter (optional)
+     * @param roleId1 Second role ID filter (optional)
+     * @return List of active employees matching the criteria
+     */
+    @GetMapping("/company/{companyRefId}/roles")
+    public ResponseEntity<List<EmployeeMasterDto>> getEmployeesByCompanyAndRoles(
+            @PathVariable Integer companyRefId,
+            @RequestParam(value = "roleId", required = false) Integer roleId,
+            @RequestParam(value = "roleId1", required = false) Integer roleId1) {
+        List<EmployeeMasterDto> employees = service.getEmployeesByCompanyAndRoles(companyRefId, roleId, roleId1);
+        return ResponseEntity.ok(employees);
+    }
 }
