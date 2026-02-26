@@ -1,6 +1,6 @@
 package my.maleva.api.service;
 
-import my.maleva.api.common.ApiResponse;
+import my.maleva.api.agentcompany.common.ApiResponse;
 import my.maleva.api.dto.JobTypeMasterDto;
 import my.maleva.api.exception.EntityNotFoundException;
 import my.maleva.api.mapper.JobTypeMasterMapper;

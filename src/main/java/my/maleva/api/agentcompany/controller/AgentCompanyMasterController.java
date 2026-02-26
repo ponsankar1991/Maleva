@@ -2,11 +2,10 @@ package my.maleva.api.agentcompany.controller;
 
 import my.maleva.api.agentcompany.dto.AgentCompanyMasterDTO;
 import my.maleva.api.agentcompany.dto.AgentCompanyRequestDTO;
-import my.maleva.api.agentcompany.dto.AgentCompanyResponseDTO;
 import my.maleva.api.agentcompany.service.AgentCompanyMasterService;
 import my.maleva.api.agentcompany.service.AgentCompanyMasterService.EntityNotFoundException;
 import my.maleva.api.agentcompany.service.AgentCompanyMasterService.InvalidRequestException;
-import my.maleva.api.common.ApiResponse;
+import my.maleva.api.agentcompany.common.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

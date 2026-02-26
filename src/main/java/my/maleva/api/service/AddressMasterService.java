@@ -56,4 +56,47 @@ public class AddressMasterService {
         AddressMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("AddressMaster not found: " + id));
         repository.delete(ent);
     }
+
+    /**
+     * Search addresses by company ID and keyword (name contains)
+     * Returns only active addresses (active != 2)
+     * Results are ordered by name
+     * Equivalent to legacy .NET SelectAddress method
+     *
+     * @param companyRefId the company ID
+     * @param keyword the search keyword (can be null or empty)
+     * @return list of matching active addresses ordered by name
+     */
+    @Transactional(readOnly = true)
+    public List<AddressMasterDto> searchAddresses(Integer companyRefId, String keyword) {
+        List<AddressMaster> result;
+
+        // If keyword is empty or null, get all active addresses for company
+        if (keyword == null || keyword.trim().isEmpty()) {
+            result = repository.findActiveByCompanyId(companyRefId);
+        } else {
+            // Otherwise search by keyword
+            result = repository.findByCompanyAndKeyword(companyRefId, keyword.trim());
+        }
+
+        // Map to DTOs and return ordered by name
+        return result.stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all active addresses for a company
+     * Returns only active addresses (active != 2)
+     * Results are ordered by name
+     *
+     * @param companyRefId the company ID
+     * @return list of active addresses ordered by name
+     */
+    @Transactional(readOnly = true)
+    public List<AddressMasterDto> getActiveAddressesByCompany(Integer companyRefId) {
+        return repository.findActiveByCompanyId(companyRefId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

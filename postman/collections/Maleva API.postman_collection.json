@@ -462,6 +462,137 @@
         "description": "Get all active products (Activestatus=1) for company. Returns: Id, ProductName, SaleRate, PurRate, MRP, Productcode. Sorted by product name"
       },
       "response": []
+    },
+    {
+      "name": "GetActiveAddresses - Get All Active Addresses for Company",
+      "id": "address-active-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/addresses/company/6/active",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "addresses",
+            "company",
+            "6",
+            "active"
+          ]
+        },
+        "description": "Get all active addresses (active != 2) for a specific company. Returns addresses sorted by name. Requires valid JWT token with role ROLE_SUPERADMIN, ROLE_ADMIN, or ROLE_100"
+      },
+      "response": []
+    },
+    {
+      "name": "SearchAddresses - Search Addresses by Keyword",
+      "id": "address-search-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/addresses/company/6/search?keyword=NewYork",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "addresses",
+            "company",
+            "6",
+            "search"
+          ],
+          "query": [
+            {
+              "key": "keyword",
+              "value": "NewYork",
+              "description": "Optional search keyword - searches address names containing this text (case-insensitive)"
+            }
+          ]
+        },
+        "description": "Search for active addresses by company and keyword. If keyword is empty, returns all active addresses. Filters: active != 2. Returns addresses sorted by name. Requires valid JWT token"
+      },
+      "response": []
+    },
+    {
+      "name": "SelectEmployeeAll - Get All Active Employees for Company",
+      "id": "employee-select-all-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/employees/company/6/all?type=ALL",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "employees",
+            "company",
+            "6",
+            "all"
+          ],
+          "query": [
+            {
+              "key": "type",
+              "value": "ALL",
+              "description": "Optional employee type filter. If empty, 'ALL', or not provided, returns all employees"
+            }
+          ]
+        },
+        "description": "Get all active employees for a specific company with optional employee type filter. Returns all employees (excluding Active=2) ordered by employee name with their account information. Equivalent to .NET SelectEmployeeAll method. Requires valid JWT token with appropriate role"
+      },
+      "response": []
     }
   ],
   "variable": [

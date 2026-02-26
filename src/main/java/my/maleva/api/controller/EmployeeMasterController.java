@@ -2,6 +2,7 @@ package my.maleva.api.controller;
 
 import jakarta.validation.Valid;
 import my.maleva.api.dto.EmployeeMasterDto;
+import my.maleva.api.dto.EmployeeAllDto;
 import my.maleva.api.service.EmployeeMasterService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -64,6 +65,24 @@ public class EmployeeMasterController {
             @RequestParam(value = "roleId", required = false) Integer roleId,
             @RequestParam(value = "roleId1", required = false) Integer roleId1) {
         List<EmployeeMasterDto> employees = service.getEmployeesByCompanyAndRoles(companyRefId, roleId, roleId1);
+        return ResponseEntity.ok(employees);
+    }
+
+    /**
+     * Get all active employees for a company with optional employee type filter.
+     * This is the equivalent of the .NET SelectEmployeeAll method.
+     * Returns all employees (excluding Active=2) ordered by employee name.
+     * Optionally filters by employee type if provided.
+     *
+     * @param companyRefId The company ID to filter by (required)
+     * @param type The employee type to filter by (optional). If empty, "ALL", or not provided, returns all employees
+     * @return List of all employees matching the criteria with their account information
+     */
+    @GetMapping("/company/{companyRefId}/all")
+    public ResponseEntity<List<EmployeeAllDto>> selectEmployeeAll(
+            @PathVariable Integer companyRefId,
+            @RequestParam(value = "type", required = false, defaultValue = "ALL") String type) {
+        List<EmployeeAllDto> employees = service.selectEmployeeAll(companyRefId, type);
         return ResponseEntity.ok(employees);
     }
 }

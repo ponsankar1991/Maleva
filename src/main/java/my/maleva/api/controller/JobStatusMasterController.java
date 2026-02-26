@@ -2,7 +2,7 @@ package my.maleva.api.controller;
 
 import my.maleva.api.dto.JobStatusMasterDto;
 import my.maleva.api.service.JobStatusMasterService;
-import my.maleva.api.common.ApiResponse;
+import my.maleva.api.agentcompany.common.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

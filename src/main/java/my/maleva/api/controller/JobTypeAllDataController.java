@@ -1,6 +1,6 @@
 package my.maleva.api.controller;
 
-import my.maleva.api.common.ApiResponse;
+import my.maleva.api.agentcompany.common.ApiResponse;
 import my.maleva.api.dto.JobTypeAllDataDto;
 import my.maleva.api.service.JobTypeAllDataService;
 import org.springframework.http.HttpStatus;

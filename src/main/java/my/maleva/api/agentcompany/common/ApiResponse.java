@@ -1,4 +1,4 @@
-package my.maleva.api.common;
+package my.maleva.api.agentcompany.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;

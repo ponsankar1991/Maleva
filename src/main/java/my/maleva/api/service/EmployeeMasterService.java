@@ -1,10 +1,12 @@
 package my.maleva.api.service;
 
 import my.maleva.api.dto.EmployeeMasterDto;
+import my.maleva.api.dto.EmployeeAllDto;
 import my.maleva.api.exception.EntityNotFoundException;
 import my.maleva.api.model.EmployeeMaster;
 import my.maleva.api.repo.EmployeeMasterRepository;
 import my.maleva.api.mapper.EmployeeMasterMapper;
+import my.maleva.api.mapper.EmployeeAllMapper;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,11 +23,13 @@ public class EmployeeMasterService {
 
     private final EmployeeMasterRepository repository;
     private final EmployeeMasterMapper mapper;
+    private final EmployeeAllMapper employeeAllMapper;
     private final PasswordEncoder passwordEncoder;
 
-    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, PasswordEncoder passwordEncoder) {
+    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, EmployeeAllMapper employeeAllMapper, PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.mapper = mapper;
+        this.employeeAllMapper = employeeAllMapper;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -74,7 +78,7 @@ public class EmployeeMasterService {
 
     @Transactional(readOnly = true)
     public boolean verifyCredentials(String userName, String rawPassword) {
-        Optional<EmployeeMaster> maybe = repository.findByUserNameAndActive(userName,1);
+        Optional<EmployeeMaster> maybe = repository.findByUserNameAndActive(userName, 1);
         return maybe.map(u -> {
             String stored = u.getPassword();
             if (stored == null) stored = u.getAppPassword();
@@ -90,7 +94,7 @@ public class EmployeeMasterService {
 
     @Transactional(readOnly = true)
     public EmployeeMasterDto findByUserName(String userName) {
-        return repository.findByUserNameAndActive(userName,1).map(mapper::toDto).orElse(null);
+        return repository.findByUserNameAndActive(userName, 1).map(mapper::toDto).orElse(null);
     }
 
     /**
@@ -98,8 +102,8 @@ public class EmployeeMasterService {
      * This is a combo list API endpoint that returns employee details filtered by company and role IDs.
      *
      * @param companyRefId The company ID to filter by
-     * @param roleId First role ID to filter (optional)
-     * @param roleId1 Second role ID to filter (optional)
+     * @param roleId       First role ID to filter (optional)
+     * @param roleId1      Second role ID to filter (optional)
      * @return List of employees matching the filter criteria with only Active=1 status
      */
     @Transactional(readOnly = true)
@@ -130,6 +134,34 @@ public class EmployeeMasterService {
         // Convert to DTO and return
         return employees.stream()
                 .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all active employees for a company with optional employee type filter.
+     * This endpoint corresponds to the .NET SelectEmployeeAll method.
+     * Returns employees ordered by name, excluding those with Active=2.
+     *
+     * @param companyRefId The company ID to filter by
+     * @param type         The employee type to filter by (optional). If empty, "ALL", or null, returns all employees
+     * @return List of employees ordered by employee name
+     */
+    @Transactional(readOnly = true)
+    public List<EmployeeAllDto> selectEmployeeAll(Integer companyRefId, String type) {
+        List<EmployeeMaster> employees;
+
+        // Check if type filter should be applied
+        if (type != null && !type.trim().isEmpty() && !type.equalsIgnoreCase("ALL")) {
+            // Get employees filtered by company and employee type, excluding Active=2
+            employees = repository.findAllActiveByCompanyRefIdAndEmployeeType(companyRefId, type);
+        } else {
+            // Get all employees for company, excluding Active=2
+            employees = repository.findAllActiveByCompanyRefId(companyRefId);
+        }
+
+        // Convert to EmployeeAllDto and return (ordered by employee name from query)
+        return employees.stream()
+                .map(employeeAllMapper::toDto)
                 .collect(Collectors.toList());
     }
 }
