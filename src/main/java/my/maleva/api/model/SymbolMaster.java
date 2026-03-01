@@ -11,9 +11,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 /**
- * Minimal JPA entity for the SymbolMaster table (used in customer queries).
- * Only the columns required by `CustomerQueryRepository` are modelled here.
+ * SymbolMaster Entity
+ * JPA entity for SymbolMaster table
+ * Represents currency symbols and their configurations
  */
 @Entity
 @Table(name = "SymbolMaster")
@@ -28,9 +31,33 @@ public class SymbolMaster {
     @Column(name = "Id")
     private Integer id;
 
-    @Column(name = "SName", length = 500)
+    @Column(name = "CompanyRefId", nullable = false)
+    private Integer companyRefId;
+
+    @Column(name = "SName", nullable = false, length = 100)
     private String sName;
 
-    @Column(name = "CompanyRefId")
-    private Integer companyRefId;
+    @Column(name = "CName", length = 100)
+    private String cName;
+
+    @Column(name = "DFlag", nullable = false)
+    private Integer dFlag;
+
+    @Column(name = "Created_Date", nullable = false)
+    private LocalDateTime createdDate;
+
+    @Column(name = "Modified_Date", nullable = false)
+    private LocalDateTime modifiedDate;
+
+    @Column(name = "Modified_By", nullable = false, length = 50)
+    private String modifiedBy;
+
+    @Column(name = "Active", nullable = false)
+    private Integer active;
+
+    @Column(name = "CurrencyValue")
+    private Float currencyValue;
+
+    @Column(name = "QNEID")
+    private Integer qneId;
 }

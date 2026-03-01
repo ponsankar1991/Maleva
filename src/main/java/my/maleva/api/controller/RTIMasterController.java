@@ -1,0 +1,234 @@
+package my.maleva.api.controller;
+
+import my.maleva.api.dto.RTIMasterDto;
+import my.maleva.api.service.RTIMasterService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * RTIMaster REST Controller
+ * Handles all RESTful API endpoints for RTIMaster operations
+ * Base URL: /api/rti-masters
+ */
+@RestController
+@RequestMapping("/api/rti-masters")
+@CrossOrigin(origins = "*", maxAge = 3600)
+public class RTIMasterController {
+
+    private static final Logger logger = LoggerFactory.getLogger(RTIMasterController.class);
+
+    @Autowired
+    private RTIMasterService rtiMasterService;
+
+    @GetMapping("/company/{companyRefId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<List<RTIMasterDto>> getAllByCompanyId(@PathVariable Integer companyRefId) {
+        logger.info("Fetching all RTIMaster records for company: {}", companyRefId);
+        List<RTIMasterDto> records = rtiMasterService.getAllByCompanyId(companyRefId);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/company/{companyRefId}/active")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<List<RTIMasterDto>> getActiveByCompanyId(@PathVariable Integer companyRefId) {
+        logger.info("Fetching active RTIMaster records for company: {}", companyRefId);
+        List<RTIMasterDto> records = rtiMasterService.getActiveByCompanyId(companyRefId);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> getById(@PathVariable Integer id) {
+        logger.info("Fetching RTIMaster by ID: {}", id);
+        Optional<RTIMasterDto> record = rtiMasterService.getById(id);
+        if (record.isPresent()) {
+            return ResponseEntity.ok(record.get());
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("RTIMaster not found with ID: " + id);
+        }
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> create(@Valid @RequestBody RTIMasterDto dto) {
+        logger.info("Creating new RTIMaster for company: {}", dto.getCompanyRefId());
+        try {
+            RTIMasterDto created = rtiMasterService.create(dto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (Exception e) {
+            logger.error("Error creating RTIMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error creating RTIMaster: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody RTIMasterDto dto) {
+        logger.info("Updating RTIMaster with ID: {}", id);
+        try {
+            RTIMasterDto updated = rtiMasterService.update(id, dto);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            logger.error("RTIMaster not found with ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("RTIMaster not found with ID: " + id);
+        } catch (Exception e) {
+            logger.error("Error updating RTIMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating RTIMaster: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> delete(@PathVariable Integer id) {
+        logger.info("Deleting RTIMaster with ID: {}", id);
+        try {
+            boolean deleted = rtiMasterService.delete(id);
+            if (deleted) {
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("RTIMaster not found with ID: " + id);
+            }
+        } catch (Exception e) {
+            logger.error("Error deleting RTIMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deleting RTIMaster: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/company/{companyRefId}/cnumber/{cNumber}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> getByCNumber(@PathVariable Integer companyRefId, @PathVariable Integer cNumber) {
+        logger.info("Fetching RTIMaster by CNumber: {} for company: {}", cNumber, companyRefId);
+        if (companyRefId == null || cNumber == null) {
+            logger.warn("Invalid request: companyRefId or cNumber is null");
+            return ResponseEntity.badRequest().body("companyRefId and cNumber must be provided");
+        }
+        try {
+            Optional<RTIMasterDto> record = rtiMasterService.getByCNumber(companyRefId, cNumber);
+            if (record.isPresent()) {
+                return ResponseEntity.ok(record.get());
+            } else {
+                logger.warn("RTIMaster not found with CNumber: {} for company: {}", cNumber, companyRefId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(String.format("RTIMaster not found with CNumber: %d for company: %d", cNumber, companyRefId));
+            }
+        } catch (Exception e) {
+            logger.error("Error fetching RTIMaster by CNumber", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error fetching RTIMaster: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/company/{companyRefId}/employee/{employeeRefId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<List<RTIMasterDto>> getByEmployee(@PathVariable Integer companyRefId, @PathVariable Integer employeeRefId) {
+        logger.info("Fetching RTIMaster for employee: {}", employeeRefId);
+        List<RTIMasterDto> records = rtiMasterService.getByEmployee(companyRefId, employeeRefId);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/company/{companyRefId}/agent/{agentMasterRefId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<List<RTIMasterDto>> getByAgent(@PathVariable Integer companyRefId, @PathVariable Integer agentMasterRefId) {
+        logger.info("Fetching RTIMaster for agent: {}", agentMasterRefId);
+        List<RTIMasterDto> records = rtiMasterService.getByAgent(companyRefId, agentMasterRefId);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/company/{companyRefId}/date-range")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<List<RTIMasterDto>> getByDateRange(@PathVariable Integer companyRefId,
+            @RequestParam String startDate, @RequestParam String endDate) {
+        logger.info("Fetching RTIMaster between dates: {} to {}", startDate, endDate);
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        LocalDateTime start = LocalDateTime.parse(startDate, formatter);
+        LocalDateTime end = LocalDateTime.parse(endDate, formatter);
+        List<RTIMasterDto> records = rtiMasterService.getByDateRange(companyRefId, start, end);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/cnumber-display/{cNumberDisplay}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> getByCNumberDisplay(@PathVariable String cNumberDisplay) {
+        logger.info("Fetching RTIMaster by CNumberDisplay: {}", cNumberDisplay);
+        Optional<RTIMasterDto> record = rtiMasterService.getByCNumberDisplay(cNumberDisplay);
+        if (record.isPresent()) {
+            return ResponseEntity.ok(record.get());
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("RTIMaster not found with CNumberDisplay: " + cNumberDisplay);
+        }
+    }
+
+    @GetMapping("/company/{companyRefId}/sleeping")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<List<RTIMasterDto>> getSleepingRecords(@PathVariable Integer companyRefId) {
+        logger.info("Fetching sleeping RTIMaster records for company: {}", companyRefId);
+        List<RTIMasterDto> records = rtiMasterService.getSleepingRecords(companyRefId);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/company/{companyRefId}/truck/{truckRefId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<List<RTIMasterDto>> getByTruck(@PathVariable Integer companyRefId, @PathVariable Integer truckRefId) {
+        logger.info("Fetching RTIMaster for truck: {}", truckRefId);
+        List<RTIMasterDto> records = rtiMasterService.getByTruck(companyRefId, truckRefId);
+        return ResponseEntity.ok(records);
+    }
+
+    @GetMapping("/company/{companyRefId}/count")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> countByCompanyId(@PathVariable Integer companyRefId) {
+        logger.info("Counting RTIMaster records for company: {}", companyRefId);
+        long count = rtiMasterService.countByCompanyId(companyRefId);
+        return ResponseEntity.ok("Total: " + count);
+    }
+
+    @GetMapping("/company/{companyRefId}/count/active")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> countActiveByCompanyId(@PathVariable Integer companyRefId) {
+        logger.info("Counting active RTIMaster records for company: {}", companyRefId);
+        long count = rtiMasterService.countActiveByCompanyId(companyRefId);
+        return ResponseEntity.ok("Active Total: " + count);
+    }
+
+    @PostMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> activate(@PathVariable Integer id) {
+        logger.info("Activating RTIMaster with ID: {}", id);
+        try {
+            RTIMasterDto activated = rtiMasterService.activate(id);
+            return ResponseEntity.ok(activated);
+        } catch (RuntimeException e) {
+            logger.error("RTIMaster not found with ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("RTIMaster not found with ID: " + id);
+        } catch (Exception e) {
+            logger.error("Error activating RTIMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error activating RTIMaster: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/deactivate")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+    public ResponseEntity<?> deactivate(@PathVariable Integer id) {
+        logger.info("Deactivating RTIMaster with ID: {}", id);
+        try {
+            RTIMasterDto deactivated = rtiMasterService.deactivate(id);
+            return ResponseEntity.ok(deactivated);
+        } catch (RuntimeException e) {
+            logger.error("RTIMaster not found with ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("RTIMaster not found with ID: " + id);
+        } catch (Exception e) {
+            logger.error("Error deactivating RTIMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deactivating RTIMaster: " + e.getMessage());
+        }
+    }
+}
+

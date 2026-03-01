@@ -49,4 +49,22 @@ public class UomController {
         uomService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Process UOM with SP_UOM logic
+     * POST /api/uoms/process?companyId=1&checkFlag=1
+     *
+     * @param dto - UomDto with UOM data
+     * @param companyId - Company ID (required)
+     * @param checkFlag - 0 = no check, 1 = check if exists (optional, default=0)
+     * @return Processed UomDto
+     */
+    @PostMapping("/process")
+    public ResponseEntity<UomDto> processUom(
+            @Valid @RequestBody UomDto dto,
+            @RequestParam Integer companyId,
+            @RequestParam(defaultValue = "0") Integer checkFlag) {
+        UomDto result = uomService.processUom(dto, companyId, checkFlag);
+        return ResponseEntity.created(URI.create("/api/uoms/" + result.getId())).body(result);
+    }
 }

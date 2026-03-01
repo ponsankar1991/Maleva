@@ -56,4 +56,40 @@ public class UomService {
         Uom uom = uomRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("UOM not found: " + id));
         uomRepository.delete(uom);
     }
+
+    /**
+     * Process UOM using SP_UOM stored procedure logic
+     * Incorporates batch processing with check flag
+     *
+     * @param dto - UomDto with UOM data
+     * @param companyId - Company ID for the UOM
+     * @param checkFlag - If 1, checks if UOM already exists before insert
+     * @return Processed UomDto
+     */
+    @Transactional
+    public UomDto processUom(UomDto dto, Integer companyId, Integer checkFlag) {
+        // Set company ID
+        dto.setCompanyRefId(companyId);
+
+        // SP_UOM logic: If Check flag = 1, check if UOM exists by description
+        if (checkFlag != null && checkFlag == 1) {
+            // Query: SELECT Id from UOM WHERE CompanyRefId=companyId AND Description=description AND Active=1
+            Uom existing = uomRepository.findByDescriptionAndCompanyRefIdAndActive(
+                    dto.getDescription(), companyId, 1);
+
+            if (existing != null) {
+                // Found active record - UPDATE
+                return update(existing.getId(), dto);
+            }
+        }
+
+        // Standard insert/update logic
+        if (dto.getId() == null || dto.getId() == 0) {
+            // New record - INSERT
+            return create(dto);
+        } else {
+            // Existing record - UPDATE
+            return update(dto.getId(), dto);
+        }
+    }
 }
