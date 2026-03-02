@@ -1,5 +1,6 @@
 package my.maleva.api.controller;
 
+import my.maleva.api.dto.SaleOrderDTO;
 import my.maleva.api.dto.SaleOrderMasterDto;
 import my.maleva.api.service.SaleOrderMasterService;
 import org.slf4j.Logger;
@@ -51,6 +52,14 @@ public class SaleOrderMasterController {
     public ResponseEntity<?> create(@Valid @RequestBody SaleOrderMasterDto dto) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Error: " + e.getMessage());
+        }
+    }
+    @PostMapping("/save")
+    public ResponseEntity<?> save(@Valid @RequestBody SaleOrderDTO dto) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(service.save(dto));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Error: " + e.getMessage());
         }

@@ -1,9 +1,10 @@
 package my.maleva.api.service.impl;
 
+import my.maleva.api.dto.SaleOrderDTO;
 import my.maleva.api.dto.SaleOrderMasterDto;
 import my.maleva.api.mapper.SaleOrderMasterMapper;
-import my.maleva.api.model.SaleOrderMaster;
-import my.maleva.api.repo.SaleOrderMasterRepository;
+import my.maleva.api.model.*;
+import my.maleva.api.repo.*;
 import my.maleva.api.service.SaleOrderMasterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,14 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
     @Autowired
     private SaleOrderMasterRepository repository;
+    @Autowired
+    private SaleDetailsRepository saleDetailsRepository;
+    @Autowired
+    private SaleOrderPickupRepository saleOrderPickupRepository;
+    @Autowired
+    private SaleOrderDeliveryRepository saleOrderDeliveryRepository;
+    @Autowired
+    private SaleOrderForwardingRepository saleOrderForwardingRepository;
 
     @Autowired
     private SaleOrderMasterMapper mapper;
@@ -64,6 +73,33 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         if (entity.getActive() == null) entity.setActive(0);
         initializeDefaults(entity);
         SaleOrderMaster saved = repository.save(entity);
+        logger.info("SaleOrderMaster created with ID: {}", saved.getId());
+        return mapper.toDto(saved);
+    }
+
+
+    @Transactional
+    public SaleOrderMasterDto save(SaleOrderDTO dto) {
+        logger.info("Creating SaleOrderMaster for company: {}", dto.getCompanyRefId());
+
+        if (repository.existsByCompanyRefIdAndCNumber(dto.getCompanyRefId(), dto.getCNumber())) {
+            throw new RuntimeException("C Number already exists: " + dto.getCNumber());
+        }
+
+        SaleOrderMaster entity = mapper.toEntity(dto);
+        entity.setCreatedDate(LocalDateTime.now());
+        entity.setModifiedDate(LocalDateTime.now());
+        if (entity.getActive() == null) entity.setActive(0);
+        initializeDefaults(entity);
+        SaleOrderMaster saved = repository.save(entity);
+        List<SaleDetails> saleDetails =mapper.toSaleDetailsentity(dto.getSaleDetails());
+        saleDetailsRepository.saveAll(saleDetails);
+        List<SaleOrderPickup> pickup = mapper.toSaleOrderPickupentity(dto.getPickupDetails());
+        saleOrderPickupRepository.saveAll(pickup);
+        List<SaleOrderDelivery> delivery = mapper.toSaleOrderDeliveryentity(dto.getDeliveryDetails());
+        saleOrderDeliveryRepository.saveAll(delivery);
+        List<SaleOrderForwarding> forwarding = mapper.toSaleOrderForwardingentity(dto.getForwardingDetails());
+        saleOrderForwardingRepository.saveAll(forwarding);
         logger.info("SaleOrderMaster created with ID: {}", saved.getId());
         return mapper.toDto(saved);
     }
