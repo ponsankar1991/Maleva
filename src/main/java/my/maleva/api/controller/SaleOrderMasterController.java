@@ -60,16 +60,16 @@ public class SaleOrderMasterController {
     public ResponseEntity<?> save(@Valid @RequestBody SaleOrderDTO dto) {
         try {
             logger.info("Saving SaleOrder for company: {} customer: {} cNumber: {}",
-                       dto.getCompanyRefId(), dto.getCustomerRefId(), dto.getCNumber());
+                    dto.getCompanyRefId(), dto.getCustomerRefId(), dto.getCNumber());
             return ResponseEntity.status(HttpStatus.CREATED).body(service.save(dto));
         } catch (RuntimeException e) {
             logger.error("Error saving SaleOrder - {}. Check that cNumber, billType, saleType are not null/empty",
-                        e.getMessage(), e);
+                    e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Error: " + e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error saving SaleOrder: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                               .body("Unexpected error: " + e.getMessage());
+                    .body("Unexpected error: " + e.getMessage());
         }
     }
 

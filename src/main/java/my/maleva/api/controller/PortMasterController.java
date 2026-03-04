@@ -102,39 +102,6 @@ public class PortMasterController {
     /**
      * Get active ports by company
      * GET /api/port-masters/company/{companyId}/active
-     *
-     * Returns all active ports (active=1) for the specified company
-     *
-     * @param companyId - Company reference ID (required, must be positive integer)
-     * @return ResponseEntity with API response containing list of active ports
-     *
-     * Success Response (200 OK):
-     * {
-     *   "status": "SUCCESS",
-     *   "statusCode": 200,
-     *   "message": "Active ports retrieved successfully",
-     *   "data": [
-     *     {
-     *       "id": 1,
-     *       "companyRefId": 1,
-     *       "portName": "Port A",
-     *       "active": 1,
-     *       "createdDate": "2026-01-15T10:30:00",
-     *       "modifiedDate": "2026-01-15T10:30:00",
-     *       "modifiedBy": "SYSTEM"
-     *     }
-     *   ],
-     *   "count": 1,
-     *   "timestamp": "2026-03-04T14:30:00"
-     * }
-     *
-     * Error Response (400 Bad Request):
-     * {
-     *   "status": "ERROR",
-     *   "statusCode": 400,
-     *   "message": "Invalid company ID",
-     *   "error": "Company ID must be a positive integer"
-     * }
      */
     @GetMapping("/company/{companyId}/active")
     public ResponseEntity<ApiResponse<List<PortMasterDto>>> getActiveByCompany(

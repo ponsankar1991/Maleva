@@ -49,9 +49,9 @@ public class ForwardingDetailDTO {
     @Size(max = 100, message = "Quantity must not exceed 100 characters")
     private String quantity;
 
-    private Integer s1;
+    private String s1;
 
-    private Integer s2;
+    private String s2;
 
     private Integer rowNumber;
 }
