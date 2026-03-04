@@ -26,6 +26,6 @@ public interface SaleOrderForwardingRepository extends JpaRepository<SaleOrderFo
     /**
      * Delete all SaleOrderForwarding records by SaleOrderMasterRefId
      */
-    void deleteBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
+    void deleteAllBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
 }
 

@@ -1,5 +1,6 @@
 package my.maleva.api.service;
 
+import my.maleva.api.dto.SaleOrderDTO;
 import my.maleva.api.dto.SaleOrderMasterDto;
 
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ public interface SaleOrderMasterService {
     List<SaleOrderMasterDto> getByCompanyIdAndStatus(Integer companyRefId, Integer active);
     Optional<SaleOrderMasterDto> getById(Integer id);
     SaleOrderMasterDto create(SaleOrderMasterDto dto);
+    SaleOrderMasterDto save(SaleOrderDTO dto);
     SaleOrderMasterDto update(Integer id, SaleOrderMasterDto dto);
     boolean delete(Integer id);
 

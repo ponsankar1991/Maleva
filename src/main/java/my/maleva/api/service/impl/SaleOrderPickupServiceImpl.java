@@ -91,7 +91,7 @@ public class SaleOrderPickupServiceImpl implements SaleOrderPickupService {
     @Transactional
     public void deleteBySaleOrderMasterRefId(Integer saleOrderMasterRefId) {
         logger.info("Deleting all SaleOrderPickup for master: {}", saleOrderMasterRefId);
-        repository.deleteBySaleOrderMasterRefId(saleOrderMasterRefId);
+        repository.deleteAllBySaleOrderMasterRefId(saleOrderMasterRefId);
     }
 
     @Override

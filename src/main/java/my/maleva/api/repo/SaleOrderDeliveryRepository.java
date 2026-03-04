@@ -26,6 +26,6 @@ public interface SaleOrderDeliveryRepository extends JpaRepository<SaleOrderDeli
     /**
      * Delete all SaleOrderDelivery records by SaleOrderMasterRefId
      */
-    void deleteBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
+    void deleteAllBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
 }
 

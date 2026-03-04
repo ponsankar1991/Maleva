@@ -23,8 +23,11 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
     List<SaleOrderMaster> findByEmployeeRefId(Integer employeeRefId);
     List<SaleOrderMaster> findByCompanyRefIdAndEmployeeRefId(Integer companyRefId, Integer employeeRefId);
     List<SaleOrderMaster> findByUserRefId(Integer userRefId);
-    Optional<SaleOrderMaster> findByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
-    boolean existsByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
+    @Query("SELECT s FROM SaleOrderMaster s WHERE s.companyRefId = :companyRefId AND s.cNumber = :cNumber")
+    Optional<SaleOrderMaster> findByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);
+
+    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN TRUE ELSE FALSE END FROM SaleOrderMaster s WHERE s.companyRefId = :companyRefId AND s.cNumber = :cNumber")
+    boolean existsByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);
 
     @Query("SELECT s FROM SaleOrderMaster s WHERE s.companyRefId = :companyRefId " +
            "AND s.saleDate BETWEEN :startDate AND :endDate ORDER BY s.saleDate DESC")

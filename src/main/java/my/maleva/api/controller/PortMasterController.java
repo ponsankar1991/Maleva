@@ -1,7 +1,10 @@
 package my.maleva.api.controller;
 
+import my.maleva.api.agentcompany.common.ApiResponse;
 import my.maleva.api.dto.PortMasterDto;
 import my.maleva.api.service.PortMasterService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +15,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/port-masters")
@@ -19,6 +24,7 @@ import java.util.List;
 @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
 public class PortMasterController {
 
+    private static final Logger logger = LoggerFactory.getLogger(PortMasterController.class);
     private final PortMasterService portMasterService;
 
     public PortMasterController(PortMasterService portMasterService) {
@@ -96,10 +102,52 @@ public class PortMasterController {
     /**
      * Get active ports by company
      * GET /api/port-masters/company/{companyId}/active
+     *
+     * Returns all active ports (active=1) for the specified company
+     *
+     * @param companyId - Company reference ID (required, must be positive integer)
+     * @return ResponseEntity with API response containing list of active ports
+     *
+     * Success Response (200 OK):
+     * {
+     *   "status": "SUCCESS",
+     *   "statusCode": 200,
+     *   "message": "Active ports retrieved successfully",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "companyRefId": 1,
+     *       "portName": "Port A",
+     *       "active": 1,
+     *       "createdDate": "2026-01-15T10:30:00",
+     *       "modifiedDate": "2026-01-15T10:30:00",
+     *       "modifiedBy": "SYSTEM"
+     *     }
+     *   ],
+     *   "count": 1,
+     *   "timestamp": "2026-03-04T14:30:00"
+     * }
+     *
+     * Error Response (400 Bad Request):
+     * {
+     *   "status": "ERROR",
+     *   "statusCode": 400,
+     *   "message": "Invalid company ID",
+     *   "error": "Company ID must be a positive integer"
+     * }
      */
     @GetMapping("/company/{companyId}/active")
-    public List<PortMasterDto> getActiveByCompany(@PathVariable Integer companyId) {
-        return portMasterService.getActiveByCompany(companyId);
+    public ResponseEntity<ApiResponse<List<PortMasterDto>>> getActiveByCompany(
+            @PathVariable Integer companyId) {
+        if (companyId == null || companyId <= 0) {
+            throw new IllegalArgumentException("Company ID must be a positive integer");
+        }
+
+        List<PortMasterDto> ports = portMasterService.getActiveByCompany(companyId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Active ports retrieved successfully", ports)
+        );
     }
 
     /**

@@ -25,7 +25,7 @@ public class ForwardingDetailDTO {
     @Size(max = 100, message = "Forwarding Date must not exceed 100 characters")
     private String forwardingDate;
 
-    private Integer forwardingName;
+    private String forwardingName;
 
     @Size(max = 200, message = "Enter Reference must not exceed 200 characters")
     private String enterRef;

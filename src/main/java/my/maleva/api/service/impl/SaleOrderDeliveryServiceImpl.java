@@ -91,7 +91,7 @@ public class SaleOrderDeliveryServiceImpl implements SaleOrderDeliveryService {
     @Transactional
     public void deleteBySaleOrderMasterRefId(Integer saleOrderMasterRefId) {
         logger.info("Deleting all SaleOrderDelivery for master: {}", saleOrderMasterRefId);
-        repository.deleteBySaleOrderMasterRefId(saleOrderMasterRefId);
+        repository.deleteAllBySaleOrderMasterRefId(saleOrderMasterRefId);
     }
 
     @Override

@@ -3,6 +3,7 @@ package my.maleva.api.service.impl;
 import my.maleva.api.dto.SaleOrderDTO;
 import my.maleva.api.dto.SaleOrderMasterDto;
 import my.maleva.api.mapper.SaleOrderMasterMapper;
+import my.maleva.api.mapper.SaleOrderDetailsMapper;
 import my.maleva.api.model.*;
 import my.maleva.api.repo.*;
 import my.maleva.api.service.SaleOrderMasterService;
@@ -29,7 +30,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     @Autowired
     private SaleOrderMasterRepository repository;
     @Autowired
-    private SaleDetailsRepository saleDetailsRepository;
+    private SaleOrderDetailsRepository saleOrderDetailsRepository;
     @Autowired
     private SaleOrderPickupRepository saleOrderPickupRepository;
     @Autowired
@@ -39,6 +40,10 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
     @Autowired
     private SaleOrderMasterMapper mapper;
+    @Autowired
+    private SaleOrderDetailsMapper saleOrderDetailsMapper;
+    @Autowired
+    private SequenceNoMasterRepository sequenceNoMasterRepository;
 
     @Override
     public List<SaleOrderMasterDto> getAllByCompanyId(Integer companyRefId) {
@@ -80,28 +85,387 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
     @Transactional
     public SaleOrderMasterDto save(SaleOrderDTO dto) {
-        logger.info("Creating SaleOrderMaster for company: {}", dto.getCompanyRefId());
+        logger.info("SaleOrderMaster save operation initiated. CompanyId: {}, CustomerId: {}, CNumber: {}",
+                   dto.getCompanyRefId(), dto.getCustomerRefId(), dto.getCNumber());
 
-        if (repository.existsByCompanyRefIdAndCNumber(dto.getCompanyRefId(), dto.getCNumber())) {
-            throw new RuntimeException("C Number already exists: " + dto.getCNumber());
+        try {
+            // Step 1: Validate critical fields
+            validateDtoForSave(dto);
+
+            // Step 2: Determine if INSERT or UPDATE based on ID
+            boolean isInsert = dto.getId() == null || dto.getId() == 0;
+            logger.info("Operation type: {}", isInsert ? "INSERT" : "UPDATE");
+
+            // Step 3: Prepare entity data
+            SaleOrderMaster entity = isInsert
+                ? createNewEntity(dto)
+                : updateExistingEntity(dto);
+
+            // Step 4: Save master record
+            SaleOrderMaster savedEntity = repository.saveAndFlush(entity);
+            Integer masterId = savedEntity.getId();
+            logger.info("SaleOrderMaster {} with ID: {}",
+                       isInsert ? "CREATED" : "UPDATED", masterId);
+
+            // Step 5: Manage child records
+            if (isInsert) {
+                saveAllChildRecords(dto, masterId);
+            } else {
+                deleteAndRecreateChildRecords(dto, masterId);
+            }
+
+            logger.info("SaleOrderMaster {} completed successfully. ID: {}",
+                       isInsert ? "CREATE" : "UPDATE", masterId);
+            return mapper.toDto(savedEntity);
+
+        } catch (Exception e) {
+            logger.error("Error in SaleOrderMaster save operation: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to save SaleOrderMaster: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Validate DTO before save operation
+     */
+    private void validateDtoForSave(SaleOrderDTO dto) {
+        if (dto.getCompanyRefId() == null || dto.getCompanyRefId() <= 0) {
+            throw new RuntimeException("Company Reference ID is required and must be positive");
+        }
+        if (dto.getCustomerRefId() == null || dto.getCustomerRefId() <= 0) {
+            throw new RuntimeException("Customer Reference ID is required and must be positive");
         }
 
+        // NOTE: CNumber can be 0 on INSERT (will be auto-generated from SequenceNoMaster)
+        // CNumber is optional on INSERT, required on UPDATE
+        boolean isInsert = dto.getId() == null || dto.getId() == 0;
+        if (!isInsert && (dto.getCNumber() == null || dto.getCNumber() <= 0)) {
+            throw new RuntimeException("C Number is required for UPDATE and must be positive");
+        }
+
+        // Check for duplicate cNumber only on INSERT if cNumber is provided
+        if (isInsert && dto.getCNumber() != null && dto.getCNumber() > 0 &&
+            repository.existsByCompanyRefIdAndCNumber(dto.getCompanyRefId(), dto.getCNumber())) {
+            throw new RuntimeException("C Number " + dto.getCNumber() +
+                                     " already exists for Company " + dto.getCompanyRefId());
+        }
+
+        logger.debug("DTO validation passed");
+    }
+
+    /**
+     * Create new SaleOrderMaster entity for INSERT operation
+     */
+    private SaleOrderMaster createNewEntity(SaleOrderDTO dto) {
+        logger.debug("Creating new SaleOrderMaster entity");
+
         SaleOrderMaster entity = mapper.toEntity(dto);
-        entity.setCreatedDate(LocalDateTime.now());
+        entity.setId(null);  // Critical: Set ID to NULL for auto-generation
+
+        // CRITICAL FIX: Handle CNumber generation when it's 0
+        if (entity.getCNumber() == null || entity.getCNumber() == 0) {
+            logger.debug("CNumber is 0 or null. Generating from SequenceNoMaster...");
+            Integer generatedCNumber = generateCNumber(entity.getCompanyRefId(), entity.getBillType());
+            entity.setCNumber(generatedCNumber);
+
+            // Generate CNumberDisplay: BillType + formatted sequence number (9 digits with leading zeros)
+            String cNumberDisplay = entity.getBillType() + String.format("%09d", generatedCNumber);
+            entity.setCNumberDisplay(cNumberDisplay);
+
+            logger.info("Generated CNumber: {}, CNumberDisplay: {}", generatedCNumber, cNumberDisplay);
+        } else if (entity.getCNumberDisplay() == null && dto.getCNumberDisplay() != null) {
+            // If CNumber is provided but CNumberDisplay is missing, set from DTO
+            entity.setCNumberDisplay(dto.getCNumberDisplay());
+            logger.debug("Set cNumberDisplay from DTO: {}", dto.getCNumberDisplay());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        entity.setCreatedDate(now);
+        entity.setModifiedDate(now);
+
+        // IMPORTANT: Set Created_By to database username (suser_name() in SQL Server)
+        // In JPA, we let the database trigger handle this via DEFAULT constraint
+        // Or we can set it to "SYSTEM" as a fallback
+        if (entity.getCreatedBy() == null) {
+            entity.setCreatedBy("SYSTEM");  // Will be overridden by DB trigger if exists
+            logger.debug("Set CreatedBy to SYSTEM (DB will use suser_name() if trigger exists)");
+        }
+
+        // IMPORTANT: Set Modified_By to database username (suser_name() in SQL Server)
+        if (entity.getModifiedBy() == null) {
+            entity.setModifiedBy("SYSTEM");  // Will be overridden by DB trigger if exists
+            logger.debug("Set ModifiedBy to SYSTEM (DB will use suser_name() if trigger exists)");
+        }
+
+        // IMPORTANT: Always set Active to 1 for new records
+        entity.setActive(1);
+        logger.debug("Set Active to 1 for new record");
+
+        sanitizeEntity(entity);
+        initializeNumericDefaults(entity);
+
+        // Final validation before returning
+        if (entity.getCNumber() == null) {
+            throw new RuntimeException("CRITICAL: CNumber must not be null before insert!");
+        }
+
+        logger.debug("New SaleOrderMaster entity created successfully with cNumber: {} and Active: {}",
+                   entity.getCNumber(), entity.getActive());
+        return entity;
+    }
+
+    /**
+     * Update existing SaleOrderMaster entity for UPDATE operation
+     */
+    private SaleOrderMaster updateExistingEntity(SaleOrderDTO dto) {
+        logger.debug("Updating existing SaleOrderMaster with ID: {}", dto.getId());
+
+        SaleOrderMaster entity = repository.findById(dto.getId())
+            .orElseThrow(() -> new RuntimeException(
+                "SaleOrderMaster not found with ID: " + dto.getId()));
+
+        // Map updates from DTO to entity
+        mapper.updateEntityFromDto(dto, entity);
+
+        // CRITICAL FIX: Ensure cNumber is set and never null
+        if (dto.getCNumber() != null) {
+            entity.setCNumber(dto.getCNumber());
+            logger.debug("Updated cNumber to: {}", dto.getCNumber());
+        }
+
+        // CRITICAL FIX: Ensure cNumberDisplay is updated
+        if (dto.getCNumberDisplay() != null) {
+            entity.setCNumberDisplay(dto.getCNumberDisplay());
+        }
+
         entity.setModifiedDate(LocalDateTime.now());
-        if (entity.getActive() == null) entity.setActive(0);
-        initializeDefaults(entity);
-        SaleOrderMaster saved = repository.save(entity);
-        List<SaleDetails> saleDetails =mapper.toSaleDetailsentity(dto.getSaleDetails());
-        saleDetailsRepository.saveAll(saleDetails);
-        List<SaleOrderPickup> pickup = mapper.toSaleOrderPickupentity(dto.getPickupDetails());
-        saleOrderPickupRepository.saveAll(pickup);
-        List<SaleOrderDelivery> delivery = mapper.toSaleOrderDeliveryentity(dto.getDeliveryDetails());
-        saleOrderDeliveryRepository.saveAll(delivery);
-        List<SaleOrderForwarding> forwarding = mapper.toSaleOrderForwardingentity(dto.getForwardingDetails());
-        saleOrderForwardingRepository.saveAll(forwarding);
-        logger.info("SaleOrderMaster created with ID: {}", saved.getId());
-        return mapper.toDto(saved);
+
+        // IMPORTANT: Ensure Modified_By is set and never null
+        if (entity.getModifiedBy() == null) {
+            entity.setModifiedBy("SYSTEM");
+            logger.debug("Set ModifiedBy to SYSTEM for UPDATE operation");
+        }
+
+        sanitizeEntity(entity);
+        initializeNumericDefaults(entity);
+
+        // Final validation before returning
+        if (entity.getCNumber() == null) {
+            throw new RuntimeException("CRITICAL: CNumber must not be null before update!");
+        }
+
+        logger.debug("SaleOrderMaster entity updated successfully for ID: {} with cNumber: {}", dto.getId(), entity.getCNumber());
+        return entity;
+    }
+
+    /**
+     * Sanitize entity by converting empty strings to null
+     */
+    private void sanitizeEntity(SaleOrderMaster entity) {
+        if (entity == null) return;
+
+        if (entity.getSaleType() != null && entity.getSaleType().trim().isEmpty()) {
+            entity.setSaleType(null);
+        }
+        if (entity.getBillType() != null && entity.getBillType().trim().isEmpty()) {
+            entity.setBillType(null);
+        }
+
+        logger.debug("Entity sanitization completed");
+    }
+
+    /**
+     * Initialize all numeric fields with proper defaults
+     * Ensures NO NULL values are inserted into database columns that don't allow nulls
+     */
+    private void initializeNumericDefaults(SaleOrderMaster entity) {
+        // Main Amount fields
+        entity.setCoinage(entity.getCoinage() != null ? entity.getCoinage() : 0.0);
+        entity.setGrossAmount(entity.getGrossAmount() != null ? entity.getGrossAmount() : 0.0);
+        entity.setTaxAmount(entity.getTaxAmount() != null ? entity.getTaxAmount() : 0.0);
+        entity.setDiscountAmount(entity.getDiscountAmount() != null ? entity.getDiscountAmount() : 0.0);
+        entity.setPlusAmount(entity.getPlusAmount() != null ? entity.getPlusAmount() : 0.0);
+        entity.setMinusAmount(entity.getMinusAmount() != null ? entity.getMinusAmount() : 0.0);
+        entity.setAmount(entity.getAmount() != null ? entity.getAmount() : 0.0);
+        entity.setCurrencyValue(entity.getCurrencyValue() != null ? entity.getCurrencyValue() : 0.0);
+        entity.setActualNetAmount(entity.getActualNetAmount() != null ? entity.getActualNetAmount() : 0.0);
+
+        // Boarding Amount fields
+        entity.setBoardingAmount(entity.getBoardingAmount() != null ? entity.getBoardingAmount() : 0.0);
+        entity.setBoardingAmount1(entity.getBoardingAmount1() != null ? entity.getBoardingAmount1() : 0.0);
+
+        // L-prefixed Boarding Amount fields (Loading)
+        entity.setLBoardingAmount(entity.getLBoardingAmount() != null ? entity.getLBoardingAmount() : 0.0);
+        entity.setLBoardingAmount1(entity.getLBoardingAmount1() != null ? entity.getLBoardingAmount1() : 0.0);
+
+        // O-prefixed Boarding Amount fields (Other/Origin)
+        entity.setOBoardingAmount(entity.getOBoardingAmount() != null ? entity.getOBoardingAmount() : 0.0);
+        entity.setOBoardingAmount1(entity.getOBoardingAmount1() != null ? entity.getOBoardingAmount1() : 0.0);
+
+        // Port Charges fields
+        entity.setPortCharges(entity.getPortCharges() != null ? entity.getPortCharges() : 0.0);
+
+        // L-prefixed Port Charges fields
+        entity.setLPortCharges(entity.getLPortCharges() != null ? entity.getLPortCharges() : 0.0);
+
+        // O-prefixed Port Charges fields
+        entity.setOPortCharges(entity.getOPortCharges() != null ? entity.getOPortCharges() : 0.0);
+
+        // Seal amount fields
+        entity.setSealAmount(entity.getSealAmount() != null ? entity.getSealAmount() : 0.0);
+        entity.setBreakSealAmount(entity.getBreakSealAmount() != null ? entity.getBreakSealAmount() : 0.0);
+        entity.setSealAmount2(entity.getSealAmount2() != null ? entity.getSealAmount2() : 0.0);
+        entity.setBreakSealAmount2(entity.getBreakSealAmount2() != null ? entity.getBreakSealAmount2() : 0.0);
+        entity.setSealAmount3(entity.getSealAmount3() != null ? entity.getSealAmount3() : 0.0);
+        entity.setBreakSealAmount3(entity.getBreakSealAmount3() != null ? entity.getBreakSealAmount3() : 0.0);
+
+        // String defaults
+        if (entity.getBillType() == null || entity.getBillType().isEmpty()) {
+            entity.setBillType("STANDARD");
+        }
+        if (entity.getSaleType() == null || entity.getSaleType().isEmpty()) {
+            entity.setSaleType("STANDARD");
+        }
+
+        logger.debug("All numeric defaults initialized - no NULL amount fields");
+    }
+
+    /**
+     * Save all child records for new SaleOrderMaster (INSERT case)
+     */
+    private void saveAllChildRecords(SaleOrderDTO dto, Integer masterId) {
+        logger.debug("Saving child records for MasterId: {}", masterId);
+
+        saveSaleDetails(dto, masterId);
+        savePickupDetails(dto, masterId);
+        saveDeliveryDetails(dto, masterId);
+        saveForwardingDetails(dto, masterId);
+
+        logger.debug("All child records saved successfully");
+    }
+
+    /**
+     * Delete and recreate all child records (UPDATE case)
+     */
+    private void deleteAndRecreateChildRecords(SaleOrderDTO dto, Integer masterId) {
+        logger.debug("Deleting existing child records for MasterId: {}", masterId);
+
+        saleOrderDetailsRepository.deleteAllBySaleOrderMasterRefId(masterId);
+        saleOrderPickupRepository.deleteAllBySaleOrderMasterRefId(masterId);
+        saleOrderDeliveryRepository.deleteAllBySaleOrderMasterRefId(masterId);
+        saleOrderForwardingRepository.deleteAllBySaleOrderMasterRefId(masterId);
+
+        logger.debug("Child records deleted. Saving new records...");
+        saveAllChildRecords(dto, masterId);
+    }
+
+    /**
+     * Save Sale Details child records
+     */
+    private void saveSaleDetails(SaleOrderDTO dto, Integer masterId) {
+        if (dto.getSaleOrderDetails() == null || dto.getSaleOrderDetails().isEmpty()) {
+            logger.debug("No SaleOrderDetails to save");
+            return;
+        }
+
+        List<SaleOrderDetails> saleOrderDetails = saleOrderDetailsMapper.toEntityList(dto.getSaleOrderDetails());
+        LocalDateTime now = LocalDateTime.now();
+        saleOrderDetails.forEach(detail -> {
+            // IMPORTANT: Set id to null for auto-generation (id=0 in JSON becomes null in Java)
+            if (detail.getId() == null || detail.getId() == 0) {
+                detail.setId(null);
+            }
+            // CRITICAL: Set SaleOrderMasterRefId (master reference)
+            detail.setSaleOrderMasterRefId(masterId);
+
+            // CRITICAL: Set Created_Date and Modified_Date for child records
+            detail.setCreatedDate(now);
+            detail.setModifiedDate(now);
+        });
+        saleOrderDetailsRepository.saveAll(saleOrderDetails);
+
+        logger.info("Saved {} SaleOrderDetails records for MasterId: {}",
+                   saleOrderDetails.size(), masterId);
+    }
+
+    /**
+     * Save Pickup Details child records
+     */
+    private void savePickupDetails(SaleOrderDTO dto, Integer masterId) {
+        if (dto.getPickupDetails() == null || dto.getPickupDetails().isEmpty()) {
+            logger.debug("No PickupDetails to save");
+            return;
+        }
+
+        List<SaleOrderPickup> pickupList = mapper.toSaleOrderPickupentity(dto.getPickupDetails());
+        LocalDateTime now = LocalDateTime.now();
+        pickupList.forEach(pickup -> {
+            // IMPORTANT: Set id to null for auto-generation (id=0 in JSON becomes null in Java)
+            if (pickup.getId() == null || pickup.getId() == 0) {
+                pickup.setId(null);
+            }
+            pickup.setSaleOrderMasterRefId(masterId);
+            // CRITICAL: Set Created_Date and Modified_Date for child records
+            pickup.setCreatedDate(now);
+
+        });
+        saleOrderPickupRepository.saveAll(pickupList);
+
+        logger.info("Saved {} PickupDetails records for MasterId: {}",
+                   pickupList.size(), masterId);
+    }
+
+    /**
+     * Save Delivery Details child records
+     */
+    private void saveDeliveryDetails(SaleOrderDTO dto, Integer masterId) {
+        if (dto.getDeliveryDetails() == null || dto.getDeliveryDetails().isEmpty()) {
+            logger.debug("No DeliveryDetails to save");
+            return;
+        }
+
+        List<SaleOrderDelivery> deliveryList = mapper.toSaleOrderDeliveryentity(dto.getDeliveryDetails());
+        LocalDateTime now = LocalDateTime.now();
+        deliveryList.forEach(delivery -> {
+            // IMPORTANT: Set id to null for auto-generation (id=0 in JSON becomes null in Java)
+            if (delivery.getId() == null || delivery.getId() == 0) {
+                delivery.setId(null);
+            }
+            delivery.setSaleOrderMasterRefId(masterId);
+            // CRITICAL: Set Created_Date and Modified_Date for child records
+            delivery.setCreatedDate(now);
+
+        });
+        saleOrderDeliveryRepository.saveAll(deliveryList);
+
+        logger.info("Saved {} DeliveryDetails records for MasterId: {}",
+                   deliveryList.size(), masterId);
+    }
+
+    /**
+     * Save Forwarding Details child records
+     */
+    private void saveForwardingDetails(SaleOrderDTO dto, Integer masterId) {
+        if (dto.getForwardingDetails() == null || dto.getForwardingDetails().isEmpty()) {
+            logger.debug("No ForwardingDetails to save");
+            return;
+        }
+
+        List<SaleOrderForwarding> forwardingList = mapper.toSaleOrderForwardingentity(dto.getForwardingDetails());
+        LocalDateTime now = LocalDateTime.now();
+        forwardingList.forEach(forwarding -> {
+            // IMPORTANT: Set id to null for auto-generation (id=0 in JSON becomes null in Java)
+            if (forwarding.getId() == null || forwarding.getId() == 0) {
+                forwarding.setId(null);
+            }
+            forwarding.setSaleOrderMasterRefId(masterId);
+            // CRITICAL: Set Created_Date and Modified_Date for child records
+            forwarding.setCreatedDate(now);
+            forwarding.setModifiedDate(now);
+        });
+        saleOrderForwardingRepository.saveAll(forwardingList);
+
+        logger.info("Saved {} ForwardingDetails records for MasterId: {}",
+                   forwardingList.size(), masterId);
     }
 
     @Override
@@ -241,24 +605,148 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     public void validateOrderData(SaleOrderMasterDto dto) {
         if (dto.getCompanyRefId() == null) throw new RuntimeException("Company ID required");
         if (dto.getCustomerRefId() == null) throw new RuntimeException("Customer ID required");
-        if (dto.getJobMasterRefId() == null) throw new RuntimeException("Job Master ID required");
+        // JobMasterRefId can be null - will be set to 0 in initializeDefaults
         if (dto.getSaleDate() == null) throw new RuntimeException("Sale Date required");
-        if (dto.getBillType() == null || dto.getBillType().isEmpty()) throw new RuntimeException("Bill Type required");
-        if (dto.getSaleType() == null || dto.getSaleType().isEmpty()) throw new RuntimeException("Sale Type required");
+        // BillType and SaleType can be empty - will be set to defaults in initializeDefaults
         if (dto.getCNumber() == null) throw new RuntimeException("C Number required");
     }
 
     private void initializeDefaults(SaleOrderMaster entity) {
+        // Critical field - CNumber must never be null
+        if (entity.getCNumber() == null) {
+            throw new RuntimeException("CNumber cannot be null - this is a critical field");
+        }
+
+        // Numeric defaults - all amount/charge fields
         if (entity.getCoinage() == null) entity.setCoinage(0.0);
         if (entity.getBoardingAmount() == null) entity.setBoardingAmount(0.0);
         if (entity.getBoardingAmount1() == null) entity.setBoardingAmount1(0.0);
+
+        // L-prefixed Boarding Amount fields
+        if (entity.getLBoardingAmount() == null) entity.setLBoardingAmount(0.0);
+        if (entity.getLBoardingAmount1() == null) entity.setLBoardingAmount1(0.0);
+
+        // O-prefixed Boarding Amount fields
+        if (entity.getOBoardingAmount() == null) entity.setOBoardingAmount(0.0);
+        if (entity.getOBoardingAmount1() == null) entity.setOBoardingAmount1(0.0);
+
         if (entity.getPortCharges() == null) entity.setPortCharges(0.0);
+
+        // L-prefixed Port Charges
+        if (entity.getLPortCharges() == null) entity.setLPortCharges(0.0);
+
+        // O-prefixed Port Charges
+        if (entity.getOPortCharges() == null) entity.setOPortCharges(0.0);
+
         if (entity.getSealAmount() == null) entity.setSealAmount(0.0);
         if (entity.getBreakSealAmount() == null) entity.setBreakSealAmount(0.0);
         if (entity.getSealAmount2() == null) entity.setSealAmount2(0.0);
         if (entity.getBreakSealAmount2() == null) entity.setBreakSealAmount2(0.0);
         if (entity.getSealAmount3() == null) entity.setSealAmount3(0.0);
         if (entity.getBreakSealAmount3() == null) entity.setBreakSealAmount3(0.0);
+        if (entity.getGrossAmount() == null) entity.setGrossAmount(0.0);
+        if (entity.getTaxAmount() == null) entity.setTaxAmount(0.0);
+        if (entity.getDiscountAmount() == null) entity.setDiscountAmount(0.0);
+        if (entity.getPlusAmount() == null) entity.setPlusAmount(0.0);
+        if (entity.getMinusAmount() == null) entity.setMinusAmount(0.0);
+        if (entity.getAmount() == null) entity.setAmount(0.0);
+        if (entity.getCurrencyValue() == null) entity.setCurrencyValue(0.0);
+        if (entity.getActualNetAmount() == null) entity.setActualNetAmount(0.0);
+
+        // String defaults - required fields that cannot be null
+
+
+        // Integer defaults
+        if (entity.getActive() == null) entity.setActive(0);
+        if (entity.getJobMasterRefId() == null) entity.setJobMasterRefId(0);
     }
+
+    /**
+     * Helper method to safely convert String amount to Double
+     * Returns 0.0 if string is null or empty
+     */
+    private Double convertStringToDouble(String value) {
+        if (value == null || value.isEmpty() || value.equals("0.00") || value.equals("0")) {
+            return 0.0;
+        }
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            logger.warn("Could not parse amount value: {}, using 0.0", value);
+            return 0.0;
+        }
+    }
+
+    /**
+     * Generate CNumber from SequenceNoMaster table
+     * Implements the stored procedure logic for auto-generation:
+     * 1. Get the next sequence number for the company and bill type
+     * 2. Update the sequence in SequenceNoMaster table
+     * 3. Return the generated sequence number
+     *
+     * @param companyRefId the company reference ID
+     * @param billType the bill type (used as part of sequence name)
+     * @return the generated CNumber (sequence number)
+     */
+    private Integer generateCNumber(Integer companyRefId, String billType) {
+        logger.info("Generating CNumber for CompanyRefId: {}, BillType: {}", companyRefId, billType);
+
+        try {
+            // Build sequence name: "SaleOrderMaster" + BillType
+            String sequenceName = "SaleOrderMaster" + billType;
+
+            // Step 1: Get the maximum sequence number from SequenceNoMaster
+            Integer maxSequenceNo = sequenceNoMasterRepository.findMaxSequenceNoByCompanyAndName(
+                    companyRefId, sequenceName);
+
+            logger.debug("Current max sequence number: {}", maxSequenceNo);
+
+            Integer nextCNumber;
+
+            // Step 2: If no sequence exists, start with 1 and create new record
+            if (maxSequenceNo == null || maxSequenceNo == 0) {
+                nextCNumber = 1;
+                logger.debug("No existing sequence. Starting with CNumber = 1");
+
+                // Create new SequenceNoMaster record
+                SequenceNoMaster newSequence = SequenceNoMaster.builder()
+                        .companyRefId(companyRefId)
+                        .sequenceName(sequenceName)
+                        .sequenceNo(nextCNumber)
+                        .sequenceDate(LocalDateTime.now())
+                        .build();
+
+                sequenceNoMasterRepository.save(newSequence);
+                logger.info("Created new sequence record. SequenceName: {}, NextCNumber: {}",
+                           sequenceName, nextCNumber);
+            } else {
+                // Step 3: If sequence exists, increment by 1 and update record
+                nextCNumber = maxSequenceNo + 1;
+                logger.debug("Incrementing sequence. NextCNumber: {}", nextCNumber);
+
+                // Update existing SequenceNoMaster record
+                sequenceNoMasterRepository.findByCompanyRefIdAndSequenceName(
+                        companyRefId, sequenceName)
+                        .ifPresent(sequence -> {
+                            sequence.setSequenceNo(nextCNumber);
+                            sequence.setSequenceDate(LocalDateTime.now());
+                            sequenceNoMasterRepository.save(sequence);
+                            logger.info("Updated sequence record. SequenceName: {}, NewSequenceNo: {}",
+                                       sequenceName, nextCNumber);
+                        });
+            }
+
+            logger.info("Generated CNumber: {} for SequenceName: {}", nextCNumber, sequenceName);
+            return nextCNumber;
+
+        } catch (Exception e) {
+            logger.error("Error generating CNumber for CompanyRefId: {}, BillType: {}, Error: {}",
+                        companyRefId, billType, e.getMessage(), e);
+            throw new RuntimeException("Failed to generate CNumber: " + e.getMessage());
+        }
+    }
+
 }
+
+
 

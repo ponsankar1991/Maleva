@@ -15,5 +15,10 @@ public interface SaleOrderDetailsRepository extends JpaRepository<SaleOrderDetai
     List<SaleOrderDetails> findBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
     List<SaleOrderDetails> findByItemMasterRefId(Integer itemMasterRefId);
     long countBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
+
+    /**
+     * Delete all SaleOrderDetails records by SaleOrderMasterRefId
+     */
+    void deleteAllBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
 }
 

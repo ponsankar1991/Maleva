@@ -1,0 +1,282 @@
+{
+  "info": {
+    "_postman_id": "job-type-master-api-collection",
+    "name": "Job Type Master API Collection",
+    "description": "Complete REST API collection for Job Type Master and Job All Data operations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Job Type Master CRUD Operations",
+      "item": [
+        {
+          "name": "Get All Job Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/job-type-master",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "job-type-master"
+              ]
+            },
+            "description": "Retrieve all job types from the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Types by Company ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/job-type-master/jobtypes/{{companyId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "job-type-master",
+                "jobtypes",
+                "{{companyId}}"
+              ]
+            },
+            "description": "Retrieve all job types for a specific company"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Type by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/job-type-master/{{jobTypeId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "job-type-master",
+                "{{jobTypeId}}"
+              ]
+            },
+            "description": "Retrieve a specific job type by its ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Job Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 0,\n  \"companyRefId\": {{companyId}},\n  \"name\": \"New Job Type\",\n  \"description\": \"Description of job type\",\n  \"active\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/job-type-master",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "job-type-master"
+              ]
+            },
+            "description": "Create a new job type"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Job Type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{jobTypeId}},\n  \"companyRefId\": {{companyId}},\n  \"name\": \"Updated Job Type\",\n  \"description\": \"Updated description\",\n  \"active\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/job-type-master/{{jobTypeId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "job-type-master",
+                "{{jobTypeId}}"
+              ]
+            },
+            "description": "Update an existing job type"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Job Type",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/job-type-master/{{jobTypeId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "job-type-master",
+                "{{jobTypeId}}"
+              ]
+            },
+            "description": "Delete a job type by ID"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Job All Data Operations",
+      "item": [
+        {
+          "name": "Select Job All Data (Combined JobDetails + JobStatusDetails)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/job-type-master/select-all-data?companyId={{companyId}}&jobId={{jobId}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "job-type-master",
+                "select-all-data"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "{{companyId}}"
+                },
+                {
+                  "key": "jobId",
+                  "value": "{{jobId}}"
+                }
+              ]
+            },
+            "description": "Retrieve combined JobDetails and JobStatusDetails for a specific company and job.\n\nEquivalent to .NET SelectJobAllData endpoint.\n\nReturns:\n- JobTypeDetails: List of job details with joined job names and status names\n- JobStatusDetails: List of job status details with status information"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "companyId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "jobTypeId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "5",
+      "type": "string"
+    }
+  ]
+}
+

@@ -51,7 +51,7 @@ public class SaleOrderDTO {
     @Size(max = 50)
     private String saleType;
 
-    private Integer cNumberDisplay;
+    private String cNumberDisplay;
 
     private Integer cNumber;
 
@@ -75,28 +75,28 @@ public class SaleOrderDTO {
     private String remarks1;
 
     // Boolean flags for various charges and options
-    private Boolean notportchagre;
-    private Boolean notBoatCPop;
-    private Boolean notBoatCPop1;
-    private Boolean notPFPPCPop1;
-    private Boolean notForwardingCPop;
-    private Boolean notPermitCPop;
-    private Boolean notLevyChares;
-    private Boolean notMMHECPop;
-    private Boolean notAFpoCPop;
-    private Boolean notSFWpoCPop;
-    private Boolean notSFEWpoCPop;
-    private Boolean portCPop;
-    private Boolean forwardingCPop;
-    private Boolean boatCPop;
-    private Boolean permitCPop;
-    private Boolean liveCPop;
-    private Boolean mMHECPop;
-    private Boolean aFpoCPop;
-    private Boolean pFPPCPop1;
-    private Boolean sFWpoCPop;
-    private Boolean boatCPop1;
-    private Boolean sFEWpoCPop;
+    private Integer notportchagre;
+    private Integer notBoatCPop;
+    private Integer notBoatCPop1;
+    private Integer notPFPPCPop1;
+    private Integer notForwardingCPop;
+    private Integer notPermitCPop;
+    private Integer notLevyChares;
+    private Integer notMMHECPop;
+    private Integer notAFpoCPop;
+    private Integer notSFWpoCPop;
+    private Integer notSFEWpoCPop;
+    private Integer portCPop;
+    private Integer forwardingCPop;
+    private Integer boatCPop;
+    private Integer permitCPop;
+    private Integer liveCPop;
+    private Integer mMHECPop;
+    private Integer aFpoCPop;
+    private Integer pFPPCPop1;
+    private Integer sFWpoCPop;
+    private Integer boatCPop1;
+    private Integer sFEWpoCPop;
 
     @Size(max = 100)
     private String rbtportchagdeop;
@@ -404,7 +404,7 @@ public class SaleOrderDTO {
     private String flighTime;
 
     // Nested Collections
-    private List<SaleDetailDTO> saleDetails;
+    private List<SaleOrderDetailsDto> SaleOrderDetails;
 
     private List<PickupDetailDTO> pickupDetails;
 

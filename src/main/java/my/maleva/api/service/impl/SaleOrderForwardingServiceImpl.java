@@ -93,7 +93,7 @@ public class SaleOrderForwardingServiceImpl implements SaleOrderForwardingServic
     @Transactional
     public void deleteBySaleOrderMasterRefId(Integer saleOrderMasterRefId) {
         logger.info("Deleting all SaleOrderForwarding for master: {}", saleOrderMasterRefId);
-        repository.deleteBySaleOrderMasterRefId(saleOrderMasterRefId);
+        repository.deleteAllBySaleOrderMasterRefId(saleOrderMasterRefId);
     }
 
     @Override

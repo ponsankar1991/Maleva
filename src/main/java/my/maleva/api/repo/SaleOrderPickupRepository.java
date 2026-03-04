@@ -26,6 +26,6 @@ public interface SaleOrderPickupRepository extends JpaRepository<SaleOrderPickup
     /**
      * Delete all SaleOrderPickup records by SaleOrderMasterRefId
      */
-    void deleteBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
+    void deleteAllBySaleOrderMasterRefId(Integer saleOrderMasterRefId);
 }
 

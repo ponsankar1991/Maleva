@@ -2,7 +2,9 @@ package my.maleva.api.controller;
 
 import my.maleva.api.agentcompany.common.ApiResponse;
 import my.maleva.api.dto.JobTypeMasterDto;
+import my.maleva.api.dto.JobTypeAllDataDto;
 import my.maleva.api.service.JobTypeMasterService;
+import my.maleva.api.service.JobTypeAllDataService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,9 +27,11 @@ import java.util.List;
 public class JobTypeMasterController {
 
     private final JobTypeMasterService service;
+    private final JobTypeAllDataService jobTypeAllDataService;
 
-    public JobTypeMasterController(JobTypeMasterService service) {
+    public JobTypeMasterController(JobTypeMasterService service, JobTypeAllDataService jobTypeAllDataService) {
         this.service = service;
+        this.jobTypeAllDataService = jobTypeAllDataService;
     }
 
     /**
@@ -124,6 +128,48 @@ public class JobTypeMasterController {
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
+     * Select all job data (job details + job status details) for a company and job
+     * Equivalent to .NET SelectJobAllData endpoint
+     * POST /api/job-type-master/select-all-data?companyId=1&jobId=5
+     *
+     * @param companyId Company reference ID
+     * @param jobId Job Master reference ID
+     * @return ApiResponse containing JobTypeAllDataDto with both job details and job status details lists
+     */
+    @PostMapping("/select-all-data")
+    public ResponseEntity<ApiResponse<JobTypeAllDataDto>> selectJobAllData(
+            @RequestParam @NotNull Integer companyId,
+            @RequestParam @NotNull Integer jobId) {
+        try {
+            // Validate inputs
+            if (companyId <= 0 || jobId <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.failure(HttpStatus.BAD_REQUEST, "Company ID and Job ID must be greater than 0"));
+            }
+
+            // Fetch combined job data
+            JobTypeAllDataDto data = jobTypeAllDataService.selectJobAllData(companyId, jobId);
+
+            // Check if data is empty
+            if ((data.getJobTypeDetails() == null || data.getJobTypeDetails().isEmpty()) &&
+                (data.getJobStatusDetails() == null || data.getJobStatusDetails().isEmpty())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.failure(HttpStatus.NOT_FOUND, "No Job Data Found"));
+            }
+
+            return ResponseEntity.ok(
+                    ApiResponse.success("Job Data Retrieved Successfully", data));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.failure(HttpStatus.BAD_REQUEST, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.failure(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to retrieve job data"));
         }
     }
 }
