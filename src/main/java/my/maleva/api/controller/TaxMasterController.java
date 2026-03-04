@@ -1,5 +1,6 @@
 package my.maleva.api.controller;
 
+import my.maleva.api.agentcompany.common.ApiResponse;
 import my.maleva.api.dto.TaxMasterDto;
 import my.maleva.api.service.TaxMasterService;
 import org.slf4j.Logger;
@@ -19,7 +20,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/tax-masters")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+@PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','ROLE_ADMIN','ROLE_CUSTOMERSERVICE','ROLE_OPERATIONADMIN','ROLE_BOARDINGOFFICER','ROLE_WAREHOUSE','ROLE_DRIVER','ROLE_HR','ROLE_ACCOUNTS','ROLE_PAYABLE','ROLE_RECEIVABLE','ROLE_MAINTENANCE','ROLE_USER')")
 public class TaxMasterController {
 
     private static final Logger logger = LoggerFactory.getLogger(TaxMasterController.class);
@@ -221,6 +222,49 @@ public class TaxMasterController {
         logger.info("Checking if TaxMaster exists with code: {} for company: {}", code, companyRefId);
         boolean exists = service.existsByCode(code, companyRefId);
         return ResponseEntity.ok("Exists: " + exists);
+    }
+
+    /**
+     * Select TaxMaster records by company (excluding deleted - Active != 2)
+     * Equivalent to C# SelectTax method
+     * GET /api/tax-masters/select/{companyId}
+     */
+    @GetMapping("/select/{companyId}")
+    public ResponseEntity<ApiResponse<List<TaxMasterDto>>> selectTax(@PathVariable Integer companyId) {
+        logger.info("Select Tax API called - companyId: {}", companyId);
+
+        try {
+            if (companyId == null || companyId <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.failure(HttpStatus.BAD_REQUEST, "Company ID must be a valid positive integer"));
+            }
+
+            List<TaxMasterDto> taxList = service.selectTax(companyId);
+
+            if (taxList.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.failure(
+                                HttpStatus.NOT_FOUND,
+                                "No tax records found for company ID: " + companyId
+                        ));
+            }
+
+            return ResponseEntity.ok(
+                    ApiResponse.success(
+                            "Tax records retrieved successfully",
+                            taxList
+                    )
+            );
+
+        } catch (Exception e) {
+            logger.error("Error while fetching tax records", e);
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.failure(
+                            HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Internal server error: " + e.getMessage()
+                    ));
+        }
     }
 }
 

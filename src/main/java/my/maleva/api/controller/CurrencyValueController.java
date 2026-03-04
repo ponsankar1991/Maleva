@@ -28,113 +28,49 @@ public class CurrencyValueController {
     @Autowired
     private CurrencyValueService currencyValueService;
 
-    /**
-     * Get currency value for a customer
-     *
-     * Equivalent to: GetCurrencyValue(int Comid, int CustId)
-     *
-     * REST API: GET /api/currency-value/get?companyId=1&customerId=5
-     *
-     * This endpoint:
-     * - Retrieves currency value from SymbolMaster based on Customer's SymbolRefId
-     * - Filters by company and customer
-     * - Ensures customer is active (Active != 2)
-     * - Returns CurrencyValue and SymbolRefId
-     *
-     * @param companyId Company Reference ID (required, positive)
-     * @param customerId Customer ID (required, positive)
-     * @return ResponseEntity containing ApiResponse with CurrencyValueDto
-     *         - Success: HTTP 200 with currency data
-     *         - Not Found: HTTP 404 if no data found
-     *         - Bad Request: HTTP 400 if parameters invalid
-     */
+
     @GetMapping("/get")
     public ResponseEntity<ApiResponse<CurrencyValueDto>> getCurrencyValue(
-            @RequestParam(value = "companyId") @NotNull Integer companyId,
-            @RequestParam(value = "customerId") @NotNull Integer customerId) {
+            @RequestParam Integer companyId,
+            @RequestParam Integer customerId) {
 
-        logger.info("API called: Get Currency Value - CompanyId: {}, CustomerId: {}",
-                   companyId, customerId);
+        logger.info("Get Currency Value API called - companyId: {}, customerId: {}", companyId, customerId);
 
         try {
-            // Validate input parameters
-            if (companyId == null || companyId <= 0) {
-                logger.warn("Invalid companyId provided: {}", companyId);
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.failure(
-                                HttpStatus.BAD_REQUEST,
-                                "Company ID must be a valid positive integer"
-                        ));
-            }
 
-            if (customerId == null || customerId <= 0) {
-                logger.warn("Invalid customerId provided: {}", customerId);
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.failure(
-                                HttpStatus.BAD_REQUEST,
-                                "Customer ID must be a valid positive integer"
-                        ));
-            }
+            Optional<CurrencyValueDto> currencyValue =
+                    currencyValueService.getCurrencyValue(companyId, customerId);
 
-            // Fetch currency value from service
-            Optional<CurrencyValueDto> currencyData = currencyValueService.getCurrencyValue(
-                    companyId,
-                    customerId
-            );
-
-            // Check if data found
-            if (currencyData.isPresent()) {
-                logger.info("Currency value retrieved successfully - CurrencyValue: {}, SymbolRefId: {}",
-                           currencyData.get().getCurrencyValue(),
-                           currencyData.get().getSymbolRefId());
+            if (currencyValue.isPresent()) {
 
                 return ResponseEntity.ok(
                         ApiResponse.success(
                                 "Currency value retrieved successfully",
-                                currencyData.get()
+                                currencyValue.get()
                         )
                 );
+
             } else {
-                logger.info("No currency value found for CompanyId: {}, CustomerId: {}",
-                           companyId, customerId);
 
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.failure(
                                 HttpStatus.NOT_FOUND,
-                                "No currency value found for the specified company and customer"
+                                "Currency value not found"
                         ));
             }
 
         } catch (Exception e) {
-            logger.error("Error occurred while fetching currency value - CompanyId: {}, CustomerId: {}, Error: {}",
-                        companyId, customerId, e.getMessage(), e);
+
+            logger.error("Error while fetching currency value", e);
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.failure(
                             HttpStatus.INTERNAL_SERVER_ERROR,
-                            "An error occurred while retrieving currency value: " + e.getMessage()
+                            "Internal server error"
                     ));
         }
     }
 
-    /**
-     * Alternative endpoint using path parameters
-     * REST API: GET /api/currency-value/company/{companyId}/customer/{customerId}
-     *
-     * @param companyId Company Reference ID (required, positive)
-     * @param customerId Customer ID (required, positive)
-     * @return ResponseEntity containing ApiResponse with CurrencyValueDto
-     */
-    @GetMapping("/company/{companyId}/customer/{customerId}")
-    public ResponseEntity<ApiResponse<CurrencyValueDto>> getCurrencyValueByPath(
-            @PathVariable @NotNull Integer companyId,
-            @PathVariable @NotNull Integer customerId) {
 
-        logger.info("API called: Get Currency Value (Path Params) - CompanyId: {}, CustomerId: {}",
-                   companyId, customerId);
-
-        // Delegate to the query parameter method
-        return getCurrencyValue(companyId, customerId);
-    }
 }
 

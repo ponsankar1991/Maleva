@@ -58,5 +58,10 @@ public interface TaxMasterRepository extends JpaRepository<TaxMaster, Integer> {
      * Check if tax code exists for company
      */
     boolean existsByCodeAndCompanyRefId(String code, Integer companyRefId);
+
+    /**
+     * Find all TaxMaster records by company ID excluding deleted (Active != 2)
+     */
+    List<TaxMaster> findByCompanyRefIdAndActiveNot(Integer companyRefId, Integer active);
 }
 

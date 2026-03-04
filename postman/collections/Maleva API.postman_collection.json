@@ -593,6 +593,139 @@
         "description": "Get all active employees for a specific company with optional employee type filter. Returns all employees (excluding Active=2) ordered by employee name with their account information. Equivalent to .NET SelectEmployeeAll method. Requires valid JWT token with appropriate role"
       },
       "response": []
+    },
+    {
+      "name": "Get Currency Value",
+      "id": "currency-value-get-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/currency-value/get?companyId=6&customerId=1",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "currency-value",
+            "get"
+          ],
+          "query": [
+            {
+              "key": "companyId",
+              "value": "6",
+              "description": "Company Reference ID (required, positive)"
+            },
+            {
+              "key": "customerId",
+              "value": "1",
+              "description": "Customer ID (required, positive)"
+            }
+          ]
+        },
+        "description": "Get currency value for a customer. Retrieves currency value from SymbolMaster based on Customer's SymbolRefId. Filters by company and customer. Ensures customer is active (Active != 2). Returns CurrencyValue and SymbolRefId. Requires valid JWT token."
+      },
+      "response": []
+    },
+    {
+      "name": "Save Currency Value",
+      "id": "currency-value-save-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyId\": 6,\n  \"customerId\": 1,\n  \"currencyValue\": 5.50,\n  \"symbolRefId\": 4\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{host}}/api/currency-value/save",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "currency-value",
+            "save"
+          ]
+        },
+        "description": "Create or Update currency value for a customer. Validates company and customer IDs. Requires companyId (positive), customerId (positive), and currencyValue in request body. Returns HTTP 201 (Created) on success. Requires valid JWT token with appropriate role"
+      },
+      "response": []
+    },
+    {
+      "name": "Select Tax",
+      "id": "tax-select-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/tax-masters/select/6",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "tax-masters",
+            "select",
+            "6"
+          ]
+        },
+        "description": "Select tax records by company ID (Active != 2). Returns ApiResponse<List<TaxMasterDto>>. Requires valid JWT token."
+      },
+      "response": []
     }
   ],
   "variable": [

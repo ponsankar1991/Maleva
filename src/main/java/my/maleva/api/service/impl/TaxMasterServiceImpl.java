@@ -251,5 +251,28 @@ public class TaxMasterServiceImpl implements TaxMasterService {
             return update(dto.getId(), dto);
         }
     }
+
+    @Override
+    public List<TaxMasterDto> selectTax(Integer companyId) {
+        logger.info("Selecting TaxMaster for company: {} excluding deleted records (Active != 2)", companyId);
+        try {
+            List<TaxMaster> taxList = repository.findByCompanyRefIdAndActiveNot(companyId, 2);
+
+            if (taxList.isEmpty()) {
+                logger.info("No TaxMaster records found for company: {}", companyId);
+                return new java.util.ArrayList<>();
+            }
+
+            List<TaxMasterDto> result = taxList.stream()
+                    .map(mapper::toDto)
+                    .collect(java.util.stream.Collectors.toList());
+
+            logger.info("Successfully retrieved {} TaxMaster records for company: {}", result.size(), companyId);
+            return result;
+        } catch (Exception e) {
+            logger.error("Error selecting TaxMaster for company: {}", companyId, e);
+            throw new RuntimeException("Error selecting TaxMaster: " + e.getMessage(), e);
+        }
+    }
 }
 

@@ -43,5 +43,11 @@ public interface TaxMasterService {
     boolean existsByCode(String code, Integer companyRefId);
 
     TaxMasterDto processTaxMaster(TaxMasterDto dto, Integer companyId, Integer checkFlag);
+
+    /**
+     * Get all TaxMaster records by company (excluding deleted - Active != 2)
+     * Equivalent to: SELECT * FROM TaxMaster WHERE CompanyRefId = ? AND Active != 2
+     */
+    List<TaxMasterDto> selectTax(Integer companyId);
 }
 

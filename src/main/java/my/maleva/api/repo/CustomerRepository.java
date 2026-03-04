@@ -19,12 +19,14 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
      * Joins SymbolMaster table to get CurrencyValue and SymbolRefId
      *
      * Uses native SQL query for better compatibility with DTO projection
+     * Returns DECIMAL (not FLOAT) to match BigDecimal in CurrencyValueDto
+     * This ensures precision is maintained (3.08 stays 3.08, not 3.0799999237060547)
      *
      * @param companyRefId Company Reference ID
      * @param customerId Customer ID
-     * @return Optional containing CurrencyValueDto with CurrencyValue and SymbolRefId
+     * @return Optional containing CurrencyValueDto with exact CurrencyValue and SymbolRefId
      */
-    @Query(value = "SELECT CAST(s.CurrencyValue AS FLOAT) as currencyValue, s.Id as symbolRefId " +
+    @Query(value = "SELECT CAST(s.CurrencyValue AS DECIMAL(10,2)) as currencyValue, s.Id as symbolRefId " +
                    "FROM SymbolMaster s " +
                    "INNER JOIN Customer c ON s.Id = c.SymbolRefid " +
                    "WHERE c.CompanyRefId = :companyRefId " +
