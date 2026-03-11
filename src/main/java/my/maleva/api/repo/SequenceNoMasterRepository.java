@@ -74,5 +74,18 @@ public interface SequenceNoMasterRepository extends JpaRepository<SequenceNoMast
     List<SequenceNoMaster> findByCompanyRefIdAndSequenceYear(
             Integer companyRefId,
             Integer sequenceYear);
+
+    /**
+     * Get the maximum sequence number for PLANNING documents
+     * Used specifically for PLANNING bill type sequences
+     * Searches for sequenceName='PLANINGMaster'
+     *
+     * @param companyRefId the company ID
+     * @return the maximum sequence number for PLANNING
+     */
+    @Query("SELECT COALESCE(MAX(s.sequenceNo), 0) FROM SequenceNoMaster s " +
+            "WHERE s.companyRefId = :companyRefId AND s.sequenceName = 'PLANINGMaster'")
+    Integer findMaxPlanningSequenceNoByCompany(
+            @Param("companyRefId") Integer companyRefId);
 }
 

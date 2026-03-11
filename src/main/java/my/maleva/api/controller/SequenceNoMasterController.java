@@ -174,6 +174,40 @@ public class SequenceNoMasterController {
                 "billType", billType
         ));
     }
+
+    /**
+     * Get the next PLANNING sequence number
+     * Equivalent to the legacy .NET MaxPLANINGNo method
+     * POST /api/sequence-masters/company/{companyId}/max-planning-no
+     *
+     * This endpoint generates and returns the next PLANNING sequence number
+     * with format: PL + 9-digit padded number (e.g., PL000000001)
+     *
+     * @param companyId the company ID
+     * @return response containing the generated PLANNING sequence number
+     */
+    @PostMapping("/company/{companyId}/max-planning-no")
+    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    public ResponseEntity<Map<String, Object>> getMaxPlanningNo(@PathVariable Integer companyId) {
+        try {
+            String planningSequenceNo = service.getMaxPlanningNo(companyId);
+            return ResponseEntity.ok(Map.of(
+                    "isSuccess", true,
+                    "statusCode", 1,
+                    "message", "Success",
+                    "data1", planningSequenceNo,
+                    "companyId", companyId
+            ));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).body(Map.of(
+                    "isSuccess", false,
+                    "statusCode", 0,
+                    "message", ex.getMessage(),
+                    "data1", "Api Details : PLANING_MaxPLANINGNo",
+                    "companyId", companyId
+            ));
+        }
+    }
 }
 
 

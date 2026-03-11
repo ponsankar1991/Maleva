@@ -202,6 +202,56 @@ public class SequenceNoMasterService {
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Generate the next PLANNING sequence number
+     * Equivalent to the .NET MaxPLANINGNo method
+     * Returns formatted sequence number with 'PL' prefix and 9-digit padded number
+     * Example: "PL000000001", "PL000000002", etc.
+     *
+     * @param companyId the company ID
+     * @return formatted PLANNING sequence number (PL + 9-digit padded number)
+     */
+    @Transactional
+    public String getMaxPlanningNo(Integer companyId) {
+        final String PLANNING_PREFIX = "PL";
+        final String SEQUENCE_NAME = "PLANINGMaster";
+
+        // Get current max sequence number for PLANNING
+        Integer currentMax = repository.findMaxPlanningSequenceNoByCompany(companyId);
+        if (currentMax == null) {
+            currentMax = 0;
+        }
+
+        int nextSequenceNo = currentMax + 1;
+
+        // Create or update the sequence record
+        var existingSequence = repository.findByCompanyRefIdAndSequenceName(companyId, SEQUENCE_NAME);
+
+        SequenceNoMaster sequenceRecord;
+        if (existingSequence.isPresent()) {
+            sequenceRecord = existingSequence.get();
+            sequenceRecord.setSequenceNo(nextSequenceNo);
+            sequenceRecord.setSequenceDate(LocalDateTime.now());
+            sequenceRecord.setSequenceYear(LocalDateTime.now().getYear());
+            sequenceRecord.setSequenceMonth(LocalDateTime.now().getMonthValue());
+        } else {
+            sequenceRecord = SequenceNoMaster.builder()
+                    .companyRefId(companyId)
+                    .sequenceName(SEQUENCE_NAME)
+                    .sequenceNo(nextSequenceNo)
+                    .sequenceDate(LocalDateTime.now())
+                    .sequenceYear(LocalDateTime.now().getYear())
+                    .sequenceMonth(LocalDateTime.now().getMonthValue())
+                    .build();
+        }
+
+        repository.save(sequenceRecord);
+
+        // Return formatted sequence number: PL + 9-digit padded number
+        String paddedNumber = String.format("%09d", nextSequenceNo);
+        return PLANNING_PREFIX + paddedNumber;
+    }
 }
 
 

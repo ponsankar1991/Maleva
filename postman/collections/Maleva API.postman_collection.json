@@ -726,6 +726,172 @@
         "description": "Select tax records by company ID (Active != 2). Returns ApiResponse<List<TaxMasterDto>>. Requires valid JWT token."
       },
       "response": []
+    },
+    {
+      "name": "Get Next PLANNING Sequence (PathVariable)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/planing/max-planning-no/1",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "planing",
+            "max-planning-no",
+            "1"
+          ]
+        },
+        "description": "Get the next PLANNING sequence number using path variable (companyId=1)\n\nEquivalent to .NET: MaxPLANINGNo(1, \"PLANNING\")\n\nReturns:\n{\n  \"isSuccess\": true,\n  \"statusCode\": 1,\n  \"message\": \"Success\",\n  \"data1\": \"PL000000001\",\n  \"companyId\": 1\n}\n\nEach call increments the sequence number."
+      },
+      "response": [
+        {
+          "name": "Success - First Call",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/planing/max-planning-no/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "planing",
+                "max-planning-no",
+                "1"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"isSuccess\": true,\n  \"statusCode\": 1,\n  \"message\": \"Success\",\n  \"data1\": \"PL000000001\",\n  \"companyId\": 1\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Next PLANNING Sequence (QueryParam)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/planing/max-planning-no?companyId=1",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "planing",
+            "max-planning-no"
+          ],
+          "query": [
+            {
+              "key": "companyId",
+              "value": "1"
+            }
+          ]
+        },
+        "description": "Get the next PLANNING sequence number using query parameter\n\nAlternative endpoint format: POST /api/planing/max-planning-no?companyId=1\n\nReturns same format as PathVariable version:\n{\n  \"isSuccess\": true,\n  \"statusCode\": 1,\n  \"message\": \"Success\",\n  \"data1\": \"PL000000002\",\n  \"companyId\": 1\n}"
+      },
+      "response": []
+    },
+    {
+      "name": "Get PLANNING Sequence (DTO Response)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://{{host}}/api/planing/generate-sequence/1",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "planing",
+            "generate-sequence",
+            "1"
+          ]
+        },
+        "description": "Get the next PLANNING sequence number with typed DTO response\n\nUses PlaningNumberResponseDTO for cleaner JSON structure:\n{\n  \"sequenceNumber\": \"PL000000003\",\n  \"companyId\": 1,\n  \"success\": true\n}"
+      },
+      "response": [
+        {
+          "name": "Success - DTO Response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/planing/generate-sequence/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "planing",
+                "generate-sequence",
+                "1"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"sequenceNumber\": \"PL000000003\",\n  \"companyId\": 1,\n  \"success\": true\n}"
+        }
+      ]
     }
   ],
   "variable": [
