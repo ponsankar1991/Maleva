@@ -135,7 +135,7 @@
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-        <!-- MapStruct for DTO <-> Entity mapping -->
+		<!-- MapStruct for DTO <-> Entity mapping -->
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
@@ -146,6 +146,11 @@
             <artifactId>mapstruct-processor</artifactId>
             <version>1.5.5.Final</version>
             <scope>provided</scope>
+        </dependency>
+        <!-- Jackson for JSON serialization/deserialization -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
 	</dependencies>
 

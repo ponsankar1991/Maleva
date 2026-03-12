@@ -1,7 +1,9 @@
 package my.maleva.api.service;
 
 import my.maleva.api.dto.SaleOrderDTO;
+import my.maleva.api.dto.SaleOrderFilterDTO;
 import my.maleva.api.dto.SaleOrderMasterDto;
+import my.maleva.api.dto.SaleF5View;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,5 +44,11 @@ public interface SaleOrderMasterService {
     void processSaleOrderBatch(List<SaleOrderMasterDto> orderList, Integer companyId);
     SaleOrderMasterDto calculateOrderTotals(SaleOrderMasterDto dto);
     void validateOrderData(SaleOrderMasterDto dto);
+
+    /**
+     * SelectSaleOrder - Complex filtered search equivalent to .NET SelectSaleOrder method
+     * Returns combined SaleMaster and SaleDetails data with dynamic filtering
+     */
+    SaleF5View selectSaleOrder(SaleOrderFilterDTO filter);
 }
 

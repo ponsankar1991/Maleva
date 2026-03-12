@@ -2,6 +2,8 @@ package my.maleva.api.controller;
 
 import my.maleva.api.dto.SaleOrderDTO;
 import my.maleva.api.dto.SaleOrderMasterDto;
+import my.maleva.api.dto.SaleOrderFilterDTO;
+import my.maleva.api.dto.ApiResponse;
 import my.maleva.api.service.SaleOrderMasterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,6 +174,63 @@ public class SaleOrderMasterController {
             return ResponseEntity.ok(service.deactivate(id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        }
+    }
+
+    /**
+     * SelectSaleOrder - Complex filtered search endpoint
+     * Equivalent to the .NET SelectSaleOrder method
+     * POST /api/sale-orders/search
+     *
+     * This endpoint supports multiple filtering criteria:
+     * - Customer ID
+     * - Job Master ID
+     * - Employee ID (with dashboard status support)
+     * - Status list or single status
+     * - Remarks filtering
+     * - Vessel names (loading/offloading)
+     * - Invoice/Bill number search
+     * - ETA/ETB/Pickup/SaleDate date range filters
+     * - Invoice check filter
+     */
+    @PostMapping("/search")
+    public ResponseEntity<?> selectSaleOrder(@Valid @RequestBody SaleOrderFilterDTO filter) {
+        logger.info("SelectSaleOrder endpoint called - Company: {}, Customer: {}, Employee: {}",
+                filter.getComid(), filter.getId(), filter.getEmployeeid());
+
+        try {
+            if (filter.getComid() == null || filter.getComid() == 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponse<>(false, 400, "Company ID is required", null, null, null));
+            }
+
+            my.maleva.api.dto.SaleF5View result = service.selectSaleOrder(filter);
+
+            logger.info("SelectSaleOrder completed - Returned {} master records and {} detail records",
+                    result.getSalemaster() != null ? result.getSalemaster().size() : 0,
+                    result.getSaledetails() != null ? result.getSaledetails().size() : 0);
+
+            return ResponseEntity.ok(new ApiResponse<>(
+                    true,
+                    200,
+                    "Success",
+                    result,
+                    "SaleF5View",
+                    null
+            ));
+
+        } catch (RuntimeException e) {
+            logger.error("RuntimeException in SelectSaleOrder - Company: {}, Error: {}",
+                    filter.getComid(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, 500, e.getMessage(), null, null,
+                            "Api Details: SaleOrder_SelectSaleOrder"));
+        } catch (Exception e) {
+            logger.error("Unexpected error in SelectSaleOrder - Company: {}, Error: {}",
+                    filter.getComid(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, 500, "Internal server error", null, null,
+                            e.getMessage()));
         }
     }
 }

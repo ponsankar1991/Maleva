@@ -1,0 +1,614 @@
+/**
+ * SelectSaleOrder API - Example Requests and Responses
+ *
+ * This file contains example API calls demonstrating all filtering scenarios
+ * for the SelectSaleOrder endpoint.
+ */
+
+// ============================================================================
+// EXAMPLE 1: Filter by Customer ID
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+    "Comid": 1,
+    "Id": 5,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": null,
+    "Todate": null,
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+RESPONSE (200 OK):
+{
+    "IsSuccess": true,
+    "StatusCode": 200,
+    "Message": "Success",
+    "Data1": {
+        "salemaster": [
+            {
+                "Id": 101,
+                "sportsaleorderid": 0,
+                "InvoiceId": 0,
+                "Remarks": "Standard Order",
+                "Destination": "Port A",
+                "FlighTime": null,
+                "Origin": "Port B",
+                "JobMasterRefId": 2,
+                "EmployeeName": "John Doe",
+                "Offvesselname": "Vessel A",
+                "Sname": "USD",
+                "Loadingvesselname": "Vessel B",
+                "SPort": "Port B",
+                "OPort": "Port A",
+                "BillDate": "15/02/2024",
+                "DETA": "20/02/2024",
+                "ETA": "2024-02-20T10:30:00",
+                "SETA": "20/02/2024 10:30:00",
+                "SETB": "21/02/2024 14:45:00",
+                "SOETA": "19/02/2024 08:00:00",
+                "SOETB": "19/02/2024 18:00:00",
+                "SPickupDate": "2024-02-15T09:00:00.000",
+                "BillNoDisplay": "SO-2024-001",
+                "BillTime": "15/02/2024 09:15:30",
+                "CustomerName": "ABC Corporation",
+                "JobType": "Export",
+                "NetAmt": 50000.00,
+                "SaleType": "International",
+                "BillNo": 1001,
+                "JobStatus": "In Progress",
+                "InvoiceNo": "INV-2024-001",
+                "QNECode": "QNE123",
+                "QNEId": "QID001"
+            },
+            {
+                "Id": 102,
+                "sportsaleorderid": 0,
+                "InvoiceId": 0,
+                "Remarks": null,
+                "Destination": "Port C",
+                "FlighTime": null,
+                "Origin": "Port D",
+                "JobMasterRefId": 3,
+                "EmployeeName": "Jane Smith",
+                "Offvesselname": "Vessel C",
+                "Sname": "USD",
+                "Loadingvesselname": "Vessel D",
+                "SPort": "Port D",
+                "OPort": "Port C",
+                "BillDate": "18/02/2024",
+                "DETA": "25/02/2024",
+                "ETA": "2024-02-25T14:00:00",
+                "SETA": "25/02/2024 14:00:00",
+                "SETB": "26/02/2024 10:30:00",
+                "SOETA": "24/02/2024 12:00:00",
+                "SOETB": "24/02/2024 22:00:00",
+                "SPickupDate": "2024-02-18T08:30:00.000",
+                "BillNoDisplay": "SO-2024-002",
+                "BillTime": "18/02/2024 10:45:15",
+                "CustomerName": "ABC Corporation",
+                "JobType": "Import",
+                "NetAmt": 75000.00,
+                "SaleType": "Domestic",
+                "BillNo": 1002,
+                "JobStatus": "Completed",
+                "InvoiceNo": "INV-2024-002",
+                "QNECode": "QNE124",
+                "QNEId": "QID002"
+            }
+        ],
+        "saledetails": [
+            {
+                "DiscountAmt": 2500.00,
+                "DiscountPercent": 5.0,
+                "ItemQty": 100.0,
+                "MRP": 500.00,
+                "ProductName": "Product A",
+                "SDRemarks": "Premium Grade",
+                "SaleRate": 475.00,
+                "SaleRefId": 101,
+                "TaxAmt": 2375.00,
+                "TaxPercent": 5.0,
+                "ProductCode": "PROD-A-001",
+                "SAmount": 47500.00,
+                "CurrencyValue": 1.0,
+                "ActualAmount": 47500.00
+            },
+            {
+                "DiscountAmt": 1500.00,
+                "DiscountPercent": 2.0,
+                "ItemQty": 50.0,
+                "MRP": 600.00,
+                "ProductName": "Product B",
+                "SDRemarks": "Standard Grade",
+                "SaleRate": 588.00,
+                "SaleRefId": 101,
+                "TaxAmt": 1470.00,
+                "TaxPercent": 5.0,
+                "ProductCode": "PROD-B-001",
+                "SAmount": 29400.00,
+                "CurrencyValue": 1.0,
+                "ActualAmount": 29400.00
+            },
+            {
+                "DiscountAmt": 5000.00,
+                "DiscountPercent": 6.67,
+                "ItemQty": 200.0,
+                "MRP": 375.00,
+                "ProductName": "Product C",
+                "SDRemarks": "Economy Grade",
+                "SaleRate": 350.00,
+                "SaleRefId": 102,
+                "TaxAmt": 2625.00,
+                "TaxPercent": 5.0,
+                "ProductCode": "PROD-C-001",
+                "SAmount": 70000.00,
+                "CurrencyValue": 1.0,
+                "ActualAmount": 70000.00
+            }
+        ]
+    },
+    "Data3": "[{\"salemaster\":[...],\"saledetails\":[...]}]"
+}
+
+// ============================================================================
+// EXAMPLE 2: Filter by Employee ID with Dashboard Status
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 3,
+    "DashboardStatus": 2,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": true,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": null,
+    "Todate": null,
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// Fetches orders assigned to employee 3 AND their subordinates (from RulesTypeMaster)
+// Excludes orders with JStatus = 8 (completed)
+
+// ============================================================================
+// EXAMPLE 3: Filter by Status List
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": "1,2,3",
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": null,
+    "Todate": null,
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// Filters by JStatus IN (1,2,3) OR JobStatusMaster.Mid IN (1,2,3)
+
+// ============================================================================
+// EXAMPLE 4: Filter by Remarks (not empty)
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 1,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": null,
+    "Todate": null,
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// Remarks: 1 = orders with non-empty remarks
+// Remarks: 2 = orders with empty remarks
+
+// ============================================================================
+// EXAMPLE 5: Filter by Vessel Names
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": "Maersk",
+    "Loadingvesselname": "CMA CGM",
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": null,
+    "Todate": null,
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// Searches with LIKE '%Maersk%' and LIKE '%CMA CGM%'
+
+// ============================================================================
+// EXAMPLE 6: Filter by Bill Number
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": "SO-2024-001",
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": null,
+    "Todate": null,
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// Invoice: false = searches SaleOrderMaster.CNumberDisplay
+// Invoice: true = searches SaleMaster.CNumberDisplay
+
+// ============================================================================
+// EXAMPLE 7: Filter by ETA Date Range (Type 1: OETA only)
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": true,
+    "ETAType": 1,
+    "Fromdate": "2024-02-01",
+    "Todate": "2024-02-28",
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// ETAType: 1 = OETA between dates
+// ETAType: 2 = ETA between dates
+// ETAType: other = ETA OR OETA between dates
+
+// ============================================================================
+// EXAMPLE 8: Filter by Pickup Date Range
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": "2024-02-01",
+    "Todate": "2024-02-28",
+    "Pickup": true,
+    "Invoicecheck": false
+}
+
+// Filters PickupDate between date range
+
+// ============================================================================
+// EXAMPLE 9: Filter by SaleDate Range (default when neither ETA nor Pickup)
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": "2024-02-01",
+    "Todate": "2024-02-28",
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// Filters SaleDate between date range
+
+// ============================================================================
+// EXAMPLE 10: Filter by Invoice Check (InvoiceNo = 0)
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 0,
+    "JId": 0,
+    "Employeeid": 0,
+    "DashboardStatus": 0,
+    "statusList": null,
+    "Statusid": 0,
+    "completestatusnotshow": false,
+    "Remarks": 0,
+    "Offvesselname": null,
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": false,
+    "ETAType": 0,
+    "Fromdate": null,
+    "Todate": null,
+    "Pickup": false,
+    "Invoicecheck": true
+}
+
+// Returns only orders where InvoiceNo = 0 (not yet invoiced)
+
+// ============================================================================
+// EXAMPLE 11: Combined Complex Filter
+// ============================================================================
+REQUEST:
+POST /api/sale-orders/search
+Content-Type: application/json
+
+{
+    "Comid": 1,
+    "Id": 5,
+    "JId": 2,
+    "Employeeid": 3,
+    "DashboardStatus": 1,
+    "statusList": "1,2",
+    "Statusid": 0,
+    "completestatusnotshow": true,
+    "Remarks": 1,
+    "Offvesselname": "Maersk",
+    "Loadingvesselname": null,
+    "Search": null,
+    "Invoice": false,
+    "ETA": true,
+    "ETAType": 2,
+    "Fromdate": "2024-02-01",
+    "Todate": "2024-02-28",
+    "Pickup": false,
+    "Invoicecheck": false
+}
+
+// Filters WHERE:
+// - CompanyRefId = 1
+// - CustomerRefId = 5
+// - JobMasterRefId = 2
+// - EmployeeRefId = 3 (since DashboardStatus != 2, no subquery)
+// - JStatus IN (1,2)
+// - JStatus != 8
+// - Remarks IS NOT NULL AND Remarks != ''
+// - Offvesselname LIKE '%Maersk%'
+// - ETA BETWEEN '2024-02-01 00:00:00' AND '2024-02-28 23:59:59'
+// - Active = 1
+
+// ============================================================================
+// ERROR RESPONSES
+// ============================================================================
+
+// Missing Company ID (400 Bad Request):
+{
+    "IsSuccess": false,
+    "StatusCode": 400,
+    "Message": "Company ID is required",
+    "Data1": null,
+    "Data3": null,
+    "ErrorDetails": null
+}
+
+// Internal Server Error (500):
+{
+    "IsSuccess": false,
+    "StatusCode": 500,
+    "Message": "SelectSaleOrder failed: ...",
+    "Data1": null,
+    "Data3": null,
+    "ErrorDetails": "Api Details: SaleOrder_SelectSaleOrder"
+}
+
+// ============================================================================
+// FIELD DESCRIPTIONS
+// ============================================================================
+
+/*
+Filter Request Fields:
+- Comid (Integer, REQUIRED): Company ID for data isolation
+- Id (Integer): Customer Reference ID (optional filter)
+- JId (Integer): Job Master Reference ID (optional filter)
+- Employeeid (Integer): Employee Reference ID (optional filter)
+- DashboardStatus (Integer):
+  - 0 or 1: Simple employee filter
+  - 2: Include subordinates via RulesTypeMaster subquery
+- statusList (String): Comma-separated status IDs (e.g., "1,2,3")
+- Statusid (Integer): Single status ID (ignored if statusList is provided)
+- completestatusnotshow (Boolean): Exclude JStatus = 8 if true
+- Remarks (Integer):
+  - 0: No filter
+  - 1: Show only orders with non-empty remarks
+  - 2: Show only orders with empty remarks
+- Offvesselname (String): Off-loading vessel name (LIKE search)
+- Loadingvesselname (String): Loading vessel name (LIKE search)
+- Search (String): Search bill/invoice number (overrides date filters)
+- Invoice (Boolean):
+  - false: Search in SaleOrderMaster.CNumberDisplay
+  - true: Search in SaleMaster.CNumberDisplay
+- ETA (Boolean): Enable ETA-based filtering
+- ETAType (Integer):
+  - 1: Filter by OETA (original ETA)
+  - 2: Filter by ETA (estimated time of arrival)
+  - other: Filter by both OETA OR ETA
+- Fromdate (LocalDate): Start date for range filters (format: YYYY-MM-DD)
+- Todate (LocalDate): End date for range filters (format: YYYY-MM-DD)
+- Pickup (Boolean): Filter by PickupDate instead of default SaleDate
+- Invoicecheck (Boolean): Show only orders with InvoiceNo = 0
+
+Response Fields:
+- IsSuccess (Boolean): Operation success indicator
+- StatusCode (Integer): HTTP status code
+- Message (String): Status message
+- Data1 (SaleF5View): Actual response data (master + details)
+- Data3 (String): JSON serialized copy of Data1
+- ErrorDetails (String): Error details for debugging
+
+SaleMasterViewModel Fields:
+- Id: Order ID
+- sportsaleorderid: Sports sale order ID
+- InvoiceId: Invoice ID
+- Remarks: Order remarks
+- Destination: Destination port/location
+- FlighTime: Flight time (if applicable)
+- Origin: Origin port/location
+- JobMasterRefId: Job type ID
+- EmployeeName: Assigned employee name
+- Offvesselname: Off-loading vessel name
+- Sname: Currency symbol name
+- Loadingvesselname: Loading vessel name
+- SPort: Source/origin port
+- OPort: Off-loading port
+- BillDate: Formatted sale date (dd/MM/yyyy)
+- DETA: Dynamic ETA (selected based on ETAType)
+- ETA: Estimated time of arrival (LocalDateTime)
+- SETA: Formatted ETA (dd/MM/yyyy HH:mm:ss)
+- SETB: Formatted ETB (dd/MM/yyyy HH:mm:ss)
+- SOETA: Formatted OETA (dd/MM/yyyy HH:mm:ss)
+- SOETB: Formatted OETB (dd/MM/yyyy HH:mm:ss)
+- SPickupDate: Formatted pickup date
+- BillNoDisplay: Bill number for display
+- BillTime: Bill creation time formatted
+- CustomerName: Customer name
+- JobType: Job type name
+- NetAmt: Net amount
+- SaleType: Sale type (e.g., International, Domestic)
+- BillNo: Bill number (integer)
+- JobStatus: Current job status
+- InvoiceNo: Invoice number (string)
+- QNECode: QNE code
+- QNEId: QNE ID
+
+SaleDetailsViewModel Fields:
+- DiscountAmt: Discount amount
+- DiscountPercent: Discount percentage
+- ItemQty: Item quantity
+- MRP: Maximum retail price
+- ProductName: Product name
+- SDRemarks: Sale detail remarks
+- SaleRate: Sale rate per unit
+- SaleRefId: Reference to SaleOrderMaster ID
+- TaxAmt: Tax amount
+- TaxPercent: Tax percentage
+- ProductCode: Product code
+- SAmount: Sale amount
+- CurrencyValue: Currency value factor
+- ActualAmount: Actual amount after currency conversion
+*/
+

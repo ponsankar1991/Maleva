@@ -892,6 +892,52 @@
           "body": "{\n  \"sequenceNumber\": \"PL000000003\",\n  \"companyId\": 1,\n  \"success\": true\n}"
         }
       ]
+    },
+    {
+      "name": "SelectSaleOrder - Search with Filters",
+      "id": "selectsaleorder-search-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"Comid\": \"6\",\n  \"Fromdate\": \"2026/03/11\",\n  \"Todate\": \"2026/03/11\",\n  \"Id\": 0,\n  \"Employeeid\": \"14\",\n  \"Statusid\": 0,\n  \"completestatusnotshow\": false,\n  \"Search\": \"\",\n  \"Remarks\": 3,\n  \"ETA\": false,\n  \"ETAType\": 0,\n  \"Pickup\": false,\n  \"Offvesselname\": \"\",\n  \"Loadingvesselname\": \"\",\n  \"JId\": 0,\n  \"Invoice\": false,\n  \"statusList\": null,\n  \"DashboardStatus\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{host}}/api/sale-orders/search",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "sale-orders",
+            "search"
+          ]
+        },
+        "description": "SelectSaleOrder - Complex filtered search for sale orders\n\nThis endpoint implements the .NET SelectSaleOrder method with dynamic filtering.\n\nSupported Filters:\n- Comid (Company ID) - REQUIRED\n- Id (Customer ID)\n- JId (Job Master ID)\n- Employeeid (Employee ID with DashboardStatus for hierarchy)\n- Statusid (Single Status ID)\n- statusList (Comma-separated status IDs)\n- completestatusnotshow (Exclude completed status=8)\n- Search (Bill/Invoice number search)\n- Remarks (1=non-empty, 2=empty)\n- Offvesselname (Loading vessel name search)\n- Loadingvesselname (Off-loading vessel name search)\n- Fromdate (Start date YYYY/MM/DD)\n- Todate (End date YYYY/MM/DD)\n- ETA (Use ETA filters)\n- ETAType (1=OETA, 2=ETA, 3=Both)\n- Pickup (Use pickup date)\n- Invoice (Search in invoice)\n- DashboardStatus (0=simple, 2=with subordinates)\n\nReturns:\n{\n  \"IsSuccess\": true,\n  \"StatusCode\": 200,\n  \"Message\": \"Success\",\n  \"Data1\": {\n    \"salemaster\": [master records],\n    \"saledetails\": [detail records]\n  }\n}"
+      },
+      "response": []
     }
   ],
   "variable": [
@@ -899,6 +945,11 @@
       "id": "0a959b64-85f3-4ca4-b449-d481fb0690ad",
       "key": "token",
       "value": ""
+    },
+    {
+      "id": "host-variable",
+      "key": "host",
+      "value": "localhost:8082"
     }
   ]
 }

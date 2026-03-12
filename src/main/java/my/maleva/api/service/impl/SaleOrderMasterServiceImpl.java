@@ -1,7 +1,9 @@
 package my.maleva.api.service.impl;
 
 import my.maleva.api.dto.SaleOrderDTO;
+import my.maleva.api.dto.SaleOrderFilterDTO;
 import my.maleva.api.dto.SaleOrderMasterDto;
+import my.maleva.api.dto.SaleF5View;
 import my.maleva.api.mapper.SaleOrderMasterMapper;
 import my.maleva.api.mapper.SaleOrderDetailsMapper;
 import my.maleva.api.model.*;
@@ -42,6 +44,12 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     private SaleOrderMasterMapper mapper;
     @Autowired
     private SaleOrderDetailsMapper saleOrderDetailsMapper;
+    @Autowired
+    private my.maleva.api.mapper.SaleF5ViewMapper saleF5ViewMapper;
+    @Autowired
+    private my.maleva.api.mapper.QueryResultMapper queryResultMapper;
+    @Autowired
+    private my.maleva.api.service.helper.SaleOrderFilterHelper filterHelper;
     @Autowired
     private SequenceNoMasterRepository sequenceNoMasterRepository;
 
@@ -744,6 +752,328 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                         companyRefId, billType, e.getMessage(), e);
             throw new RuntimeException("Failed to generate CNumber: " + e.getMessage());
         }
+    }
+
+    @Override
+    public my.maleva.api.dto.SaleF5View selectSaleOrder(my.maleva.api.dto.SaleOrderFilterDTO filter) {
+        logger.info("========== SelectSaleOrder API Started ==========");
+        
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // ===== STEP 1: VALIDATE FILTER PARAMETERS =====
+            logger.debug("Step 1: Validating filter parameters");
+            filterHelper.validateFilter(filter);
+            filterHelper.logFilterDetails(filter);
+
+            // ===== STEP 2: BUILD DYNAMIC SPECIFICATION =====
+            logger.debug("Step 2: Building dynamic specification from filter");
+            org.springframework.data.jpa.domain.Specification<SaleOrderMaster> specification = 
+                    buildFilterSpecification(filter);
+
+            // ===== STEP 3: FETCH FILTERED ORDER IDS =====
+            logger.debug("Step 3: Fetching filtered order IDs");
+            java.util.List<Integer> filteredOrderIds = getFilteredOrderIds(specification);
+            logger.info("Found {} SaleOrderMaster records matching filter criteria", 
+                    filteredOrderIds.size());
+
+            // Early return if no matching records
+            if (filteredOrderIds.isEmpty()) {
+                logger.warn("No SaleOrderMaster records found matching filter criteria");
+                return buildEmptySaleF5ViewResponse();
+            }
+
+            // ===== STEP 4: FETCH AND MAP SALE MASTER DATA =====
+            logger.debug("Step 4: Fetching sale master data with joins");
+            java.util.List<my.maleva.api.dto.SaleMasterViewModel> saleMasterList = 
+                    fetchAndMapSaleMasterData(filter.getComid(), filteredOrderIds);
+            logger.info("Fetched and mapped {} SaleMaster records", saleMasterList.size());
+
+            // ===== STEP 5: FETCH AND MAP SALE DETAILS DATA =====
+            logger.debug("Step 5: Fetching sale details data with joins");
+            java.util.List<my.maleva.api.dto.SaleDetailsViewModel> saleDetailsList = 
+                    fetchAndMapSaleDetailsData(filter.getComid(), filteredOrderIds);
+            logger.info("Fetched and mapped {} SaleDetails records", saleDetailsList.size());
+
+            // ===== STEP 6: BUILD FINAL RESPONSE =====
+            logger.debug("Step 6: Building final SaleF5View response");
+            my.maleva.api.dto.SaleF5View response = buildSaleF5ViewResponse(
+                    saleMasterList, 
+                    saleDetailsList
+            );
+
+            long executionTime = System.currentTimeMillis() - startTime;
+            logger.info("SelectSaleOrder completed successfully in {} ms", executionTime);
+            logger.info("========== SelectSaleOrder API Completed ==========");
+
+            return response;
+
+        } catch (Exception ex) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            logger.error("ERROR in SelectSaleOrder after {} ms - Company: {}, Error: {}", 
+                    executionTime, filter != null ? filter.getComid() : "NULL", 
+                    ex.getMessage(), ex);
+            logger.error("========== SelectSaleOrder API FAILED ==========");
+            throw new RuntimeException("SelectSaleOrder failed: " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Validate that company ID is present and valid
+     * 
+     * @param comid the company ID to validate
+     * @throws RuntimeException if company ID is invalid
+     */
+    private void validateCompanyId(Integer comid) {
+        if (comid == null || comid == 0) {
+            logger.error("Invalid Company ID: {}", comid);
+            throw new RuntimeException("Company ID is required and must be greater than 0");
+        }
+        logger.debug("Company ID validation passed: {}", comid);
+    }
+
+    /**
+     * Build dynamic specification from filter parameters
+     * Encapsulates all filter logic for SQL WHERE clause construction
+     * 
+     * @param filter the SaleOrderFilterDTO with all filter parameters
+     * @return Specification for JPA query building
+     */
+    private org.springframework.data.jpa.domain.Specification<SaleOrderMaster> buildFilterSpecification(
+            my.maleva.api.dto.SaleOrderFilterDTO filter) {
+        logger.debug("Building filter specification from parameters");
+        
+        return my.maleva.api.specification.SaleOrderSpecification.buildFilter(
+                filter.getComid(),
+                filter.getId(),
+                filter.getJId(),
+                filter.getEmployeeid(),
+                filter.getDashboardStatus(),
+                filter.getStatusList(),
+                filter.getStatusid(),
+                filter.getCompletestatusnotshow(),
+                filter.getRemarks(),
+                filter.getOffvesselname(),
+                filter.getLoadingvesselname(),
+                filter.getSearch(),
+                filter.getInvoice(),
+                filter.getEta(),
+                filter.getEtaType(),
+                filter.getFromdate(),
+                filter.getTodate(),
+                filter.getPickup(),
+                filter.getInvoicecheck()
+        );
+    }
+
+    /**
+     * Get list of filtered order IDs matching the specification
+     * This helps avoid loading all data and then filtering in memory
+     * 
+     * @param specification the JPA Specification to apply
+     * @return List of order IDs matching the specification
+     */
+    private java.util.List<Integer> getFilteredOrderIds(
+            org.springframework.data.jpa.domain.Specification<SaleOrderMaster> specification) {
+        logger.debug("Fetching filtered order IDs from database");
+        
+        java.util.List<Integer> orderIds = repository.findAll(specification)
+                .stream()
+                .map(SaleOrderMaster::getId)
+                .collect(java.util.stream.Collectors.toList());
+
+        logger.debug("Retrieved {} order IDs from specification", orderIds.size());
+        return orderIds;
+    }
+
+    /**
+     * Fetch raw data from database and map to SaleMasterViewModel
+     * OPTIMIZED: Filters at database level using IN clause
+     * 
+     * Performs:
+     * 1. Native query execution with complex joins and ID filter
+     * 2. Object array mapping to structured ViewModels
+     * 3. Sorting by DETA (formatted date) then BillDate
+     * 
+     * @param companyId the company reference ID
+     * @param filteredOrderIds list of order IDs to filter by
+     * @return List of mapped SaleMasterViewModel objects, sorted
+     */
+    private java.util.List<my.maleva.api.dto.SaleMasterViewModel> fetchAndMapSaleMasterData(
+            Integer companyId, 
+            java.util.List<Integer> filteredOrderIds) {
+
+        logger.debug("Fetching SaleMaster raw data from database with joins and order ID filter");
+
+        // OPTIMIZED: Pass orderIds to native query for database-level filtering
+        // This fetches only 3-10 records instead of 100K+
+        java.util.List<Object[]> rawData = repository.findSaleMasterRawDataWithJoinsByOrderIds(
+                companyId, 
+                filteredOrderIds);
+        logger.debug("Retrieved {} raw SaleMaster rows from database (already filtered)", 
+                rawData.size());
+
+        // Map Object arrays to structured ViewModels
+        java.util.List<my.maleva.api.dto.SaleMasterViewModel> allRecords = 
+                queryResultMapper.mapSaleMasterRows(rawData);
+        logger.debug("Mapped {} SaleMaster records from raw data", allRecords.size());
+
+        // Sort by DETA (formatted date) then BillDate
+        // Note: Data is already filtered at DB level, no need for stream filter
+        java.util.List<my.maleva.api.dto.SaleMasterViewModel> sorted = allRecords.stream()
+                .sorted(
+                        java.util.Comparator
+                                .comparing((my.maleva.api.dto.SaleMasterViewModel s) ->
+                                        s.getDeta() != null && !s.getDeta().isEmpty() 
+                                                ? s.getDeta() 
+                                                : "01/01/1900"
+                                )
+                                .thenComparing(vm -> vm.getBillDate() != null ? vm.getBillDate() : "")
+                )
+                .collect(java.util.stream.Collectors.toList());
+
+        logger.debug("After sorting: {} SaleMaster records", sorted.size());
+
+        return sorted;
+    }
+
+    /**
+     * Fetch raw data from database and map to SaleDetailsViewModel
+     * OPTIMIZED: Filters at database level using IN clause
+     * 
+     * Performs:
+     * 1. Native query execution with complex joins and ID filter
+     * 2. Object array mapping to structured ViewModels
+     * 
+     * @param companyId the company reference ID
+     * @param filteredOrderIds list of order IDs to filter by
+     * @return List of mapped SaleDetailsViewModel objects
+     */
+    private java.util.List<my.maleva.api.dto.SaleDetailsViewModel> fetchAndMapSaleDetailsData(
+            Integer companyId, 
+            java.util.List<Integer> filteredOrderIds) {
+
+        logger.debug("Fetching SaleDetails raw data from database with joins and order ID filter");
+
+        // OPTIMIZED: Pass orderIds to native query for database-level filtering
+        // This fetches only 10-50 records instead of 200K+
+        java.util.List<Object[]> rawData = repository.findSaleDetailsRawDataWithJoinsByOrderIds(
+                companyId, 
+                filteredOrderIds);
+        logger.debug("Retrieved {} raw SaleDetails rows from database (already filtered)", 
+                rawData.size());
+
+        // Map Object arrays to structured ViewModels
+        java.util.List<my.maleva.api.dto.SaleDetailsViewModel> allRecords = 
+                queryResultMapper.mapSaleDetailsRows(rawData);
+        logger.debug("Mapped {} SaleDetails records from raw data", allRecords.size());
+
+        // No additional filtering needed - data is already filtered at DB level
+        logger.debug("Returning {} SaleDetails records", allRecords.size());
+
+        return allRecords;
+    }
+
+    /**
+     * Build final response using MapStruct mapper
+     * Creates SaleF5View object combining sale master and details
+     * 
+     * @param saleMasterList the list of SaleMasterViewModel objects
+     * @param saleDetailsList the list of SaleDetailsViewModel objects
+     * @return constructed SaleF5View response object
+     */
+    private my.maleva.api.dto.SaleF5View buildSaleF5ViewResponse(
+            java.util.List<my.maleva.api.dto.SaleMasterViewModel> saleMasterList,
+            java.util.List<my.maleva.api.dto.SaleDetailsViewModel> saleDetailsList) {
+
+        logger.debug("Building SaleF5View response object");
+
+        my.maleva.api.dto.SaleF5View response = saleF5ViewMapper.createSaleF5View(
+                saleMasterList,
+                saleDetailsList
+        );
+
+        logger.debug("SaleF5View response built successfully");
+        return response;
+    }
+
+    /**
+     * Build an empty SaleF5View response when no records are found
+     * Ensures response structure consistency across all scenarios
+     * 
+     * @return empty SaleF5View object
+     */
+    private my.maleva.api.dto.SaleF5View buildEmptySaleF5ViewResponse() {
+        logger.debug("Building empty SaleF5View response");
+        
+        my.maleva.api.dto.SaleF5View response = saleF5ViewMapper.createSaleF5View(
+                new java.util.ArrayList<>(),
+                new java.util.ArrayList<>()
+        );
+        
+        logger.debug("Empty SaleF5View response built");
+        return response;
+    }
+
+    /**
+     * DEBUG METHOD - Diagnose why SaleMaster is empty but SaleDetails has data
+     * This indicates a JOIN issue or filtering mismatch
+     * 
+     * @param filter the filter being used
+     * @param companyId the company ID
+     */
+    public void debugEmptySaleMasterIssue(my.maleva.api.dto.SaleOrderFilterDTO filter, Integer companyId) {
+        logger.warn("========== DEBUG: SaleMaster Empty but SaleDetails Has Data ==========");
+        
+        try {
+            // Get all records with join status
+            java.util.List<Object[]> debugData = repository.debugFindAllWithJoinStatus(companyId);
+            logger.warn("Total records with join status: {}", debugData.size());
+            
+            for (Object[] row : debugData) {
+                logger.warn("Record ID: {}, Bill: {}, Customer: {}, Date: {}, Active: {}, SymbolStatus: {}, StatusStatus: {}",
+                    row[0], row[1], row[2], row[3], row[4], row[5], row[6]);
+            }
+            
+            // Get filter counts
+            java.util.List<Object[]> counts = repository.debugGetFilterCounts(companyId);
+            if (!counts.isEmpty()) {
+                Object[] countRow = counts.get(0);
+                logger.warn("Filter Counts - Total: {}, Active: {}, WithCustomer: {}, WithEmployee: {}",
+                    countRow[0], countRow[1], countRow[2], countRow[3]);
+            }
+            
+            // Check specification results
+            org.springframework.data.jpa.domain.Specification<SaleOrderMaster> spec = 
+                    buildFilterSpecification(filter);
+            java.util.List<SaleOrderMaster> specResults = repository.findAll(spec);
+            logger.warn("Specification filtered results: {}", specResults.size());
+            
+            for (SaleOrderMaster master : specResults) {
+                logger.warn("Spec Result - ID: {}, CNumber: {}, Customer: {}, Date: {}",
+                    master.getId(), master.getCNumber(), master.getCustomerRefId(), master.getSaleDate());
+            }
+            
+            // Check raw query results
+            java.util.List<Object[]> rawMaster = repository.findSaleMasterRawDataWithJoins(companyId);
+            logger.warn("Raw SaleMaster query results: {}", rawMaster.size());
+            
+            if (!rawMaster.isEmpty()) {
+                logger.warn("First raw row has {} columns", rawMaster.get(0).length);
+                Object[] firstRow = rawMaster.get(0);
+                logger.warn("Sample data - ID: {}, BillNo: {}, Customer: {}, BillDate: {}",
+                    firstRow[0], firstRow[28], firstRow[24], firstRow[14]);
+            }
+            
+            // Check raw details results
+            java.util.List<Object[]> rawDetails = repository.findSaleDetailsRawDataWithJoins(companyId);
+            logger.warn("Raw SaleDetails query results: {}", rawDetails.size());
+            
+        } catch (Exception ex) {
+            logger.error("Error during debug - EmptySaleMaster diagnosis: {}", ex.getMessage(), ex);
+        }
+        
+        logger.warn("========== DEBUG END ==========");
     }
 
 }
