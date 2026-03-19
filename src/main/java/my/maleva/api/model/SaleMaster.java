@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,9 +18,19 @@ import java.time.LocalDateTime;
  * SaleMaster Entity
  * JPA entity for SaleMaster table
  * Represents a master sale transaction with comprehensive logistics information
+ * 
+ * Performance Optimizations:
+ * - Index on CompanyRefId for company-based filtering
+ * - Composite index for active sales by company
  */
 @Entity
-@Table(name = "SaleMaster")
+@Table(name = "SaleMaster", indexes = {
+    // Company filtering index
+    @Index(name = "idx_sale_master_company", columnList = "CompanyRefId", unique = false),
+    
+    // Composite index for active sales by company
+    @Index(name = "idx_sale_master_company_active", columnList = "CompanyRefId,Active", unique = false)
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

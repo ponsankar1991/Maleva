@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,9 +17,19 @@ import java.time.LocalDateTime;
 
 /**
  * JPA entity mapping for the EmployeeMaster table.
+ * 
+ * Performance Optimizations:
+ * - Index on CompanyRefId for company-based filtering
+ * - Composite index for active employees in a company
  */
 @Entity
-@Table(name = "EmployeeMaster")
+@Table(name = "EmployeeMaster", indexes = {
+    // Company filtering index
+    @Index(name = "idx_emp_company_ref", columnList = "CompanyRefId", unique = false),
+    
+    // Composite index for active employees by company
+    @Index(name = "idx_emp_company_active", columnList = "CompanyRefId,Active", unique = false)
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

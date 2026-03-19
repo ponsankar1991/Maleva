@@ -8,8 +8,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * JobStatusMaster Entity
+ * Performance Optimization: Index on CompanyRefId for lookup operations
+ */
 @Entity
-@Table(name = "JobStatusMaster")
+@Table(name = "JobStatusMaster", indexes = {
+    @Index(name = "idx_job_status_company", columnList = "CompanyRefId", unique = false)
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

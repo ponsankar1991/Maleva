@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,9 +18,38 @@ import java.time.LocalDateTime;
  * SaleOrderMaster Entity
  * JPA entity for SaleOrderMaster table
  * Represents a sale order with comprehensive order management fields
+ * 
+ * Performance Optimizations:
+ * - Composite index on (CompanyRefId, Active) for main WHERE clause filtering
+ * - Individual indexes on foreign key columns for JOIN operations
+ * - Index on ETA/OETA columns for ORDER BY optimization
+ * - Index on SaleDate for date range queries and sorting
  */
 @Entity
-@Table(name = "SaleOrderMaster")
+@Table(name = "SaleOrderMaster", indexes = {
+    // Primary filter: Company + Active status (used in most queries)
+    @Index(name = "idx_company_active", columnList = "CompanyRefId,Active", unique = false),
+    
+    // Foreign key joins
+    @Index(name = "idx_customer_ref", columnList = "CustomerRefId", unique = false),
+    @Index(name = "idx_employee_ref", columnList = "EmployeeRefId", unique = false),
+    @Index(name = "idx_job_status", columnList = "JStatus", unique = false),
+    @Index(name = "idx_job_master_ref", columnList = "JobMasterRefId", unique = false),
+    @Index(name = "idx_invoice_no", columnList = "InvoiceNo", unique = false),
+    
+    // Sorting and filtering columns
+    @Index(name = "idx_eta", columnList = "ETA", unique = false),
+    @Index(name = "idx_oeta", columnList = "OETA", unique = false),
+    @Index(name = "idx_sale_date", columnList = "SaleDate", unique = false),
+    
+    // Composite index for common filtering with sorting
+    @Index(name = "idx_company_active_eta", columnList = "CompanyRefId,Active,ETA", unique = false),
+    
+    // Additional reference indexes
+    @Index(name = "idx_truck_ref", columnList = "TruckRefid", unique = false),
+    @Index(name = "idx_driver_ref", columnList = "DriverRefid", unique = false),
+    @Index(name = "idx_user_ref", columnList = "UserRefId", unique = false)
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

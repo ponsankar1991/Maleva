@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,9 +18,23 @@ import java.time.LocalDateTime;
  * SaleOrderDetails Entity
  * JPA entity for SaleOrderDetails table
  * Represents line items for sale orders
+ * 
+ * Performance Optimizations:
+ * - Index on SaleOrderMasterRefId for JOIN with SaleOrderMaster
+ * - Index on ItemMasterRefId for JOIN with ItemMaster
+ * - Composite index for filtering by order ID and sorting
  */
 @Entity
-@Table(name = "SaleOrderDetails")
+@Table(name = "SaleOrderDetails", indexes = {
+    // Foreign key join for SaleOrderMaster lookup
+    @Index(name = "idx_sale_order_master_ref", columnList = "SaleOrderMasterRefId", unique = false),
+    
+    // Foreign key join for ItemMaster lookup
+    @Index(name = "idx_item_master_ref", columnList = "ItemMasterRefId", unique = false),
+    
+    // Composite index for filtering details by order ID
+    @Index(name = "idx_sale_order_item", columnList = "SaleOrderMasterRefId,ItemMasterRefId", unique = false)
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

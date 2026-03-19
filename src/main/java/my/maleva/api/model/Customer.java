@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,9 +19,22 @@ import java.time.LocalDateTime;
 /**
  * JPA entity for the Customer table.
  * Assumption: table name is `Customer` — change @Table(name="Customer") if your actual table name differs.
+ * 
+ * Performance Optimizations:
+ * - Index on SymbolRefid for JOIN operations with SymbolMaster
+ * - Index on CompanyRefId for company-based filtering
  */
 @Entity
-@Table(name = "Customer")
+@Table(name = "Customer", indexes = {
+    // Foreign key join for SymbolMaster lookup
+    @Index(name = "idx_symbol_ref", columnList = "SymbolRefid", unique = false),
+    
+    // Company filtering index
+    @Index(name = "idx_cust_company_ref", columnList = "CompanyRefId", unique = false),
+    
+    // Composite index for active company customers
+    @Index(name = "idx_company_active_cust", columnList = "CompanyRefId,Active", unique = false)
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

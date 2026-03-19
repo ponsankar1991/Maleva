@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,9 +16,13 @@ import java.time.LocalDateTime;
 
 /**
  * JPA entity for ItemMaster table
+ * 
+ * Performance Optimization: Index on CompanyRefId for company-based filtering
  */
 @Entity
-@Table(name = "ItemMaster")
+@Table(name = "ItemMaster", indexes = {
+    @Index(name = "idx_item_company", columnList = "CompanyRefId", unique = false)
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
