@@ -63,7 +63,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"userId\":\"MAGES\",\"password\":\"7151\"}",
+          "raw": "{\"userId\":\"MAGES\",\"password\":\"5591\"}",
           "options": {
             "raw": {
               "language": "json"
@@ -938,6 +938,444 @@
         "description": "SelectSaleOrder - Complex filtered search for sale orders\n\nThis endpoint implements the .NET SelectSaleOrder method with dynamic filtering.\n\nSupported Filters:\n- Comid (Company ID) - REQUIRED\n- Id (Customer ID)\n- JId (Job Master ID)\n- Employeeid (Employee ID with DashboardStatus for hierarchy)\n- Statusid (Single Status ID)\n- statusList (Comma-separated status IDs)\n- completestatusnotshow (Exclude completed status=8)\n- Search (Bill/Invoice number search)\n- Remarks (1=non-empty, 2=empty)\n- Offvesselname (Loading vessel name search)\n- Loadingvesselname (Off-loading vessel name search)\n- Fromdate (Start date YYYY/MM/DD)\n- Todate (End date YYYY/MM/DD)\n- ETA (Use ETA filters)\n- ETAType (1=OETA, 2=ETA, 3=Both)\n- Pickup (Use pickup date)\n- Invoice (Search in invoice)\n- DashboardStatus (0=simple, 2=with subordinates)\n\nReturns:\n{\n  \"IsSuccess\": true,\n  \"StatusCode\": 200,\n  \"Message\": \"Success\",\n  \"Data1\": {\n    \"salemaster\": [master records],\n    \"saledetails\": [detail records]\n  }\n}"
       },
       "response": []
+    },
+    {
+      "name": "SelectPLANING - Get Planning with Filters",
+      "id": "planning-select-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"comid\": 6,\n  \"employeeid\": 0,\n  \"search\": \"\",\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{host}}/api/planing/select-planning",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "planing",
+            "select-planning"
+          ]
+        },
+        "description": "SelectPLANING - Complex filtered search equivalent to .NET SelectPLANING method. Returns combined PlanningMaster and PlanningDetails data with dynamic filtering. Returns combined PlanningMaster and PlanningDetails data with joins to SaleOrderMaster, Customer, and TruckMaster.\n\nRequest Parameters:\n- comid (required, positive): Company Reference ID\n- employeeid (optional): Employee ID to filter by specific employee. Use 0 or null for all employees\n- search (optional): Search by Planning Number Display (CNumberDisplay). When provided, overrides date filters\n- fromdate (optional): Start date for date range filter (format: YYYY-MM-DD). Ignored if search is provided\n- todate (optional): End date for date range filter (format: YYYY-MM-DD). Ignored if search is provided\n\nResponse Structure:\n{\n  \"salemaster\": [ // Array of PlanningMaster records with formatted dates\n    {\n      \"Id\": 1,\n      \"PLANINGNo\": 1,\n      \"PLANINGNoDisplay\": \"PL000000001\",\n      \"PLANINGDate\": \"15/03/2024\",\n      \"Remarks\": \"Sample remarks\"\n    }\n  ],\n  \"saledetails\": [ // Array of PlanningDetails records with joined data\n    {\n      \"Id\": 1,\n      \"PLANINGMasterRefId\": 1,\n      \"SaleOrderMasterRefId\": 123,\n      \"TruckName\": \"Truck A\",\n      \"Remarks\": \"Detail remarks\",\n      \"JobNo\": \"SO000000123\",\n      \"JobDate\": \"10/03/2024\",\n      \"CustomerName\": \"ABC Corp\"\n    }\n  ]\n}\n\nExample Scenarios:\n\n1. Get all planning for company 6 between dates (all employees):\n{\n  \"comid\": 6,\n  \"employeeid\": 0,\n  \"search\": \"\",\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}\n\n2. Get planning for specific employee:\n{\n  \"comid\": 6,\n  \"employeeid\": 123,\n  \"search\": \"\",\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}\n\n3. Search by planning number (search parameter overrides date filters):\n{\n  \"comid\": 6,\n  \"employeeid\": 0,\n  \"search\": \"PL000000001\",\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}\n\nSecurity: Requires valid JWT token with one of these roles: ROLE_SUPERADMIN, ROLE_ADMIN, or ROLE_100\n\nError Responses:\n- 400 Bad Request: Invalid parameters (comid must be positive)\n- 401 Unauthorized: Missing or invalid JWT token\n- 403 Forbidden: User does not have required role\n- 500 Internal Server Error: Database or server error"
+      },
+      "response": []
+    },
+    {
+      "name": "PLANINGSearch - Search by Port Codes",
+      "id": "planning-search-001",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"comid\": 6,\n  \"search\": \"SIN,HKG\",\n  \"employeeid\": 0,\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{host}}/api/planing/search",
+          "protocol": "http",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "planing",
+            "search"
+          ]
+        },
+        "description": "PLANINGSearch - Search planning details by port codes and date range\n\nSearches through SaleOrderMaster records with port code filters. Returns comprehensive logistics data ordered by pickup date.\n\nRequest Parameters:\n- comid (required, positive): Company Reference ID\n- search (optional): Comma-separated port codes to search (e.g., \"SIN,HKG\") - searches Sport and Oport fields\n- employeeid (optional): Employee ID to filter by. Use 0 or null for all employees\n- fromdate (required): Start date for pickup date filter (format: YYYY-MM-DD)\n- todate (required): End date for pickup date filter (format: YYYY-MM-DD)\n\nResponse Structure:\n[\n  {\n    \"Id\": 1,\n    \"JobNo\": \"SO000000123\",\n    \"CustomerName\": \"ABC Corporation\",\n    \"PickupDate\": \"2024-03-12T08:00:00\",\n    \"PickupDateD\": \"12/03/2024\",\n    \"DeliveryDate\": \"2024-03-20T16:00:00\",\n    \"DeliveryDateD\": \"20/03/2024\",\n    \"Origin\": \"Singapore\",\n    \"Destination\": \"Hong Kong\",\n    \"SPort\": \"SIN\",\n    \"OPort\": \"HKG\",\n    \"VesselName\": \"Pacific Express\",\n    \"WareHouseAddress\": \"123 Logistics Hub\",\n    \"PickupAddress\": \"456 Shipper Road\",\n    \"DeliveryAddress\": \"789 Consignee Street\",\n    \"JobName\": \"Export Shipment\",\n    \"JobStatus\": \"Scheduled\",\n    \"JobDate\": \"10/03/2024\",\n    \"AWBNo\": \"SG12345678\",\n    \"BLCopy\": \"BL/2024/001\",\n    \"EmployeeName\": \"Sales Team\",\n    \"TruckSize\": \"Large\",\n    \"pkg\": \"20FT Container/5000KG\",\n    \"pickuptimelist\": \"08:00,10:00,14:00\",\n    \"pickupQuantitylist\": \"10,5,8\",\n    \"DeliveryQuantitylist\": \"12,8,3\",\n    \"Delivertimelist\": \"16:00,18:00,20:00\",\n    ... (40+ fields total including warehouse tracking, pickup/delivery logistics)\n  }\n]\n\nExample Request Scenarios:\n\n1. Search by specific ports (SIN and HKG):\n{\n  \"comid\": 6,\n  \"search\": \"SIN,HKG\",\n  \"employeeid\": 0,\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}\n\n2. Search by employee and ports:\n{\n  \"comid\": 6,\n  \"search\": \"SIN,HKG\",\n  \"employeeid\": 123,\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}\n\n3. Get all planning for date range (no port filter):\n{\n  \"comid\": 6,\n  \"search\": \"\",\n  \"employeeid\": 0,\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\"\n}\n\nFilter Logic:\n- Searches by Company ID and Active != 2\n- If search provided: filters by SPort OR OPort (comma-separated port codes)\n- If employeeid > 0: filters by specific employee\n- Filters by PickupDate between fromdate and todate\n- Results ordered by PickupDate ascending\n\nSecurity: Requires valid JWT token with ROLE_SUPERADMIN, ROLE_ADMIN, or ROLE_100\n\nHTTP Status Codes:\n- 200: Success (may return empty list if no matches)\n- 400: Bad Request (invalid parameters)\n- 401: Unauthorized (missing/invalid JWT token)\n- 403: Forbidden (insufficient permissions)\n- 500: Internal Server Error"
+      },
+      "response": []
+    },
+    {
+      "name": "Truck Combo",
+      "item": [
+        {
+          "name": "Get Truck Combo - Company 1 (No Filter)",
+          "id": "truck-combo-1-no-filter",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://{{host}}/api/truck-combo?companyId=1",
+              "protocol": "http",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "truck-combo"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "1",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Get all trucks for Company ID 1 (no type filter)\n\nEndpoint: GET /api/truck-combo?companyId=1\n\nQuery Parameters:\n- companyId (required): Company ID = 1\n- type (optional): Not provided - returns all truck types\n\nResponse (HTTP 200 OK):\n{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Success\",\n  \"data1\": [\n    {\n      \"Id\": 1,\n      \"AccountName\": \"TRUCK-001\"\n    },\n    {\n      \"Id\": 2,\n      \"AccountName\": \"TRUCK-002\"\n    },\n    ...\n  ]\n}\n\nSecurity: Requires valid JWT token with ROLE_ADMIN, ROLE_SUPERADMIN, or ROLE_USER"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Truck Combo - Company 2 (No Filter)",
+          "id": "truck-combo-2-no-filter",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://{{host}}/api/truck-combo?companyId=2",
+              "protocol": "http",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "truck-combo"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "2",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Get all trucks for Company ID 2 (no type filter)\n\nEndpoint: GET /api/truck-combo?companyId=2\n\nQuery Parameters:\n- companyId (required): Company ID = 2\n- type (optional): Not provided - returns all truck types\n\nResponse (HTTP 200 OK):\n{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Success\",\n  \"data1\": [truck list]\n}\n\nSecurity: Requires valid JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Truck Combo - Company 3 (Type 40FT)",
+          "id": "truck-combo-3-40ft",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://{{host}}/api/truck-combo?companyId=3&type=40FT",
+              "protocol": "http",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "truck-combo"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "3",
+                  "disabled": false
+                },
+                {
+                  "key": "type",
+                  "value": "40FT",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Get trucks for Company ID 3 filtered by type 40FT\n\nEndpoint: GET /api/truck-combo?companyId=3&type=40FT\n\nQuery Parameters:\n- companyId (required): Company ID = 3\n- type (optional): Filter by truck type = \"40FT\"\n\nResponse (HTTP 200 OK):\n{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Success\",\n  \"data1\": [40FT trucks only]\n}\n\nSecurity: Requires valid JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Truck Combo - Company 4 (Type 20FT)",
+          "id": "truck-combo-4-20ft",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://{{host}}/api/truck-combo?companyId=4&type=20FT",
+              "protocol": "http",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "truck-combo"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "4",
+                  "disabled": false
+                },
+                {
+                  "key": "type",
+                  "value": "20FT",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Get trucks for Company ID 4 filtered by type 20FT\n\nEndpoint: GET /api/truck-combo?companyId=4&type=20FT\n\nQuery Parameters:\n- companyId (required): Company ID = 4\n- type (optional): Filter by truck type = \"20FT\"\n\nResponse (HTTP 200 OK):\n{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Success\",\n  \"data1\": [20FT trucks only]\n}\n\nSecurity: Requires valid JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Truck Combo - Company 5 (No Filter)",
+          "id": "truck-combo-5-no-filter",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://{{host}}/api/truck-combo?companyId=5",
+              "protocol": "http",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "truck-combo"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "5",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Get all trucks for Company ID 5 (no type filter)\n\nEndpoint: GET /api/truck-combo?companyId=5\n\nQuery Parameters:\n- companyId (required): Company ID = 5\n- type (optional): Not provided - returns all truck types\n\nResponse (HTTP 200 OK):\n{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Success\",\n  \"data1\": [truck list]\n}\n\nSecurity: Requires valid JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Truck Combo - Company 6 (No Filter)",
+          "id": "truck-combo-6-no-filter",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://{{host}}/api/truck-combo?companyId=6",
+              "protocol": "http",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "truck-combo"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "6",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Get all trucks for Company ID 6 (no type filter)\n\nEndpoint: GET /api/truck-combo?companyId=6\n\nQuery Parameters:\n- companyId (required): Company ID = 6\n- type (optional): Not provided - returns all truck types\n\nResponse (HTTP 200 OK):\n{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Success\",\n  \"data1\": [truck list]\n}\n\nSecurity: Requires valid JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "POST - Get Truck Combo - Company 1",
+          "id": "truck-combo-post-1",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": 1,\n  \"type\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://{{host}}/api/truck-combo",
+              "protocol": "http",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "truck-combo"
+              ]
+            },
+            "description": "POST endpoint: Get all trucks for Company ID 1\n\nEndpoint: POST /api/truck-combo\n\nRequest Body:\n{\n  \"companyId\": 1,\n  \"type\": null\n}\n\nParameters:\n- companyId (required): Company ID = 1\n- type (optional): Not provided - returns all truck types\n\nResponse (HTTP 200 OK):\n{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Success\",\n  \"data1\": [truck list]\n}\n\nSecurity: Requires valid JWT token with ROLE_ADMIN, ROLE_SUPERADMIN, or ROLE_USER"
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

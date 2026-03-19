@@ -54,5 +54,16 @@ public interface PlanningMasterRepository extends JpaRepository<PlanningMaster, 
     List<PlanningMaster> searchByCompanyAndKeyword(
             @Param("companyId") Integer companyId,
             @Param("search") String search);
-}
 
+    /**
+     * Find planning masters for SelectPLANING with filters
+     */
+    @Query("SELECT p FROM PlanningMaster p WHERE p.companyRefId = :companyId AND p.active = 1 " +
+            "AND (:employeeId IS NULL OR p.employeeRefId = :employeeId) " +
+            "AND (:fromDate IS NULL OR :toDate IS NULL OR p.saleDate BETWEEN :fromDate AND :toDate)")
+    List<PlanningMaster> findForSelectPlanning(
+            @Param("companyId") Integer companyId,
+            @Param("employeeId") Integer employeeId,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate);
+}

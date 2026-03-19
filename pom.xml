@@ -11,7 +11,7 @@
 	<groupId>my.maleva</groupId>
 	<artifactId>api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 	<name>Maleva</name>
 	<description>Maleva project for Spring Boot</description>
 	<url/>

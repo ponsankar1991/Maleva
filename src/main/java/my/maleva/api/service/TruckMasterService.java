@@ -1,6 +1,7 @@
 package my.maleva.api.service;
 
 import my.maleva.api.dto.TruckMasterDto;
+import my.maleva.api.dto.ComboListModel;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +39,16 @@ public interface TruckMasterService {
 
     long countActiveByCompanyRefId(Integer companyRefId);
 
+    /**
+     * Get Truck combo list for dropdown/UI
+     * Equivalent to .NET GetTruck method
+     * 
+     * @param companyId Company ID (required)
+     * @param truckType Truck type filter (optional, null for all types)
+     * @return List of ComboListModel with Id and TruckName as AccountName
+     */
+    List<ComboListModel> getTruckCombo(Integer companyId, String truckType);
+
     void validateTruckMasterData(TruckMasterDto dto);
 
     TruckMasterDto activateTruck(Integer id);
@@ -48,4 +59,3 @@ public interface TruckMasterService {
 
     TruckMasterDto processTruck(TruckMasterDto dto, Integer companyId);
 }
-

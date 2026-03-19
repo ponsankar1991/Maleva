@@ -1,6 +1,7 @@
 package my.maleva.api.service.impl;
 
 import my.maleva.api.dto.TruckMasterDto;
+import my.maleva.api.dto.ComboListModel;
 import my.maleva.api.mapper.TruckMasterMapper;
 import my.maleva.api.model.TruckMaster;
 import my.maleva.api.repo.TruckMasterRepository;
@@ -284,5 +285,43 @@ public class TruckMasterServiceImpl implements TruckMasterService {
             return update(dto.getId(), dto);
         }
     }
-}
 
+    /**
+     * Get Truck combo list for dropdown/UI
+     * Equivalent to .NET GetTruck method
+     *
+     * SQL: SELECT Id, TruckName as AccountName FROM TruckMaster
+     *      WHERE CompanyRefId = ? AND Active = 1 [AND TruckType = ?]
+     *
+     * @param companyId Company ID (required)
+     * @param truckType Truck type filter (optional, null for all types)
+     * @return List of ComboListModel with Id and TruckName
+     */
+    @Override
+    public List<ComboListModel> getTruckCombo(Integer companyId, String truckType) {
+        logger.info("Fetching truck combo for company: {}, truckType: {}", companyId, truckType);
+
+        // Input validation
+        if (companyId == null || companyId <= 0) {
+            logger.error("Invalid company ID: {}", companyId);
+            throw new IllegalArgumentException("Company ID must be positive");
+        }
+
+        List<ComboListModel> result;
+
+        // Query with optional truck type filter
+        if (truckType == null || truckType.trim().isEmpty()) {
+            // No truck type filter - get all active trucks
+            logger.debug("Fetching all active trucks for company: {}", companyId);
+            result = repository.getTruckCombo(companyId);
+        } else {
+            // With truck type filter
+            String cleanType = truckType.trim();
+            logger.debug("Fetching trucks for company: {} with type: {}", companyId, cleanType);
+            result = repository.getTruckComboByType(companyId, cleanType);
+        }
+
+        logger.info("Found {} trucks for company: {}", result.size(), companyId);
+        return result;
+    }
+}

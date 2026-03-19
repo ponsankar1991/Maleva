@@ -1,7 +1,10 @@
 package my.maleva.api.repo;
 
 import my.maleva.api.model.TruckMaster;
+import my.maleva.api.dto.ComboListModel;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -69,5 +72,30 @@ public interface TruckMasterRepository extends JpaRepository<TruckMaster, Intege
      * Check if truck number exists for company
      */
     boolean existsByTruckNumberAndCompanyRefId(String truckNumber, Integer companyRefId);
-}
 
+    /**
+     * Get Trucks as ComboListModel for dropdown/UI
+     * Equivalent to .NET GetTruck method
+     * SELECT Id, TruckName as AccountName FROM TruckMaster
+     * WHERE CompanyRefId = ? AND Active = 1
+     */
+    @Query(value = "SELECT new my.maleva.api.dto.ComboListModel(t.id, t.truckName) " +
+           "FROM TruckMaster t " +
+           "WHERE t.companyRefId = :companyId AND t.active = 1 " +
+           "ORDER BY t.truckName ASC")
+    List<ComboListModel> getTruckCombo(@Param("companyId") Integer companyId);
+
+    /**
+     * Get Trucks as ComboListModel with Type filter
+     * Equivalent to .NET GetTruck method with type parameter
+     * SELECT Id, TruckName as AccountName FROM TruckMaster
+     * WHERE CompanyRefId = ? AND Active = 1 AND TruckType = ?
+     */
+    @Query(value = "SELECT new my.maleva.api.dto.ComboListModel(t.id, t.truckName) " +
+           "FROM TruckMaster t " +
+           "WHERE t.companyRefId = :companyId AND t.active = 1 AND t.truckType = :truckType " +
+           "ORDER BY t.truckName ASC")
+    List<ComboListModel> getTruckComboByType(
+        @Param("companyId") Integer companyId,
+        @Param("truckType") String truckType);
+}

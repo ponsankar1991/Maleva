@@ -34,7 +34,9 @@ public class SecurityConfig {
 
         config.setAllowedOrigins(java.util.List.of(
                 "http://localhost:3000",
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "https://mydriverszone.com",
+                "http://mydriverszone.com"
         ));
 
         config.setAllowedMethods(java.util.List.of(

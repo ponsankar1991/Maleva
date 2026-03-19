@@ -110,31 +110,6 @@ public class SaleOrderFilterHelper {
     public boolean isStatusIdFilterActive(SaleOrderFilterDTO filter) {
         return filter != null && filter.getStatusid() != null && filter.getStatusid() != 0;
     }
-
-    /**
-     * Check if remarks filter is active (Remarks == 1 or Remarks == 2)
-     * 
-     * @param filter the filter to check
-     * @return true if remarks filtering is enabled
-     */
-    public boolean isRemarksFilterActive(SaleOrderFilterDTO filter) {
-        return filter != null && filter.getRemarks() != null &&
-                (filter.getRemarks() == 1 || filter.getRemarks() == 2);
-    }
-
-    /**
-     * Check if vessel name filters are active
-     * 
-     * @param filter the filter to check
-     * @return true if any vessel name filtering is enabled
-     */
-    public boolean isVesselNameFilterActive(SaleOrderFilterDTO filter) {
-        return filter != null && (
-                (filter.getOffvesselname() != null && !filter.getOffvesselname().trim().isEmpty()) ||
-                (filter.getLoadingvesselname() != null && !filter.getLoadingvesselname().trim().isEmpty())
-        );
-    }
-
     /**
      * Check if search filter is active (Search != "" and Search != null)
      * 
@@ -146,16 +121,6 @@ public class SaleOrderFilterHelper {
     }
 
     /**
-     * Check if ETA filter is active (ETA == true)
-     * 
-     * @param filter the filter to check
-     * @return true if ETA filtering is enabled
-     */
-    public boolean isEtaFilterActive(SaleOrderFilterDTO filter) {
-        return filter != null && filter.getEta() != null && filter.getEta();
-    }
-
-    /**
      * Check if date filter is active (when not using search)
      * Checks for ETA, Pickup, or default SaleDate filtering
      * 
@@ -164,58 +129,7 @@ public class SaleOrderFilterHelper {
      */
     public boolean isDateFilterActive(SaleOrderFilterDTO filter) {
         return filter != null && !isSearchFilterActive(filter);
-    }
-
-    /**
-     * Parse comma-separated status list into integer array
-     * Used for building IN clause conditions
-     * 
-     * @param statusList comma-separated status IDs (e.g., "1,2,3")
-     * @return array of status IDs
-     */
-    public Integer[] parseStatusList(String statusList) {
-        if (statusList == null || statusList.trim().isEmpty()) {
-            return new Integer[0];
-        }
-
-        try {
-            return Arrays.stream(statusList.split(","))
-                    .map(String::trim)
-                    .map(Integer::parseInt)
-                    .toArray(Integer[]::new);
-        } catch (NumberFormatException e) {
-            logger.warn("Error parsing status list: {}, returning empty array", statusList);
-            return new Integer[0];
-        }
-    }
-
-    /**
-     * Convert LocalDate to LocalDateTime at start of day for date range queries
-     * 
-     * @param date the LocalDate to convert
-     * @return LocalDateTime at 00:00:00
-     */
-    public LocalDateTime getDateRangeStart(LocalDate date) {
-        if (date == null) {
-            return null;
-        }
-        return DateTimeUtil.toStartOfDay(date);
-    }
-
-    /**
-     * Convert LocalDate to LocalDateTime at end of day for date range queries
-     * 
-     * @param date the LocalDate to convert
-     * @return LocalDateTime at 23:59:59
-     */
-    public LocalDateTime getDateRangeEnd(LocalDate date) {
-        if (date == null) {
-            return null;
-        }
-        return DateTimeUtil.toEndOfDay(date);
-    }
-
-    /**
+    }/**
      * Log filter details for debugging
      * 
      * @param filter the filter to log
@@ -253,61 +167,6 @@ public class SaleOrderFilterHelper {
         }
 
         logger.debug(sb.toString());
-    }
-
-    /**
-     * Format filter object to readable string for logging
-     * 
-     * @param filter the filter object
-     * @return formatted filter string
-     */
-    public String formatFilterForLogging(SaleOrderFilterDTO filter) {
-        if (filter == null) {
-            return "Filter: null";
-        }
-
-        return String.format(
-                "Filter[Company=%d, Customer=%d, JobMaster=%d, Employee=%d, " +
-                "Search=%s, FromDate=%s, ToDate=%s, DashboardStatus=%d]",
-                filter.getComid(),
-                filter.getId() != null ? filter.getId() : 0,
-                filter.getJId() != null ? filter.getJId() : 0,
-                filter.getEmployeeid() != null ? filter.getEmployeeid() : 0,
-                filter.getSearch() != null ? filter.getSearch() : "",
-                filter.getFromdate(),
-                filter.getTodate(),
-                filter.getDashboardStatus() != null ? filter.getDashboardStatus() : 0
-        );
-    }
-
-    /**
-     * Determine if the employee filter should use sub-employee lookup
-     * (when DashboardStatus == 2, includes subordinate employees)
-     * 
-     * @param filter the filter to check
-     * @return true if sub-employee lookup is needed
-     */
-    public boolean shouldIncludeSubEmployees(SaleOrderFilterDTO filter) {
-        return filter != null && 
-               filter.getDashboardStatus() != null && 
-               filter.getDashboardStatus() == 2;
-    }
-
-    /**
-     * Get ETA filter type description
-     * 
-     * @param etaType the ETA type code (1=OETA, 2=ETA, other=Both)
-     * @return description of ETA type
-     */
-    public String getEtaTypeDescription(Integer etaType) {
-        if (etaType == null) {
-            return "BOTH";
-        }
-        switch (etaType) {
-            case 1: return "OETA (Outbound ETA)";
-            case 2: return "ETA (Estimated Time of Arrival)";
-            default: return "BOTH (ETA and OETA)";
-        }
     }
 }
 

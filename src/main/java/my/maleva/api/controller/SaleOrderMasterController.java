@@ -59,20 +59,27 @@ public class SaleOrderMasterController {
         }
     }
     @PostMapping("/save")
-    public ResponseEntity<?> save(@Valid @RequestBody SaleOrderDTO dto) {
-        try {
-            logger.info("Saving SaleOrder for company: {} customer: {} cNumber: {}",
-                    dto.getCompanyRefId(), dto.getCustomerRefId(), dto.getCNumber());
-            return ResponseEntity.status(HttpStatus.CREATED).body(service.save(dto));
-        } catch (RuntimeException e) {
-            logger.error("Error saving SaleOrder - {}. Check that cNumber, billType, saleType are not null/empty",
-                    e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Error: " + e.getMessage());
-        } catch (Exception e) {
-            logger.error("Unexpected error saving SaleOrder: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Unexpected error: " + e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<SaleOrderMasterDto>> save(@Valid @RequestBody SaleOrderDTO dto) {
+        boolean isCreate = dto.getId() == null || dto.getId() == 0;
+
+        logger.info("Save SaleOrder request received - operation: {}, company: {}, customer: {}, id: {}, cNumber: {}",
+                isCreate ? "CREATE" : "UPDATE",
+                dto.getCompanyRefId(),
+                dto.getCustomerRefId(),
+                dto.getId(),
+                dto.getCNumber());
+
+        SaleOrderMasterDto savedOrder = service.save(dto);
+        HttpStatus status = isCreate ? HttpStatus.CREATED : HttpStatus.OK;
+        String message = isCreate ? "Sale order created successfully" : "Sale order updated successfully";
+
+        logger.info("Save SaleOrder completed - operation: {}, savedId: {}, company: {}",
+                isCreate ? "CREATE" : "UPDATE",
+                savedOrder.getId(),
+                savedOrder.getCompanyRefId());
+
+        return ResponseEntity.status(status)
+                .body(ApiResponse.success(savedOrder, message));
     }
 
     @PutMapping("/{id}")
@@ -197,6 +204,7 @@ public class SaleOrderMasterController {
     public ResponseEntity<?> selectSaleOrder(@Valid @RequestBody SaleOrderFilterDTO filter) {
         logger.info("SelectSaleOrder endpoint called - Company: {}, Customer: {}, Employee: {}",
                 filter.getComid(), filter.getId(), filter.getEmployeeid());
+        logger.info("Full Search Filter Payload: {}", filter);
 
         try {
             if (filter.getComid() == null || filter.getComid() == 0) {
@@ -204,7 +212,11 @@ public class SaleOrderMasterController {
                         .body(new ApiResponse<>(false, 400, "Company ID is required", null, null, null));
             }
 
+            logger.info("Starting execution of service.selectSaleOrder for Company: {}", filter.getComid());
+            long startTime = System.currentTimeMillis();
             my.maleva.api.dto.SaleF5View result = service.selectSaleOrder(filter);
+            long duration = System.currentTimeMillis() - startTime;
+            logger.info("Finished execution of service.selectSaleOrder. Time taken: {} ms", duration);
 
             logger.info("SelectSaleOrder completed - Returned {} master records and {} detail records",
                     result.getSalemaster() != null ? result.getSalemaster().size() : 0,
@@ -234,4 +246,3 @@ public class SaleOrderMasterController {
         }
     }
 }
-

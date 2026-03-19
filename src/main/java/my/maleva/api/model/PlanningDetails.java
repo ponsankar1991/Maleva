@@ -20,6 +20,9 @@ public class PlanningDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(name = "SDId")
+    private Integer sdId;
+
     @Column(name = "PLANINGMasterRefId", nullable = false)
     private Integer planningMasterRefId;
 

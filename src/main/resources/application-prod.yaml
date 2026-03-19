@@ -1,6 +1,6 @@
 spring:
   application:
-    name: Maleva
+    name: Maleva Production
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
@@ -11,27 +11,12 @@ spring:
   redis:
     host: ${SPRING_REDIS_HOST:localhost}
     port: ${SPRING_REDIS_PORT:6379}
-  session:
-    # Disable Redis-backed HTTP session store so the application doesn't fail when Redis is unreachable
-    store-type: none
   datasource:
     # Default JDBC URL includes encrypt=true and trustServerCertificate=true to avoid SSL certificate path errors
     # For production, prefer to set trustServerCertificate=false and import the server certificate into the JVM truststore
     url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=DemoMaleva;encrypt=true;trustServerCertificate=true}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
     password: ${SPRING_DATASOURCE_PASSWORD:Kassamy@123}
-    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    hikari:
-      maximum-pool-size: 20          # Increased for better performance with concurrent requests
-      minimum-idle: 5                # Maintain minimum connections
-      idle-timeout: 300000           # 5 min - close idle connections
-      max-lifetime: 1200000          # 20 min - recycle connections
-      connection-timeout: 30000      # 30 sec - timeout for getting connection
-      keepalive-time: 60000          # 1 min - prevents firewall dropping connections
-      leak-detection-threshold: 60000 # Detect connection leaks
-      connection-test-query: SELECT 1 # Validate connection before use
-      pool-name: MalevaHikariPool    # Easier to identify in logs/monitoring
-      validation-timeout: 5000       # 5 sec - timeout for validation
   jpa:
     open-in-view: false              # Critical - prevent connection exhaustion in APIs
     show-sql: false                  # Disable SQL logging in production
