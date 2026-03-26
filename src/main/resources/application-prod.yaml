@@ -14,9 +14,22 @@ spring:
   datasource:
     # Default JDBC URL includes encrypt=true and trustServerCertificate=true to avoid SSL certificate path errors
     # For production, prefer to set trustServerCertificate=false and import the server certificate into the JVM truststore
-    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=DemoMaleva;encrypt=true;trustServerCertificate=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=DemoMaleva;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=30000}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
     password: ${SPRING_DATASOURCE_PASSWORD:Kassamy@123}
+    hikari:
+      maximum-pool-size: 40          # PRODUCTION: Increased for production loads
+      minimum-idle: 10               # PRODUCTION: Maintain robust pool
+      idle-timeout: 900000           # PRODUCTION: 15 min
+      max-lifetime: 1800000          # PRODUCTION: 30 min
+      connection-timeout: 60000      # 60 seconds
+      keepalive-time: 120000         # 2 minutes
+      leak-detection-threshold: 120000
+      connection-test-query: SELECT 1
+      pool-name: MalevaHikariPool-PROD
+      validation-timeout: 10000
+      connection-init-sql: SET NOCOUNT ON
+      auto-commit: true
   jpa:
     open-in-view: false              # Critical - prevent connection exhaustion in APIs
     show-sql: false                  # Disable SQL logging in production

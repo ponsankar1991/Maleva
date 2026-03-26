@@ -51,12 +51,13 @@ public class AuthUserController {
         var dto = employeeMasterService.findByUserName(userName);
         Integer roleId = dto == null ? null : dto.getRoleId();
         String EmployeeName = dto ==null? null:dto.getEmployeeName();
+        Integer companyId =dto==null ? null :dto.getCompanyRefId();
         Integer UserId =dto == null? null :dto.getId();
         String token = jwtService.generateToken(userName, roleId);
         String roleName = null;
         if (roleId != null)
         {roleName = UserRoles.fromId(roleId).map(Enum::name).orElse(null);}
         tokenStore.storeToken(token, jwtService.getExpirationSeconds());
-        return ResponseEntity.ok(Map.of("token", token, "roleId", roleId,"userName",EmployeeName,"UserId",UserId,"rolename",roleName));
+        return ResponseEntity.ok(Map.of("token", token, "roleId", roleId,"userName",EmployeeName,"UserId",UserId,"rolename",roleName,"companyId",companyId));
     }
 }

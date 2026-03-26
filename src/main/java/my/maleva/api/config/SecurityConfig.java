@@ -16,6 +16,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableMethodSecurity
@@ -36,7 +37,7 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "https://mydriverszone.com",
-                "http://mydriverszone.com"
+                "https://maleva.mydriverszone.com"
         ));
 
         config.setAllowedMethods(java.util.List.of(
@@ -48,7 +49,13 @@ public class SecurityConfig {
                 "Content-Type"
         ));
 
+        config.setExposedHeaders(java.util.List.of(
+                "Authorization",
+                "Content-Type"
+        ));
+
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
                 new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
@@ -98,11 +105,11 @@ public class SecurityConfig {
 
     // Security filter chain: register JWT filter and secure endpoints
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, TokenStore tokenStore) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, TokenStore tokenStore,CorsConfigurationSource corsConfigurationSource) {
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, tokenStore);
 
         http
-                .cors(cors -> {})
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(authorize -> authorize
