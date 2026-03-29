@@ -1,0 +1,1031 @@
+{
+	"info": {
+		"_postman_id": "maleva-api-complete-2026",
+		"name": "Maleva API Complete",
+		"description": "Complete API Collection for Maleva Application\n\n## Setup Instructions:\n1. Import this collection into Postman\n2. Import the 'Maleva_Environment.postman_environment.json' file\n3. Select 'Maleva Local' environment\n4. Run the 'Login' request first to get authentication token\n5. The token will be automatically saved and used for all subsequent requests\n\n## Environment Variables:\n- `baseUrl`: API base URL (e.g., http://localhost:8080)\n- `token`: JWT authentication token (auto-set after login)\n- `companyId`: Default company ID for testing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8082",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "companyId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global Pre-request Script",
+					"// Ensures all requests use the current token"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global Test Script",
+					"if (pm.response.code === 401) {",
+					"    console.log('Token expired or invalid. Please login again.');",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"description": "Authentication endpoints for login, logout, and registration",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Parse response and save token",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set('token', jsonData.token);",
+									"        pm.environment.set('token', jsonData.token);",
+									"        console.log('Token saved successfully!');",
+									"        console.log('User:', jsonData.userName);",
+									"        console.log('Role:', jsonData.rolename);",
+									"        console.log('Company ID:', jsonData.companyId);",
+									"        ",
+									"        // Save companyId for convenience",
+									"        if (jsonData.companyId) {",
+									"            pm.collectionVariables.set('companyId', jsonData.companyId);",
+									"            pm.environment.set('companyId', jsonData.companyId);",
+									"        }",
+									"    }",
+									"}",
+									"",
+									"pm.test('Login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Token received', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('token');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userName\": \"admin\",\n    \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login to get JWT token. Token is automatically saved for subsequent requests.\n\n**Request Body:**\n```json\n{\n    \"userName\": \"your_username\",\n    \"password\": \"your_password\"\n}\n```\n\n**Response:**\n```json\n{\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"roleId\": 1,\n    \"userName\": \"Admin User\",\n    \"UserId\": 1,\n    \"rolename\": \"ADMIN\",\n    \"companyId\": 1\n}\n```"
+					}
+				},
+				{
+					"name": "Register",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userName\": \"newuser\",\n    \"password\": \"password123\",\n    \"email\": \"newuser@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "Register a new user"
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "logout"]
+						},
+						"description": "Logout and invalidate current token"
+					}
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"description": "Customer management endpoints",
+			"item": [
+				{
+					"name": "Get All Customers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Get All Customers (with name filter)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers?name=John",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"],
+							"query": [
+								{
+									"key": "name",
+									"value": "John"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Customer by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerName\": \"Test Customer\",\n    \"address\": \"123 Test Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"test@example.com\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Update Customer",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"customerName\": \"Updated Customer\",\n    \"address\": \"456 Updated Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"updated@example.com\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Soft Delete Customer",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/1/soft-delete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "1", "soft-delete"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Truck Masters",
+			"description": "Truck master data management",
+			"item": [
+				{
+					"name": "Get Trucks by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Active Trucks by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}", "active"]
+						}
+					}
+				},
+				{
+					"name": "Get Truck by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Truck by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/name/TRUCK-001/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "name", "TRUCK-001", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Truck by Number",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/number/ABC123/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "number", "ABC123", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Trucks by Type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/type/40FT",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "type", "40FT"]
+						}
+					}
+				},
+				{
+					"name": "Get Trucks by Company and Type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/type/40FT",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}", "type", "40FT"]
+						}
+					}
+				},
+				{
+					"name": "Create Truck",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"truckName\": \"New Truck\",\n    \"truckNumber\": \"ABC123\",\n    \"truckType\": \"40FT\",\n    \"vehicleType\": \"Container\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters"]
+						}
+					}
+				},
+				{
+					"name": "Process Truck (SP_Truck logic)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"truckName\": \"Processed Truck\",\n    \"truckNumber\": \"XYZ789\",\n    \"truckType\": \"20FT\",\n    \"vehicleType\": \"Flatbed\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/process?companyId={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "process"],
+							"query": [
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Truck",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"truckName\": \"Updated Truck\",\n    \"truckNumber\": \"ABC123\",\n    \"truckType\": \"40FT\",\n    \"vehicleType\": \"Container\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Truck",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1"]
+						}
+					}
+				},
+				{
+					"name": "Activate Truck",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1/activate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1", "activate"]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Truck",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1/deactivate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1", "deactivate"]
+						}
+					}
+				},
+				{
+					"name": "Count Trucks by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/count",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}", "count"]
+						}
+					}
+				},
+				{
+					"name": "Check Truck Exists by Number",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/number/ABC123/company/{{companyId}}/exists",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "number", "ABC123", "company", "{{companyId}}", "exists"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Truck Combo (Dropdown)",
+			"description": "Truck combo/dropdown endpoints for UI",
+			"item": [
+				{
+					"name": "Get Truck Combo (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-combo?companyId={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-combo"],
+							"query": [
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Truck Combo with Type (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-combo?companyId={{companyId}}&type=40FT",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-combo"],
+							"query": [
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								},
+								{
+									"key": "type",
+									"value": "40FT"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Truck Combo (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"companyId\": {{companyId}},\n    \"type\": \"40FT\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-combo",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-combo"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Sale Orders",
+			"description": "Sale order management endpoints",
+			"item": [
+				{
+					"name": "Get All Sale Orders by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by Company and Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/status/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}", "status", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Order by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by Customer",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/customer/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "customer", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by C-Number",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/c-number/1001",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}", "c-number", "1001"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by Date Range",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/date-range?startDate=2026-01-01T00:00:00&endDate=2026-12-31T23:59:59",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}", "date-range"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2026-01-01T00:00:00"
+								},
+								{
+									"key": "endDate",
+									"value": "2026-12-31T23:59:59"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by Employee",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/employee/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "employee", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Sale Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders"]
+						}
+					}
+				},
+				{
+					"name": "Save Sale Order (Create/Update)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": null,\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"cNumber\": 1001,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/save",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "save"]
+						}
+					}
+				},
+				{
+					"name": "Update Sale Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Sale Order",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Accounts",
+			"description": "Account management endpoints",
+			"item": [
+				{
+					"name": "Get All Accounts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts"]
+						}
+					}
+				},
+				{
+					"name": "Get Account by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts/{{accountId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts", "{{accountId}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accountName\": \"Test Account\",\n    \"accountType\": \"Asset\",\n    \"balance\": 0,\n    \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts"]
+						}
+					}
+				},
+				{
+					"name": "Update Account",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accountName\": \"Updated Account\",\n    \"accountType\": \"Asset\",\n    \"balance\": 1000,\n    \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts/{{accountId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts", "{{accountId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts/{{accountId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts", "{{accountId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Companies",
+			"description": "Company management endpoints",
+			"item": [
+				{
+					"name": "Get All Companies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "companies"]
+						}
+					}
+				},
+				{
+					"name": "Get Company by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "companies", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Company",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"companyName\": \"New Company\",\n    \"address\": \"123 Business Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"company@example.com\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/companies",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "companies"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Addresses",
+			"description": "Address management endpoints",
+			"item": [
+				{
+					"name": "Get All Addresses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/addresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "addresses"]
+						}
+					}
+				},
+				{
+					"name": "Get Address by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/addresses/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "addresses", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Address",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Kuala Lumpur\",\n    \"state\": \"WP\",\n    \"postalCode\": \"50000\",\n    \"country\": \"Malaysia\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/addresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "addresses"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Sales (Invoices)",
+			"description": "Sales/Invoice management endpoints",
+			"item": [
+				{
+					"name": "Get All Sales",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sales",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sales"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sales/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sales", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-details",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-details"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customer Quotations",
+			"description": "Customer quotation management endpoints",
+			"item": [
+				{
+					"name": "Get All Quotations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotations",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotations"]
+						}
+					}
+				},
+				{
+					"name": "Get Quotation by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotations/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotations", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Quotation Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotation-details",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotation-details"]
+						}
+					}
+				},
+				{
+					"name": "Get Quotation Masters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotation-masters",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotation-masters"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Bills",
+			"description": "Bill management endpoints",
+			"item": [
+				{
+					"name": "Get Bills Order Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/bills-order-details",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "bills-order-details"]
+						}
+					}
+				}
+			]
+		}
+	]
+}
+

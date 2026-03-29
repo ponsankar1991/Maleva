@@ -89,12 +89,12 @@ src/main/java/my/maleva/api/
 #### Role-Based Access Control
 - Use `@PreAuthorize` annotation on controllers:
   ```java
-  @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPRERADMIN')")
+  @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
   ```
 
 #### Authentication Providers
 - JWT Token-based authentication
-- Role mapping: `ROLE_ADMIN`, `ROLE_SUPRERADMIN`, `ROLE_100`, etc.
+- Role mapping: `ROLE_ADMIN`, `ROLE_SUPERADMIN`, `ROLE_100`, etc.
 
 ---
 

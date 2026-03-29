@@ -1,7 +1,7 @@
 package my.maleva.api.integration.qne;
 
 import lombok.RequiredArgsConstructor;
-import my.maleva.api.config.QneProperties;
+import my.maleva.api.common.config.QneProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 

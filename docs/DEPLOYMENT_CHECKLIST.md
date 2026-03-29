@@ -221,7 +221,7 @@
 
 - [ ] Role-based access control verified
 - [ ] ROLE_ADMIN permissions verified
-- [ ] ROLE_SUPRERADMIN permissions verified
+- [ ] ROLE_SUPERADMIN permissions verified
 - [ ] ROLE_100 permissions verified
 - [ ] Unauthorized access blocked
 

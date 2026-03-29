@@ -180,7 +180,7 @@ The service layer incorporates all business logic from `SP_PLANINGMaster`:
 
 ### 6. ✅ Security
 - Role-based access control (@PreAuthorize)
-- Supported roles: ROLE_SUPRERADMIN, ROLE_ADMIN, ROLE_100
+- Supported roles: ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_100
 - Method-level security on all controllers
 
 ### 7. ✅ API Standards Compliance

@@ -1,0 +1,165 @@
+package my.maleva.api.module.customer.repository;
+
+import lombok.RequiredArgsConstructor;
+import my.maleva.api.module.customer.dto.request.CustomerSelectRequest;
+import my.maleva.api.module.customer.dto.response.CustomerSelectDto;
+import my.maleva.api.module.customer.entity.Customer;
+import org.springframework.stereotype.Repository;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Repository
+@RequiredArgsConstructor
+public class CustomerQueryRepository {
+
+    private final EntityManager em;
+
+    public long countCustomers(CustomerSelectRequest req) {
+        StringBuilder jpql = new StringBuilder("SELECT COUNT(s.id) FROM Customer s WHERE s.companyRefId = :companyId AND s.active != 2");
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("companyId", req.getCompanyId());
+
+        appendKeywordFilterJpa(jpql, params, req);
+
+        TypedQuery<Long> query = em.createQuery(jpql.toString(), Long.class);
+        params.forEach(query::setParameter);
+        Long count = query.getSingleResult();
+        return count != null ? count : 0L;
+    }
+
+    public List<CustomerSelectDto> findCustomers(CustomerSelectRequest req) {
+        StringBuilder jpql = new StringBuilder();
+
+        // Select the entity and the few joined display values — we'll map in Java to avoid constructor projection issues
+        jpql.append("SELECT s, sm.sName, pt.termsName, ag.accountCode, cm.country ")
+            .append("FROM Customer s ")
+            .append("LEFT JOIN SymbolMaster sm ON s.symbolRefid = sm.id ")
+            .append("LEFT JOIN PaymentTermsMaster pt ON s.paymentTermsRefid = pt.id ")
+            .append("LEFT JOIN AccountsGroupMaster ag ON ag.id = s.accountRefid ")
+            .append("LEFT JOIN CountryMaster cm ON s.countryId = cm.id ")
+            .append("WHERE s.companyRefId = :companyId AND s.active != 2");
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("companyId", req.getCompanyId());
+
+        appendKeywordFilterJpa(jpql, params, req);
+
+        jpql.append(" ORDER BY s.id");
+
+        TypedQuery<Object[]> query = em.createQuery(jpql.toString(), Object[].class);
+        params.forEach(query::setParameter);
+
+        int start = Math.max(req.getStartIndex(), 0);
+        query.setFirstResult(start);
+        query.setMaxResults(req.getPageCount());
+
+        List<Object[]> rows = query.getResultList();
+        List<CustomerSelectDto> results = new ArrayList<>(rows.size());
+
+        for (Object[] row : rows) {
+            Customer s = (Customer) row[0];
+            String sName = row[1] != null ? (String) row[1] : null;
+            String termsName = row[2] != null ? (String) row[2] : null;
+            String accountCode = row[3] != null ? (String) row[3] : null;
+            String country = row[4] != null ? (String) row[4] : null;
+
+            CustomerSelectDto dto = CustomerSelectDto.builder()
+                    .id(s.getId())
+                    .companyRefId(s.getCompanyRefId())
+                    .cNumberDisplay(s.getCNumberDisplay())
+                    .cNumber(s.getCNumber())
+                    .customerName(s.getCustomerName())
+
+                    .address1(s.getAddress1())
+                    .address2(s.getAddress2())
+                    .address3(s.getAddress3())
+                    .city(s.getCity())
+                    .state(s.getState())
+                    .zipcode(s.getZipcode())
+                    .countryId(s.getCountryId())
+                    .email(s.getEmail())
+                    .mobileNo(s.getMobileNo())
+                    .userName(s.getUserName())
+                    .password(s.getPassword())
+                    .latitude(s.getLatitude())
+                    .longitude(s.getLongitude())
+                    .gstNo(s.getGstNo())
+                    .tinNo(s.getTinNo())
+                    .sstNo(s.getSstNo())
+                    .tinType(s.getTintype())
+                    .customerTin(s.getCustomerTin())
+                    .bankName(s.getBankName())
+                    .accountNo(s.getAccountNo())
+                    .active(s.getActive())
+                    .createdDate(s.getCreatedDate())
+                    .modifiedDate(s.getModifiedDate())
+                    .sName(sName)
+                    .termsName(termsName)
+                    .accountCode(accountCode)
+                    .cmName(country)
+                    .personId(s.getPersonId())
+                    .tokenId(s.getTokenId())
+                    .oEmail(s.getOEmail())
+                    .oEmail1(s.getOEmail1())
+                    .oName(s.getOName())
+                    .oPhone(s.getOPhone())
+                    .aEmail(s.getAEmail())
+                    .aEmail1(s.getAEmail1())
+                    .aName(s.getAName())
+                    .aPhone(s.getAPhone())
+                    .companyCode(s.getCompanyCode())
+                    .expiryDate(s.getExpiryDate() != null ? s.getExpiryDate().toString() : null)
+                    .updateId(s.getUpdateId())
+                    .customerCity(s.getCustomerCity())
+                    .serviceTaxType(s.getServiceTaxType())
+                    .msicCode(s.getMsicCode())
+                    .registrationNo(s.getRegistrationNo())
+                    .exemptionNo(s.getExemptionNo())
+                    .exemptionDetails(s.getExemptionDetails())
+                    .symbolRefId(s.getSymbolRefid())
+                    .paymentTermsRefId(s.getPaymentTermsRefid())
+                    .eInvoice(s.getEInvoice())
+                    .build();
+
+            results.add(dto);
+        }
+
+        return results;
+    }
+
+    private void appendKeywordFilterJpa(StringBuilder jpql, Map<String, Object> params, CustomerSelectRequest req) {
+        if (req.getKeyword() == null || req.getKeyword().isBlank() || req.getColumn() == null) {
+            return;
+        }
+
+        String keyword = req.getKeyword();
+        switch (req.getColumn()) {
+            case "CustomerName" -> {
+                jpql.append(" AND LOWER(s.customerName) LIKE :keyword");
+                params.put("keyword", "%" + keyword.toLowerCase() + "%");
+            }
+            case "MobileNo" -> {
+                jpql.append(" AND s.mobileNo LIKE :keyword");
+                params.put("keyword", "%" + keyword + "%");
+            }
+            case "Id" -> {
+                try {
+                    int id = Integer.parseInt(keyword);
+                    jpql.append(" AND s.id = :id");
+                    params.put("id", id);
+                } catch (NumberFormatException ex) {
+                    // skip invalid id
+                }
+            }
+            default -> {
+                // unknown column - ignore
+            }
+        }
+    }
+}
