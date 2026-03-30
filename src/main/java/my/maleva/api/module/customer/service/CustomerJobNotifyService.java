@@ -2,9 +2,11 @@ package my.maleva.api.module.customer.service;
 
 import my.maleva.api.module.customer.dto.CustomerJobNotifyDto;
 import my.maleva.api.common.exception.EntityNotFoundException;
+import my.maleva.api.module.customer.dto.response.CustomerJobNotifySelectDto;
 import my.maleva.api.module.customer.mapper.CustomerJobNotifyMapper;
 import my.maleva.api.module.customer.entity.CustomerJobNotify;
 import my.maleva.api.module.customer.repository.CustomerJobNotifyRepository;
+import my.maleva.api.module.customer.repository.CustomerQueryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +17,16 @@ import java.util.stream.Collectors;
 public class CustomerJobNotifyService {
 
     private final CustomerJobNotifyRepository repository;
+    private final CustomerQueryRepository queryRepository;
     private final CustomerJobNotifyMapper mapper;
 
-    public CustomerJobNotifyService(CustomerJobNotifyRepository repository, CustomerJobNotifyMapper mapper) {
+    public CustomerJobNotifyService(
+            CustomerJobNotifyRepository repository,
+            CustomerQueryRepository queryRepository,
+            CustomerJobNotifyMapper mapper
+    ) {
         this.repository = repository;
+        this.queryRepository = queryRepository;
         this.mapper = mapper;
     }
 
@@ -29,6 +37,11 @@ public class CustomerJobNotifyService {
     public CustomerJobNotifyDto getById(Integer id) {
         CustomerJobNotify ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("CustomerJobNotify not found: " + id));
         return mapper.toDto(ent);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CustomerJobNotifySelectDto> selectCustomerJobNotify(Integer customerMasterRefId) {
+        return queryRepository.findCustomerJobNotifications(customerMasterRefId);
     }
 
     @Transactional

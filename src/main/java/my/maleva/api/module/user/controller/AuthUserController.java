@@ -1,14 +1,17 @@
 package my.maleva.api.module.user.controller;
 
 import my.maleva.api.module.user.dto.AppUserDto;
+import my.maleva.api.module.employee.dto.EmployeeMasterDto;
 import my.maleva.api.module.user.service.AppUserService;
 import my.maleva.api.module.employee.service.EmployeeMasterService;
 import my.maleva.api.security.controller.JwtService;
 import my.maleva.api.security.controller.TokenStore;
 import my.maleva.api.common.constant.UserRoles;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -50,14 +53,69 @@ public class AuthUserController {
         // fetch user to obtain roleId
         var dto = employeeMasterService.findByUserName(userName);
         Integer roleId = dto == null ? null : dto.getRoleId();
-        String EmployeeName = dto ==null? null:dto.getEmployeeName();
-        Integer companyId =dto==null ? null :dto.getCompanyRefId();
-        Integer UserId =dto == null? null :dto.getId();
         String token = jwtService.generateToken(userName, roleId);
-        String roleName = null;
-        if (roleId != null)
-        {roleName = UserRoles.fromId(roleId).map(Enum::name).orElse(null);}
-        tokenStore.storeToken(token, jwtService.getExpirationSeconds());
-        return ResponseEntity.ok(Map.of("token", token, "roleId", roleId,"userName",EmployeeName,"UserId",UserId,"rolename",roleName,"companyId",companyId));
+        storeAccessToken(token);
+
+        return ResponseEntity.ok(buildAuthResponse(token, dto, roleId));
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
+    ) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("error", "Authorization header missing or invalid"));
+        }
+
+        String currentToken = authorization.substring("Bearer ".length()).trim();
+        if (!jwtService.validateToken(currentToken) || !tokenStore.exists(currentToken)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid or expired token"));
+        }
+
+        long now = System.currentTimeMillis();
+        long sessionExpiresAt = jwtService.getSessionExpiresAtMillis(currentToken);
+        if (sessionExpiresAt > 0 && now >= sessionExpiresAt) {
+            tokenStore.revoke(currentToken);
+            return ResponseEntity.status(401).body(Map.of("error", "Session expired"));
+        }
+
+        String userName = jwtService.getSubject(currentToken);
+        var dto = employeeMasterService.findByUserName(userName);
+        Integer roleId = dto != null ? dto.getRoleId() : jwtService.getRoleId(currentToken);
+
+        long effectiveSessionExpiry = sessionExpiresAt > 0
+                ? sessionExpiresAt
+                : now + (jwtService.getSessionMaxAgeSeconds() * 1000L);
+
+        String refreshedToken = jwtService.generateToken(userName, roleId, effectiveSessionExpiry);
+
+        tokenStore.revoke(currentToken);
+        storeAccessToken(refreshedToken);
+
+        return ResponseEntity.ok(buildAuthResponse(refreshedToken, dto, roleId));
+    }
+
+    private void storeAccessToken(String token) {
+        long expiresAt = jwtService.getExpiresAtMillis(token);
+        long ttlMillis = Math.max(1000L, expiresAt - System.currentTimeMillis());
+        long ttlSeconds = Math.max(1L, (ttlMillis + 999L) / 1000L);
+        tokenStore.storeToken(token, ttlSeconds);
+    }
+
+    private Map<String, Object> buildAuthResponse(String token, EmployeeMasterDto dto, Integer roleId) {
+        var response = new LinkedHashMap<String, Object>();
+        String roleName = roleId != null
+                ? UserRoles.fromId(roleId).map(Enum::name).orElse(null)
+                : null;
+
+        response.put("token", token);
+        response.put("roleId", roleId);
+        response.put("userName", dto != null ? dto.getEmployeeName() : null);
+        response.put("UserId", dto != null ? dto.getId() : null);
+        response.put("rolename", roleName);
+        response.put("companyId", dto != null ? dto.getCompanyRefId() : null);
+        response.put("expiresAt", jwtService.getExpiresAtMillis(token));
+        response.put("sessionExpiresAt", jwtService.getSessionExpiresAtMillis(token));
+        return response;
     }
 }

@@ -76,6 +76,7 @@ file:
 jwt:
   secret: changeit
   expiration: 3600
+  session-max-age: 28800
 security:
   password-encoding:
     enabled: false

@@ -1,6 +1,8 @@
 package my.maleva.api.module.customer.controller;
 
+import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.customer.dto.CustomerJobNotifyDto;
+import my.maleva.api.module.customer.dto.response.CustomerJobNotifySelectDto;
 import my.maleva.api.module.customer.service.CustomerJobNotifyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,6 +33,18 @@ public class CustomerJobNotifyController {
     @GetMapping("/{id}")
     public CustomerJobNotifyDto get(@PathVariable Integer id) {
         return service.getById(id);
+    }
+
+    @PostMapping("/select")
+    public ResponseEntity<ApiResponse<List<CustomerJobNotifySelectDto>>> selectCustomerJobNotify(
+            @RequestParam("id") Integer customerMasterRefId
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Customer job notifications fetched successfully",
+                        service.selectCustomerJobNotify(customerMasterRefId)
+                )
+        );
     }
 
     @PostMapping

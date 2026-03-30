@@ -2,11 +2,13 @@ package my.maleva.api.module.customer.repository;
 
 import lombok.RequiredArgsConstructor;
 import my.maleva.api.module.customer.dto.request.CustomerSelectRequest;
+import my.maleva.api.module.customer.dto.response.CustomerJobNotifySelectDto;
 import my.maleva.api.module.customer.dto.response.CustomerSelectDto;
 import my.maleva.api.module.customer.entity.Customer;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -133,6 +135,50 @@ public class CustomerQueryRepository {
         return results;
     }
 
+    public List<CustomerJobNotifySelectDto> findCustomerJobNotifications(Integer customerMasterRefId) {
+        String sql = """
+                SELECT
+                    CN.Id,
+                    CN.Name,
+                    CN.Id AS CustomerDetailRefId,
+                    COALESCE(CJ.Whatsapp, 0) AS Whatsapp,
+                    COALESCE(CJ.Phone, '0') AS Phone,
+                    COALESCE(CJ.Email, 0) AS Email,
+                    CN.Whatsapp AS WhatsappDisplay,
+                    CN.Whatsapp AS PhoneDisplay,
+                    CN.Email AS EmailDisplay
+                FROM CustomerNotifyDetails CN
+                LEFT JOIN CustomerJobNotify CJ
+                    ON CN.Id = CJ.CustomerDetailRefId
+                WHERE CN.CustomerMasterRefId = :customerMasterRefId
+                ORDER BY CN.Id
+                """;
+
+        Query query = em.createNativeQuery(sql);
+        query.setParameter("customerMasterRefId", customerMasterRefId);
+
+        List<Object[]> rows = query.getResultList();
+        List<CustomerJobNotifySelectDto> results = new ArrayList<>(rows.size());
+
+        for (Object[] row : rows) {
+            CustomerJobNotifySelectDto dto = CustomerJobNotifySelectDto.builder()
+                    .id(toInteger(row[0]))
+                    .name(toStringValue(row[1]))
+                    .customerDetailRefId(toInteger(row[2]))
+                    .whatsapp(toInteger(row[3]))
+                    .phone(toInteger(row[4]))
+                    .email(toInteger(row[5]))
+                    .whatsappDisplay(toStringValue(row[6]))
+                    .phoneDisplay(toStringValue(row[7]))
+                    .emailDisplay(toStringValue(row[8]))
+                    .build();
+
+            results.add(dto);
+        }
+
+        return results;
+    }
+
     private void appendKeywordFilterJpa(StringBuilder jpql, Map<String, Object> params, CustomerSelectRequest req) {
         if (req.getKeyword() == null || req.getKeyword().isBlank() || req.getColumn() == null) {
             return;
@@ -161,5 +207,23 @@ public class CustomerQueryRepository {
                 // unknown column - ignore
             }
         }
+    }
+
+    private Integer toInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        String text = value.toString().trim();
+        if (text.isEmpty()) {
+            return null;
+        }
+        return Integer.parseInt(text);
+    }
+
+    private String toStringValue(Object value) {
+        return value != null ? value.toString() : null;
     }
 }
