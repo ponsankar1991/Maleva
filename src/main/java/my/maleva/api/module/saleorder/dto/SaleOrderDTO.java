@@ -131,7 +131,8 @@ public class SaleOrderDTO {
     @Size(max = 200)
     private String oVessel;
 
-    private Integer commodity;
+    @Size(max = 200)
+    private String commodity;
 
     @Size(max = 100)
     private String cargo;
@@ -345,11 +346,14 @@ public class SaleOrderDTO {
     @Size(max = 2000)
     private String deliveryAddress;
 
-    private Integer forwarding;
+    @Size(max = 50)
+    private String forwarding;
 
-    private Integer forwarding2;
+    @Size(max = 50)
+    private String forwarding2;
 
-    private Integer forwarding3;
+    @Size(max = 50)
+    private String forwarding3;
 
     @Size(max = 200)
     private String origin;
@@ -363,9 +367,11 @@ public class SaleOrderDTO {
     @Size(max = 100)
     private String lscn;
 
-    private Integer zb;
+    @Size(max = 50)
+    private String zb;
 
-    private Integer zb2;
+    @Size(max = 50)
+    private String zb2;
 
     @Size(max = 100)
     private String zbRef;
@@ -373,17 +379,23 @@ public class SaleOrderDTO {
     @Size(max = 100)
     private String zbRef2;
 
-    private Integer forwarding1S1;
+    @Size(max = 100)
+    private String forwarding1S1;
 
-    private Integer forwarding1S2;
+    @Size(max = 100)
+    private String forwarding1S2;
 
-    private Integer forwarding2S1;
+    @Size(max = 100)
+    private String forwarding2S1;
 
-    private Integer forwarding2S2;
+    @Size(max = 100)
+    private String forwarding2S2;
 
-    private Integer forwarding3S1;
+    @Size(max = 100)
+    private String forwarding3S1;
 
-    private Integer forwarding3S2;
+    @Size(max = 100)
+    private String forwarding3S2;
 
     @Size(max = 100)
     private String trucksize2;

@@ -20,6 +20,11 @@
 			"key": "companyId",
 			"value": "1",
 			"type": "string"
+		},
+		{
+			"key": "saleOrderEditId",
+			"value": "16201",
+			"type": "string"
 		}
 	],
 	"auth": {
@@ -260,6 +265,33 @@
 							"raw": "{{baseUrl}}/api/customers/1/soft-delete",
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "customers", "1", "soft-delete"]
+						}
+					}
+				},
+				{
+					"name": "Bulk Upsert Customer Job Notifications",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"Name\": \"BEN LINE AGENCIES (M) SDN BHD\",\n        \"CustomerDetailRefId\": 1,\n        \"SaleOrderRefId\": 16201,\n        \"Whatsapp\": 1,\n        \"WhatsappDisplay\": \"+60123456789\",\n        \"Email\": 1,\n        \"EmailDisplay\": \"ops@example.com\",\n        \"Phone\": 0,\n        \"PhoneDisplay\": \"+60123456789\",\n        \"Id\": 0\n    }\n]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-job-notifications/bulk?Comid={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-job-notifications", "bulk"],
+							"query": [
+								{
+									"key": "Comid",
+									"value": "{{companyId}}"
+								}
+							]
 						}
 					}
 				}
@@ -592,6 +624,29 @@
 					}
 				},
 				{
+					"name": "Get Edit Sale Order",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/edit?id={{saleOrderEditId}}&companyId={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "edit"],
+							"query": [
+								{
+									"key": "id",
+									"value": "{{saleOrderEditId}}"
+								},
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								}
+							]
+						},
+						"description": "Use this request for the sale-order edit page flow. Example frontend route: `http://localhost:5173/sale-order/edit/16201` maps to `id=16201` here. This returns the edit payload with master data, detail rows, pickup, delivery, forwarding, and the flat compatibility fields like `cNumberDisplay`, `CNumberDisplay`, `jobMasterRefId`, and `JobMasterRefId`."
+					}
+				},
+				{
 					"name": "Get Sale Orders by Customer",
 					"request": {
 						"method": "GET",
@@ -647,6 +702,28 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "sale-orders", "employee", "1"]
 						}
+					}
+				},
+				{
+					"name": "Search Sale Orders (Correct Filter Payload)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": {{companyId}},\n    \"Fromdate\": \"2026/02/10\",\n    \"Todate\": \"2026/03/30\",\n    \"Id\": 0,\n    \"Employeeid\": 0,\n    \"Statusid\": 1,\n    \"completestatusnotshow\": false,\n    \"Search\": \"\",\n    \"Remarks\": 3,\n    \"ETA\": false,\n    \"ETAType\": 0,\n    \"Pickup\": false,\n    \"Offvesselname\": \"\",\n    \"Loadingvesselname\": \"\",\n    \"JId\": 0,\n    \"Invoice\": false,\n    \"statusList\": null,\n    \"DashboardStatus\": 0,\n    \"Invoicecheck\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/search",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "search"]
+						},
+						"description": "Use this request for the Spring `POST /api/sale-orders/search` endpoint.\n\nThis payload is the transformed API shape expected by `SaleOrderFilterDTO`, not the raw React filter state.\n\nImportant mappings:\n- `Statusid` must be an integer, e.g. `1`\n- `Remarks` must be numeric: `3` means ALL\n- `ETAType` must be numeric: `0` means NONE\n- `Fromdate` and `Todate` must use `yyyy/MM/dd`\n- Do not send raw frontend keys like `statusId`, `remarksFilter`, `etaFilter`"
 					}
 				},
 				{

@@ -1,6 +1,8 @@
 package my.maleva.api.module.saleorder.helper;
 
+import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO;
+import my.maleva.api.module.saleorder.util.SaleOrderApiConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -22,34 +24,31 @@ public class SaleOrderFilterHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(SaleOrderFilterHelper.class);
 
-    private static final Integer DEFAULT_COMPANY_ID = 6;
-    private static final String ISNULL_DEFAULT_DATE = "1900-01-01";
-
     /**
      * Validate filter parameters and set defaults where needed
      * 
      * @param filter the SaleOrderFilterDTO to validate
-     * @throws IllegalArgumentException if critical parameters are missing
+     * @throws InvalidRequestException if critical parameters are missing
      */
     public void validateFilter(SaleOrderFilterDTO filter) {
         if (filter == null) {
-            throw new IllegalArgumentException("Filter cannot be null");
+            throw new InvalidRequestException(SaleOrderApiConstants.MESSAGE_FILTER_REQUIRED);
         }
 
         if (filter.getComid() == null || filter.getComid() <= 0) {
-            logger.warn("Company ID is null or invalid, using default: {}", DEFAULT_COMPANY_ID);
-            filter.setComid(DEFAULT_COMPANY_ID);
+            throw new InvalidRequestException(SaleOrderApiConstants.MESSAGE_COMPANY_REQUIRED);
         }
 
-        // Ensure date fields have valid values
         if (filter.getFromdate() == null) {
-            logger.debug("FromDate is null, setting to today");
             filter.setFromdate(LocalDate.now());
         }
 
         if (filter.getTodate() == null) {
-            logger.debug("ToDate is null, setting to today");
             filter.setTodate(LocalDate.now());
+        }
+
+        if (filter.getFromdate().isAfter(filter.getTodate())) {
+            throw new InvalidRequestException(SaleOrderApiConstants.MESSAGE_FROM_DATE_INVALID);
         }
 
         logger.debug("Filter validation completed - Company: {}, FromDate: {}, ToDate: {}",
@@ -124,7 +123,9 @@ public class SaleOrderFilterHelper {
      */
     public boolean isDateFilterActive(SaleOrderFilterDTO filter) {
         return filter != null && !isSearchFilterActive(filter);
-    }/**
+    }
+
+    /**
      * Log filter details for debugging
      * 
      * @param filter the filter to log

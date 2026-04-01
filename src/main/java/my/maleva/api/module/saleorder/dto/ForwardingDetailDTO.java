@@ -33,12 +33,12 @@ public class ForwardingDetailDTO {
     @Size(max = 100, message = "SMK Number must not exceed 100 characters")
     private String smkNo;
 
-    private Integer sealByRefId;
+    private String sealByRefId;
 
     @Size(max = 100, message = "Seal Amount must not exceed 100 characters")
     private String sealAmount;
 
-    private Integer breakSealByRefId;
+    private String breakSealByRefId;
 
     @Size(max = 100, message = "Break Seal Amount must not exceed 100 characters")
     private String breakSealAmount;
@@ -55,4 +55,3 @@ public class ForwardingDetailDTO {
 
     private Integer rowNumber;
 }
-

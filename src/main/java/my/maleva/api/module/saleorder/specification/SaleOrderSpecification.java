@@ -1,9 +1,11 @@
 package my.maleva.api.module.saleorder.specification;
 
+import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import my.maleva.api.module.master.entity.RulesTypeMaster;
 import my.maleva.api.module.invoice.entity.SaleMaster;
 import my.maleva.api.module.jobs.entity.JobStatusMaster;
+import my.maleva.api.module.saleorder.util.SaleOrderApiConstants;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.*;
 
@@ -37,7 +39,7 @@ public class SaleOrderSpecification {
 
             // Always filter by company and active status
             predicates.add(cb.equal(root.get("companyRefId"), companyId));
-            predicates.add(cb.equal(root.get("active"), 1));
+            predicates.add(cb.equal(root.get("active"), SaleOrderApiConstants.ACTIVE_STATUS));
 
             // Filter by customer ID if provided
             if (customerId != null && customerId != 0) {
@@ -83,7 +85,7 @@ public class SaleOrderSpecification {
                 Subquery<Integer> statusSubquery = query.subquery(Integer.class);
                 Root<JobStatusMaster> jobStatusRoot = statusSubquery.from(JobStatusMaster.class);
                 statusSubquery.select(jobStatusRoot.get("id"))
-                        .where(jobStatusRoot.get("mid").in(statusIds));
+                        .where(jobStatusRoot.get("mId").in(statusIds));
 
                 predicates.add(
                         cb.or(
@@ -96,7 +98,7 @@ public class SaleOrderSpecification {
                 Subquery<Integer> statusSubquery = query.subquery(Integer.class);
                 Root<JobStatusMaster> jobStatusRoot = statusSubquery.from(JobStatusMaster.class);
                 statusSubquery.select(jobStatusRoot.get("id"))
-                        .where(cb.equal(jobStatusRoot.get("mid"), statusId));
+                        .where(cb.equal(jobStatusRoot.get("mId"), statusId));
 
                 predicates.add(
                         cb.or(
@@ -108,7 +110,7 @@ public class SaleOrderSpecification {
 
             // Exclude completed status (status != 8)
             if (completeStatusNotShow != null && completeStatusNotShow) {
-                predicates.add(cb.notEqual(root.get("jStatus"), 8));
+                predicates.add(cb.notEqual(root.get("jStatus"), SaleOrderApiConstants.COMPLETED_JOB_STATUS));
             }
 
             // Filter by remarks
@@ -199,11 +201,15 @@ public class SaleOrderSpecification {
      * Parse comma-separated integer string to list
      */
     private static List<Integer> parseIntegerList(String commaSeparatedIds) {
-        return Arrays.stream(commaSeparatedIds.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .map(Integer::parseInt)
-                .collect(Collectors.toList());
+        try {
+            return Arrays.stream(commaSeparatedIds.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList());
+        } catch (NumberFormatException exception) {
+            throw new InvalidRequestException(SaleOrderApiConstants.MESSAGE_STATUS_LIST_INVALID, exception);
+        }
     }
 }
 

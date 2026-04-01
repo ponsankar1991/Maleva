@@ -31,15 +31,10 @@ public class JobStatusMasterController {
         return service.listAll();
     }
 
-    /**
-     * Get active job statuses for a company (active = 1)
-     * Example: GET /api/job-status-master/company/5/active
-     */
     @GetMapping("/select/{companyId}/")
-    public ResponseEntity<ApiResponse<List<JobStatusMasterDto>>> getByCompanyActive(
-            @PathVariable @NotNull Integer companyId) {
+    public ResponseEntity<ApiResponse<List<JobStatusMasterDto>>> getByCompanyActive(@PathVariable @NotNull Integer companyId) {
         try {
-            List<JobStatusMasterDto> list = service.listByCompanyAndActive(companyId, 1);
+            List<JobStatusMasterDto> list = service.selectJobStatus(companyId);
 
             if (list.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)

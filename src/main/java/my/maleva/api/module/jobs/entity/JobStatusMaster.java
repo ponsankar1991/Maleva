@@ -53,4 +53,8 @@ public class JobStatusMaster {
 
     @Column(name = "MId")
     private Integer mId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MId", referencedColumnName = "Id", insertable = false, updatable = false)
+    private JobStatusMaster parentStatus;
 }

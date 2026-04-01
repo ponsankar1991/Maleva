@@ -41,4 +41,5 @@ public class JobStatusMasterDto {
     private Integer active;
 
     private Integer mId;
+    private String mName;
 }

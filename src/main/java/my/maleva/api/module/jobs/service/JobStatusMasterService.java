@@ -27,13 +27,12 @@ public class JobStatusMasterService {
         return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
-    // Added: list active job statuses for a company (active == 1)
-    public List<JobStatusMasterDto> listByCompanyAndActive(Integer companyId, Integer active) {
+    public List<JobStatusMasterDto> selectJobStatus(Integer companyId) {
         if (companyId == null || companyId <= 0) {
             throw new IllegalArgumentException("Invalid company ID");
         }
 
-        return repository.findByCompanyRefIdAndActive(companyId, active)
+        return repository.findSelectableByCompanyId(companyId, 2)
                 .stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());

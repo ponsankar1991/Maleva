@@ -25,6 +25,7 @@ public class SaleOrderMasterDto {
     private Integer employeeRefId;
     @NotNull(message = "Customer Reference ID is required")
     private Integer customerRefId;
+    private String customerName;
     @NotNull(message = "Job Master Reference ID is required")
     private Integer jobMasterRefId;
     private Integer agentCompanyRefId;
@@ -80,6 +81,7 @@ public class SaleOrderMasterDto {
     @Size(max = 100)
     private String totalWeight;
     private Integer jStatus;
+    private String statusName;
     private Integer oStatus;
     private Integer forkliftbyRefid;
     private Integer sealbyRefid;
@@ -217,4 +219,3 @@ public class SaleOrderMasterDto {
     private String odiDateOut;
     private Integer sportsaleorderid;
 }
-

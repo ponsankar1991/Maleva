@@ -8,11 +8,14 @@ import my.maleva.api.module.jobs.dto.JobStatusMasterDto;
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface JobStatusMasterMapper {
 
+    @Mapping(source = "parentStatus.name", target = "mName")
     JobStatusMasterDto toDto(JobStatusMaster entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "parentStatus", ignore = true)
     JobStatusMaster toEntity(JobStatusMasterDto dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "parentStatus", ignore = true)
     void updateFromDto(JobStatusMasterDto dto, @MappingTarget JobStatusMaster entity);
 }

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * SaleOrderMasterRepository - Repository for SaleOrderMaster with dynamic query support
@@ -19,6 +20,18 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
 
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN TRUE ELSE FALSE END FROM SaleOrderMaster s WHERE s.companyRefId = :companyRefId AND s.cNumber = :cNumber")
     boolean existsByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);
+
+    /**
+     * Loads an active sale order because update and delete flows should not
+     * operate on already inactive records.
+     *
+     * @param id sale-order identifier
+     * @param active active flag
+     * @return matching active sale order when available
+     */
+    Optional<SaleOrderMaster> findByIdAndActive(Integer id, Integer active);
+
+    Optional<SaleOrderMaster> findByCompanyRefIdAndCNumberAndActive(Integer companyRefId, Integer cNumber, Integer active);
 
     /**
      * OPTIMIZED: Fetch SaleMaster data filtered by specific order IDs
@@ -40,7 +53,7 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
     @Query(value = "SELECT " +
             "A.Id, " +                                                                         // 0
             "A.sportsaleorderid, " +                                                           // 1
-            "A.InvoiceNo AS InvoiceId, " +                                                     // 2
+            "ISNULL(SM.InvoiceId, A.InvoiceNo) AS InvoiceId, " +                               // 2
             "A.Remarks, " +                                                                    // 3
             "A.Destination, " +                                                                // 4
             "A.FlighTime, " +                                                                  // 5
@@ -76,7 +89,23 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             "LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = A.EmployeeRefId " +
             "LEFT JOIN JobStatusMaster J WITH(NOLOCK) ON J.Id = A.JStatus " +
             "LEFT JOIN JobTypeMaster JT WITH(NOLOCK) ON JT.Id = A.JobMasterRefId " +
-            "LEFT JOIN SaleMaster SM WITH(NOLOCK) ON SM.id = A.InvoiceNo " +
+            "OUTER APPLY ( " +
+            "    SELECT TOP 1 " +
+            "        SM1.Id AS InvoiceId, " +
+            "        SM1.CNumberDisplay, " +
+            "        SM1.QNECode, " +
+            "        SM1.QNEId " +
+            "    FROM SaleMaster SM1 WITH(NOLOCK) " +
+            "    WHERE SM1.CompanyRefId = A.CompanyRefId " +
+            "      AND SM1.Active = 1 " +
+            "      AND ( " +
+            "          (A.InvoiceNo IS NOT NULL AND A.InvoiceNo > 0 AND SM1.Id = A.InvoiceNo) " +
+            "          OR SM1.SaleOrderMasterNo = A.Id " +
+            "      ) " +
+            "    ORDER BY " +
+            "        CASE WHEN A.InvoiceNo IS NOT NULL AND A.InvoiceNo > 0 AND SM1.Id = A.InvoiceNo THEN 0 ELSE 1 END, " +
+            "        SM1.Id DESC " +
+            ") SM " +
             "INNER JOIN SymbolMaster S WITH(NOLOCK) ON B.SymbolRefid = S.Id " +
             "WHERE A.CompanyRefId = :companyId AND A.Active = 1 " +
             "AND A.Id IN (:orderIds) " +                          // ← KEY OPTIMIZATION: Filter at DB level

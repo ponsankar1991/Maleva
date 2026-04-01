@@ -1,7 +1,9 @@
 package my.maleva.api.module.customer.controller;
 
+import my.maleva.api.common.dto.ResponseViewModel;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.customer.dto.CustomerJobNotifyDto;
+import my.maleva.api.module.customer.dto.CustomerJobNotifyUpsertDto;
 import my.maleva.api.module.customer.dto.response.CustomerJobNotifySelectDto;
 import my.maleva.api.module.customer.service.CustomerJobNotifyService;
 import org.springframework.http.ResponseEntity;
@@ -37,14 +39,23 @@ public class CustomerJobNotifyController {
 
     @PostMapping("/select")
     public ResponseEntity<ApiResponse<List<CustomerJobNotifySelectDto>>> selectCustomerJobNotify(
-            @RequestParam("id") Integer customerMasterRefId
+            @RequestParam("id") Integer customerMasterRefId,
+            @RequestParam(value = "saleOrderRefId", required = false) Integer saleOrderRefId
     ) {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         "Customer job notifications fetched successfully",
-                        service.selectCustomerJobNotify(customerMasterRefId)
+                        service.selectCustomerJobNotify(customerMasterRefId, saleOrderRefId)
                 )
         );
+    }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<ResponseViewModel> upsertCustomerJobNotify(
+            @RequestParam("Comid") Integer companyId,
+            @RequestBody List<@Valid CustomerJobNotifyUpsertDto> requests
+    ) {
+        return ResponseEntity.ok(service.upsertBatch(companyId, requests));
     }
 
     @PostMapping

@@ -135,10 +135,10 @@ public class CustomerQueryRepository {
         return results;
     }
 
-    public List<CustomerJobNotifySelectDto> findCustomerJobNotifications(Integer customerMasterRefId) {
+    public List<CustomerJobNotifySelectDto> findCustomerJobNotifications(Integer customerMasterRefId, Integer saleOrderRefId) {
         String sql = """
                 SELECT
-                    CN.Id,
+                    COALESCE(CJ.Id, 0) AS Id,
                     CN.Name,
                     CN.Id AS CustomerDetailRefId,
                     COALESCE(CJ.Whatsapp, 0) AS Whatsapp,
@@ -148,14 +148,25 @@ public class CustomerQueryRepository {
                     CN.Whatsapp AS PhoneDisplay,
                     CN.Email AS EmailDisplay
                 FROM CustomerNotifyDetails CN
-                LEFT JOIN CustomerJobNotify CJ
-                    ON CN.Id = CJ.CustomerDetailRefId
+                OUTER APPLY (
+                    SELECT TOP 1
+                        CJ1.Id,
+                        CJ1.Whatsapp,
+                        CJ1.Phone,
+                        CJ1.Email
+                    FROM CustomerJobNotify CJ1
+                    WHERE CJ1.CustomerDetailRefId = CN.Id
+                      AND :saleOrderRefId > 0
+                      AND CJ1.SaleOrderRefId = :saleOrderRefId
+                    ORDER BY CJ1.Id DESC
+                ) CJ
                 WHERE CN.CustomerMasterRefId = :customerMasterRefId
                 ORDER BY CN.Id
                 """;
 
         Query query = em.createNativeQuery(sql);
         query.setParameter("customerMasterRefId", customerMasterRefId);
+        query.setParameter("saleOrderRefId", saleOrderRefId != null ? saleOrderRefId : 0);
 
         List<Object[]> rows = query.getResultList();
         List<CustomerJobNotifySelectDto> results = new ArrayList<>(rows.size());
