@@ -7,6 +7,7 @@ import my.maleva.api.module.saleorder.entity.SaleOrderDelivery;
 import my.maleva.api.module.saleorder.entity.SaleOrderForwarding;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import my.maleva.api.module.saleorder.entity.SaleOrderPickup;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
@@ -16,7 +17,11 @@ import java.util.List;
 /**
  * SaleOrderMasterMapper - MapStruct mapper for SaleOrderMaster
  */
-@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+@Mapper(
+        componentModel = "spring",
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+        builder = @Builder(disableBuilder = true)
+)
 public interface SaleOrderMasterMapper {
     SaleOrderMasterDto toDto(SaleOrderMaster entity);
     SaleOrderMaster toEntity(SaleOrderMasterDto dto);

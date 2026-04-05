@@ -67,6 +67,7 @@ public class SaleOrderMasterController {
                 dto.getId(),
                 dto.getCNumber());
 
+
         SaleOrderMasterDto savedOrder = service.save(dto);
         HttpStatus status = isCreate ? HttpStatus.CREATED : HttpStatus.OK;
         String message = isCreate

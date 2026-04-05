@@ -81,6 +81,17 @@ security:
   password-encoding:
     enabled: false
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  packages-to-scan: my.maleva.api
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    persist-authorization: true
+
 
 
 qne:
