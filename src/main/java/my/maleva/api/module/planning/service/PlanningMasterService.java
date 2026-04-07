@@ -1,12 +1,13 @@
 package my.maleva.api.module.planning.service;
 
 import my.maleva.api.module.planning.dto.PlanningDetailsDto;
+import my.maleva.api.module.planning.dto.PlanningEditResponseDto;
 import my.maleva.api.module.planning.dto.PlanningMasterDto;
 import my.maleva.api.common.exception.EntityNotFoundException;
 import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.planning.mapper.PlanningMasterMapper;
 import my.maleva.api.module.planning.mapper.PlanningF5ViewMapper;
-import my.maleva.api.module.planning.mapper.PlanningSearchResultMapper;
+import my.maleva.api.module.planning.mapper.PlanningQueryMapper;
 import my.maleva.api.module.planning.entity.PlanningDetails;
 import my.maleva.api.module.planning.entity.PlanningMaster;
 import my.maleva.api.module.planning.repository.PlanningDetailsRepository;
@@ -16,6 +17,8 @@ import my.maleva.api.module.planning.dto.request.PlanningF5RequestDto;
 import my.maleva.api.module.planning.dto.request.PLANINGSearchRequestDto;
 import my.maleva.api.module.planning.dto.PlanningMasterViewModel;
 import my.maleva.api.module.planning.dto.PlanningDetailsModel;
+import my.maleva.api.module.planning.dto.query.PlanningEditMasterRow;
+import my.maleva.api.module.planning.dto.query.PlanningSelectMasterRow;
 import org.springframework.stereotype.Service;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -26,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,21 +39,161 @@ public class PlanningMasterService {
     private final PlanningDetailsRepository planningDetailsRepository;
     private final PlanningMasterMapper planningMasterMapper;
     private final PlanningF5ViewMapper planningF5ViewMapper;
-    private final PlanningSearchResultMapper planningSearchResultMapper;
+    private final PlanningQueryMapper planningQueryMapper;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    private static final String SELECT_PLANNING_MASTER_SQL = """
+            SELECT
+                A.Id as Id,
+                A.CNumber as PLANINGNo,
+                A.CNumberDisplay as PLANINGNoDisplay,
+                CONVERT(VARCHAR(10), ISNULL(A.SaleDate, '1900-01-01'), 103) as PLANINGDate,
+                ISNULL(A.Remarks, '') as Remarks,
+                ISNULL(E.EmployeeName, '') as EmployeeName,
+                (
+                    SELECT COUNT(1)
+                    FROM PLANINGDetails PD WITH(NOLOCK)
+                    WHERE PD.PLANINGMasterRefId = A.Id
+                ) as TotalOrders
+            FROM PLANINGMaster A WITH(NOLOCK)
+            LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = A.EmployeeRefId
+            """;
+
+    private static final String SELECT_PLANNING_DETAILS_SQL = """
+            SELECT
+                B.Id,
+                0 as SDId,
+                B.PLANINGMasterRefId,
+                B.SaleOrderMasterRefId,
+                ISNULL(B.TruckRefid, 0) as TruckRefid,
+                ISNULL(T.TruckName, '') as TruckName,
+                ISNULL(B.DriverNameD, '') as DriverName,
+                SM.CNumberDisplay as JobNo,
+                CONVERT(VARCHAR(10), ISNULL(SM.SaleDate, '1900-01-01'), 103) as JobDate,
+                ISNULL(JS.Name, '') as JobStatus,
+                ISNULL(B.OriginD, '') as OriginD,
+                ISNULL(B.DestinationD, '') as DestinationD,
+                ISNULL(C.CustomerName, '') as CustomerName,
+                ISNULL(B.Remarks, '') as Remarks,
+                ISNULL(B.TruckNameD, '') as TruckNameD,
+                ISNULL(B.DriverNameD, '') as DriverNameD,
+                ISNULL(B.SortBy, 0) as SortBy,
+                ISNULL(CONVERT(VARCHAR(16), B.PickupDateD, 120), '') as PickupDateD,
+                ISNULL(CONVERT(VARCHAR(16), B.DeliveryDateD, 120), '') as DeliveryDateD,
+                ISNULL(B.pickuptimelist, '') as pickuptimelist,
+                ISNULL(B.pickupQuantitylist, '') as pickupQuantitylist,
+                ISNULL(B.DeliveryQuantitylist, '') as DeliveryQuantitylist,
+                ISNULL(B.Delivertimelist, '') as Delivertimelist
+            FROM PLANINGDetails B WITH(NOLOCK)
+            INNER JOIN PLANINGMaster A WITH(NOLOCK) ON B.PLANINGMasterRefId = A.Id
+            INNER JOIN SaleOrderMaster SM WITH(NOLOCK) ON SM.Id = B.SaleOrderMasterRefId
+            LEFT JOIN Customer C WITH(NOLOCK) ON C.Id = SM.CustomerRefId
+            LEFT JOIN TruckMaster T WITH(NOLOCK) ON T.Id = B.TruckRefid
+            LEFT JOIN JobStatusMaster JS WITH(NOLOCK) ON JS.Id = SM.JStatus
+            """;
+
+    private static final String EDIT_PLANNING_MASTER_SQL = """
+            SELECT
+                A.Id as Id,
+                A.CompanyRefId as CompanyRefId,
+                A.UserRefId as UserRefId,
+                A.EmployeeRefId as EmployeeRefId,
+                A.LastEmployeeRefId as LastEmployeeRefId,
+                CONVERT(VARCHAR(10), A.FDate, 23) as SFDate,
+                CONVERT(VARCHAR(10), A.TDate, 23) as STDate,
+                CONVERT(VARCHAR(10), A.SaleDate, 23) as SaleDate,
+                CONVERT(VARCHAR(10), A.SaleDate, 23) as SSaleDate,
+                A.CNumberDisplay as CNumberDisplay,
+                A.CNumber as CNumber,
+                ISNULL(A.Remarks, '') as Remarks,
+                ISNULL(A.Search, '') as Search,
+                A.Active as Active,
+                CONVERT(VARCHAR(19), A.Created_Date, 120) as CreatedDate,
+                A.Created_By as CreatedBy,
+                CONVERT(VARCHAR(19), A.Modified_Date, 120) as ModifiedDate,
+                A.Modified_By as ModifiedBy
+            FROM PLANINGMaster A WITH(NOLOCK)
+            WHERE A.Id = :planningId
+              AND A.CompanyRefId = :companyId
+              AND A.Active != 2
+            """;
+
+    private static final String EDIT_PLANNING_DETAILS_SQL = """
+            SELECT
+                B.Id,
+                B.Id as SDId,
+                B.PLANINGMasterRefId,
+                B.SaleOrderMasterRefId,
+                ISNULL(B.TruckRefid, 0) as TruckRefid,
+                ISNULL(T.TruckName, '') as TruckName,
+                ISNULL(B.DriverNameD, '') as DriverName,
+                SM.CNumberDisplay as JobNo,
+                CONVERT(VARCHAR(10), ISNULL(SM.SaleDate, '1900-01-01'), 103) as JobDate,
+                ISNULL(J.Name, '') as JobStatus,
+                ISNULL(JT.Name, '') as JobName,
+                ISNULL(SM.AWBNo, '') as AWBNo,
+                ISNULL(SM.BLCopy, '') as BLCopy,
+                ISNULL(C.CustomerName, '') as CustomerName,
+                ISNULL(B.Remarks, '') as Remarks,
+                ISNULL(SM.Origin, '') as Origin,
+                ISNULL(SM.Destination, '') as Destination,
+                ISNULL(B.OriginD, '') as OriginD,
+                ISNULL(B.DestinationD, '') as DestinationD,
+                ISNULL(ISNULL(SM.Quantity, '') + '/' + ISNULL(SM.TotalWeight, ''), '') as pkg,
+                COALESCE(
+                    NULLIF(LTRIM(RTRIM(SM.Loadingvesselname)), ''),
+                    NULLIF(LTRIM(RTRIM(SM.Offvesselname)), ''),
+                    ''
+                ) as VesselName,
+                ISNULL(E.EmployeeName, '') as EmployeeName,
+                ISNULL(SM.truckSize, '') as truckSize,
+                ISNULL(CONVERT(VARCHAR(16), SM.PickupDate, 120), '') as SPickupDate,
+                ISNULL(CONVERT(VARCHAR(16), B.PickupDateD, 120), '') as PickupDateD,
+                ISNULL(CONVERT(VARCHAR(16), SM.DeliveryDate, 120), '') as SDeliveryDate,
+                ISNULL(CONVERT(VARCHAR(16), B.DeliveryDateD, 120), '') as DeliveryDateD,
+                ISNULL(CONVERT(VARCHAR(16), SM.ETA, 120), '') as LETA,
+                ISNULL(CONVERT(VARCHAR(16), SM.OETA, 120), '') as OETA,
+                SM.WareHouseEnterDate as WareHouseEnterDate,
+                SM.WareHouseExitDate as WareHouseExitDate,
+                ISNULL(CONVERT(VARCHAR(16), SM.WareHouseEnterDate, 120), '') as SWareHouseEnterDate,
+                ISNULL(CONVERT(VARCHAR(16), SM.WareHouseExitDate, 120), '') as SWareHouseExitDate,
+                ISNULL(SM.WareHouseAddress, '') as WareHouseAddress,
+                ISNULL(SM.PickupAddress, '') as PickupAddress,
+                ISNULL(SM.DeliveryAddress, '') as DeliveryAddress,
+                ISNULL(SM.SPort, '') as SPort,
+                ISNULL(SM.OPort, '') as OPort,
+                ISNULL(B.SortBy, 0) as SortBy,
+                ISNULL(B.TruckNameD, '') as TruckNameD,
+                ISNULL(B.DriverNameD, '') as DriverNameD,
+                ISNULL(SM.pickuptimelist, '') as pickuptimelist,
+                ISNULL(SM.pickupQuantitylist, '') as pickupQuantitylist,
+                ISNULL(SM.DeliveryQuantitylist, '') as DeliveryQuantitylist,
+                ISNULL(SM.Delivertimelist, '') as Delivertimelist
+            FROM PLANINGMaster A WITH(NOLOCK)
+            INNER JOIN PLANINGDetails B WITH(NOLOCK) ON A.Id = B.PLANINGMasterRefId
+            INNER JOIN SaleOrderMaster SM WITH(NOLOCK) ON SM.Id = B.SaleOrderMasterRefId
+            LEFT JOIN Customer C WITH(NOLOCK) ON C.Id = SM.CustomerRefId
+            LEFT JOIN TruckMaster T WITH(NOLOCK) ON T.Id = B.TruckRefid
+            LEFT JOIN JobStatusMaster J WITH(NOLOCK) ON J.Id = SM.JStatus
+            LEFT JOIN JobTypeMaster JT WITH(NOLOCK) ON JT.Id = SM.JobMasterRefId
+            LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = SM.LastEmployeeRefid
+            WHERE A.Id = :planningId
+              AND A.CompanyRefId = :companyId
+            ORDER BY ISNULL(B.SortBy, 0) ASC, B.Id ASC
+            """;
 
     public PlanningMasterService(
             PlanningMasterRepository planningMasterRepository,
             PlanningDetailsRepository planningDetailsRepository,
             PlanningMasterMapper planningMasterMapper,
             PlanningF5ViewMapper planningF5ViewMapper,
-            PlanningSearchResultMapper planningSearchResultMapper,
+            PlanningQueryMapper planningQueryMapper,
             NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
         this.planningMasterRepository = planningMasterRepository;
         this.planningDetailsRepository = planningDetailsRepository;
         this.planningMasterMapper = planningMasterMapper;
         this.planningF5ViewMapper = planningF5ViewMapper;
-        this.planningSearchResultMapper = planningSearchResultMapper;
+        this.planningQueryMapper = planningQueryMapper;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
 
@@ -271,90 +415,118 @@ public class PlanningMasterService {
      * Returns combined PlanningMaster and PlanningDetails data with dynamic filtering
      */
     public PlanningF5View selectPlanning(PlanningF5RequestDto filter) {
-        // Build filter parameters
-        Integer employeeId = filter.getEmployeeid() != null && filter.getEmployeeid() != 0 ? filter.getEmployeeid() : null;
-        LocalDateTime fromDate = null;
-        LocalDateTime toDate = null;
+        PlanningSelectionFilter criteria = buildSelectionFilter(filter);
 
-        // If search is provided, ignore date filters (as per .NET logic)
-        if (filter.getSearch() != null && !filter.getSearch().trim().isEmpty()) {
-            // When search is provided, we need to filter by CNumberDisplay
-            // But since the repository query doesn't handle this, we'll handle it in service
-            // For now, we'll use the date filter as fallback
-            if (filter.getFromdate() != null && filter.getTodate() != null) {
-                fromDate = filter.getFromdate().atStartOfDay();
-                toDate = filter.getTodate().atTime(23, 59, 59);
-            }
-        } else {
-            // Normal date filtering
-            if (filter.getFromdate() != null && filter.getTodate() != null) {
-                fromDate = filter.getFromdate().atStartOfDay();
-                toDate = filter.getTodate().atTime(23, 59, 59);
-            }
-        }
+        List<PlanningMasterViewModel> masterViewModels = namedParameterJdbcTemplate.query(
+                        SELECT_PLANNING_MASTER_SQL + criteria.whereClause() + " ORDER BY A.SaleDate DESC, A.Id DESC",
+                        criteria.params(),
+                        (rs, rowNum) -> planningQueryMapper.toPlanningMasterViewModel(
+                                PlanningSelectMasterRow.builder()
+                                        .id(rs.getInt("Id"))
+                                        .planningNo(rs.getInt("PLANINGNo"))
+                                        .planningNoDisplay(getNullableString(rs, "PLANINGNoDisplay"))
+                                        .planningDate(getNullableString(rs, "PLANINGDate"))
+                                        .remarks(getNullableString(rs, "Remarks"))
+                                        .employeeName(getNullableString(rs, "EmployeeName"))
+                                        .totalOrders(rs.getInt("TotalOrders"))
+                                        .build()
+                        )
+                );
 
-        // Fetch planning masters
-        List<PlanningMaster> masters = planningMasterRepository.findForSelectPlanning(
-                filter.getComid(), employeeId, fromDate, toDate);
+        List<PlanningDetailsModel> detailsViewModels = namedParameterJdbcTemplate.query(
+                SELECT_PLANNING_DETAILS_SQL + criteria.whereClause() + " ORDER BY ISNULL(B.SortBy, 0) ASC, B.Id ASC",
+                criteria.params(),
+                (rs, rowNum) -> PlanningDetailsModel.builder()
+                        .id(rs.getInt("Id"))
+                        .sdId(rs.getInt("SDId"))
+                        .planningMasterRefId(rs.getInt("PLANINGMasterRefId"))
+                        .saleOrderMasterRefId(rs.getInt("SaleOrderMasterRefId"))
+                        .truckRefId(rs.getInt("TruckRefid"))
+                        .truckName(getNullableString(rs, "TruckName"))
+                        .driverName(getNullableString(rs, "DriverName"))
+                        .jobNo(getNullableString(rs, "JobNo"))
+                        .jobDate(getNullableString(rs, "JobDate"))
+                        .jobStatus(getNullableString(rs, "JobStatus"))
+                        .originD(getNullableString(rs, "OriginD"))
+                        .destinationD(getNullableString(rs, "DestinationD"))
+                        .customerName(getNullableString(rs, "CustomerName"))
+                        .remarks(getNullableString(rs, "Remarks"))
+                        .truckNameD(getNullableString(rs, "TruckNameD"))
+                        .driverNameD(getNullableString(rs, "DriverNameD"))
+                        .sortBy(rs.getInt("SortBy"))
+                        .pickupDateD(getNullableString(rs, "PickupDateD"))
+                        .deliveryDateD(getNullableString(rs, "DeliveryDateD"))
+                        .pickupTimeList(getNullableString(rs, "pickuptimelist"))
+                        .pickupQuantityList(getNullableString(rs, "pickupQuantitylist"))
+                        .deliveryQuantityList(getNullableString(rs, "DeliveryQuantitylist"))
+                        .deliveryTimeList(getNullableString(rs, "Delivertimelist"))
+                        .build()
+        );
 
-        // Apply search filter if provided (filter by CNumberDisplay)
-        if (filter.getSearch() != null && !filter.getSearch().trim().isEmpty()) {
-            masters = masters.stream()
-                    .filter(m -> m.getCNumberDisplay() != null &&
-                            m.getCNumberDisplay().equals(filter.getSearch().trim()))
-                    .collect(Collectors.toList());
-        }
-
-        // Convert to ViewModels with all fields
-        List<PlanningMasterViewModel> masterViewModels = masters.stream()
-                .map(m -> {
-                    String dateFormat = "dd/MM/yyyy";
-                    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern(dateFormat);
-                    return PlanningMasterViewModel.builder()
-                            .id(m.getId())
-                            .sdId(m.getSdId())
-                            .planningNo(m.getCNumber())
-                            .planningNoDisplay(m.getCNumberDisplay())
-                            .fDate(m.getFDate() != null ? m.getFDate().format(formatter) : "01/01/1900")
-                            .tDate(m.getTDate() != null ? m.getTDate().format(formatter) : "01/01/1900")
-                            .sFDate(m.getFDate() != null ? m.getFDate().format(formatter) : "01/01/1900")
-                            .sTDate(m.getTDate() != null ? m.getTDate().format(formatter) : "01/01/1900")
-                            .saleDate(m.getSaleDate() != null ? m.getSaleDate().format(formatter) : "01/01/1900")
-                            .sSaleDate(m.getSaleDate() != null ? m.getSaleDate().format(formatter) : "01/01/1900")
-                            .planningDate(m.getSaleDate() != null ? m.getSaleDate().format(formatter) : "01/01/1900")
-                            .cNumberDisplay(m.getCNumberDisplay())
-                            .remarks(m.getRemarks())
-                            .active(m.getActive())
-                            .createdDate(m.getCreatedDate() != null ? m.getCreatedDate().format(formatter) : "01/01/1900")
-                            .createdBy(m.getCreatedBy())
-                            .modifiedDate(m.getModifiedDate() != null ? m.getModifiedDate().format(formatter) : "01/01/1900")
-                            .modifiedBy(m.getModifiedBy())
-                            .build();
-                })
-                .toList();
-
-        // Fetch planning details with joins
-        List<Object[]> detailsRaw = planningDetailsRepository.findDetailsForSelectPlanning(
-                filter.getComid(), employeeId, fromDate, toDate);
-
-        // Apply search filter to details if needed
-        if (filter.getSearch() != null && !filter.getSearch().trim().isEmpty()) {
-            // Filter details based on masters that passed the search filter
-            List<Integer> masterIds = masterViewModels.stream()
-                    .map(PlanningMasterViewModel::getId)
-                    .collect(Collectors.toList());
-            detailsRaw = detailsRaw.stream()
-                    .filter(row -> masterIds.contains((Integer) row[2])) // PLANINGMasterRefId is at index 2
-                    .collect(Collectors.toList());
-        }
-
-        // Convert to ViewModels with comprehensive detail mapping using MapStruct
-        List<PlanningDetailsModel> detailsViewModels = detailsRaw.stream()
-                .map(planningSearchResultMapper::mapSelectPlanningResult)
-                .toList();
-
-        // Create and return the combined view
         return planningF5ViewMapper.createPlanningF5View(masterViewModels, detailsViewModels);
+    }
+
+    public PlanningEditResponseDto editPlanning(Integer id, Integer planningNo, Integer companyId) {
+        Integer resolvedPlanningId = resolvePlanningId(id, planningNo, companyId);
+
+        PlanningEditMasterRow masterRow = findPlanningEditMaster(resolvedPlanningId, companyId)
+                .orElseThrow(() -> new EntityNotFoundException("Planning not found: " + resolvedPlanningId));
+
+        List<PlanningDetailsModel> saleDetails = namedParameterJdbcTemplate.query(
+                EDIT_PLANNING_DETAILS_SQL,
+                new MapSqlParameterSource()
+                        .addValue("planningId", resolvedPlanningId)
+                        .addValue("companyId", companyId),
+                (rs, rowNum) -> PlanningDetailsModel.builder()
+                        .id(rs.getInt("Id"))
+                        .sdId(rs.getInt("SDId"))
+                        .planningMasterRefId(rs.getInt("PLANINGMasterRefId"))
+                        .saleOrderMasterRefId(rs.getInt("SaleOrderMasterRefId"))
+                        .truckRefId(rs.getInt("TruckRefid"))
+                        .truckName(getNullableString(rs, "TruckName"))
+                        .driverName(getNullableString(rs, "DriverName"))
+                        .jobNo(getNullableString(rs, "JobNo"))
+                        .jobDate(getNullableString(rs, "JobDate"))
+                        .jobStatus(getNullableString(rs, "JobStatus"))
+                        .jobName(getNullableString(rs, "JobName"))
+                        .awbNo(getNullableString(rs, "AWBNo"))
+                        .blCopy(getNullableString(rs, "BLCopy"))
+                        .customerName(getNullableString(rs, "CustomerName"))
+                        .remarks(getNullableString(rs, "Remarks"))
+                        .origin(getNullableString(rs, "Origin"))
+                        .destination(getNullableString(rs, "Destination"))
+                        .originD(getNullableString(rs, "OriginD"))
+                        .destinationD(getNullableString(rs, "DestinationD"))
+                        .pkg(getNullableString(rs, "pkg"))
+                        .vesselName(getNullableString(rs, "VesselName"))
+                        .employeeName(getNullableString(rs, "EmployeeName"))
+                        .truckSize(getNullableString(rs, "truckSize"))
+                        .sPickupDate(getNullableString(rs, "SPickupDate"))
+                        .pickupDateD(getNullableString(rs, "PickupDateD"))
+                        .sDeliveryDate(getNullableString(rs, "SDeliveryDate"))
+                        .deliveryDateD(getNullableString(rs, "DeliveryDateD"))
+                        .leta(getNullableString(rs, "LETA"))
+                        .oeta(getNullableString(rs, "OETA"))
+                        .wareHouseEnterDate(getNullableLocalDateTime(rs, "WareHouseEnterDate"))
+                        .wareHouseExitDate(getNullableLocalDateTime(rs, "WareHouseExitDate"))
+                        .sWareHouseEnterDate(getNullableString(rs, "SWareHouseEnterDate"))
+                        .sWareHouseExitDate(getNullableString(rs, "SWareHouseExitDate"))
+                        .wareHouseAddress(getNullableString(rs, "WareHouseAddress"))
+                        .pickupAddress(getNullableString(rs, "PickupAddress"))
+                        .deliveryAddress(getNullableString(rs, "DeliveryAddress"))
+                        .sPort(getNullableString(rs, "SPort"))
+                        .oPort(getNullableString(rs, "OPort"))
+                        .sortBy(rs.getInt("SortBy"))
+                        .truckNameD(getNullableString(rs, "TruckNameD"))
+                        .driverNameD(getNullableString(rs, "DriverNameD"))
+                        .pickupTimeList(getNullableString(rs, "pickuptimelist"))
+                        .pickupQuantityList(getNullableString(rs, "pickupQuantitylist"))
+                        .deliveryQuantityList(getNullableString(rs, "DeliveryQuantitylist"))
+                        .deliveryTimeList(getNullableString(rs, "Delivertimelist"))
+                        .build()
+        );
+
+        return planningQueryMapper.toPlanningEditResponse(masterRow, saleDetails);
     }
 
     /**
@@ -555,5 +727,98 @@ public class PlanningMasterService {
     private LocalDateTime getNullableLocalDateTime(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
         java.sql.Timestamp timestamp = rs.getTimestamp(column);
         return timestamp != null ? timestamp.toLocalDateTime() : null;
+    }
+
+    private PlanningSelectionFilter buildSelectionFilter(PlanningF5RequestDto filter) {
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("companyId", filter.getComid());
+
+        StringBuilder whereClause = new StringBuilder("""
+                WHERE A.CompanyRefId = :companyId
+                  AND A.Active = 1
+                """);
+
+        if (filter.getEmployeeid() != null && filter.getEmployeeid() != 0) {
+            whereClause.append(" AND A.EmployeeRefId = :employeeId");
+            params.addValue("employeeId", filter.getEmployeeid());
+        }
+
+        String search = trimToNull(filter.getSearch());
+        if (search != null) {
+            whereClause.append(" AND A.CNumberDisplay = :search");
+            params.addValue("search", search);
+            return new PlanningSelectionFilter(whereClause.toString(), params);
+        }
+
+        if (filter.getFromdate() == null || filter.getTodate() == null) {
+            throw new InvalidRequestException("fromdate and todate are required when search is empty");
+        }
+
+        if (filter.getFromdate().isAfter(filter.getTodate())) {
+            throw new InvalidRequestException("fromdate must be less than or equal to todate");
+        }
+
+        whereClause.append(" AND CAST(A.SaleDate as DATE) BETWEEN :fromDate AND :toDate");
+        params.addValue("fromDate", filter.getFromdate());
+        params.addValue("toDate", filter.getTodate());
+
+        return new PlanningSelectionFilter(whereClause.toString(), params);
+    }
+
+    private Optional<PlanningEditMasterRow> findPlanningEditMaster(Integer planningId, Integer companyId) {
+        List<PlanningEditMasterRow> rows = namedParameterJdbcTemplate.query(
+                EDIT_PLANNING_MASTER_SQL,
+                new MapSqlParameterSource()
+                        .addValue("planningId", planningId)
+                        .addValue("companyId", companyId),
+                (rs, rowNum) -> PlanningEditMasterRow.builder()
+                        .id(rs.getInt("Id"))
+                        .companyRefId(rs.getInt("CompanyRefId"))
+                        .userRefId(rs.getInt("UserRefId"))
+                        .employeeRefId(rs.getInt("EmployeeRefId"))
+                        .lastEmployeeRefId(rs.getInt("LastEmployeeRefId"))
+                        .sFDate(getNullableString(rs, "SFDate"))
+                        .sTDate(getNullableString(rs, "STDate"))
+                        .saleDate(getNullableString(rs, "SaleDate"))
+                        .sSaleDate(getNullableString(rs, "SSaleDate"))
+                        .cNumberDisplay(getNullableString(rs, "CNumberDisplay"))
+                        .cNumber(rs.getInt("CNumber"))
+                        .remarks(getNullableString(rs, "Remarks"))
+                        .search(getNullableString(rs, "Search"))
+                        .active(rs.getInt("Active"))
+                        .createdDate(getNullableString(rs, "CreatedDate"))
+                        .createdBy(getNullableString(rs, "CreatedBy"))
+                        .modifiedDate(getNullableString(rs, "ModifiedDate"))
+                        .modifiedBy(getNullableString(rs, "ModifiedBy"))
+                        .build()
+        );
+
+        return rows.stream().findFirst();
+    }
+
+    private Integer resolvePlanningId(Integer id, Integer planningNo, Integer companyId) {
+        if (id != null && id > 0) {
+            return id;
+        }
+
+        if (planningNo != null && planningNo > 0) {
+            return planningMasterRepository.findByCompanyRefIdAndCNumber(companyId, planningNo)
+                    .map(PlanningMaster::getId)
+                    .orElseThrow(() -> new EntityNotFoundException("Planning not found for number: " + planningNo));
+        }
+
+        throw new InvalidRequestException("Either id or planningNo is required");
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private record PlanningSelectionFilter(String whereClause, MapSqlParameterSource params) {
     }
 }

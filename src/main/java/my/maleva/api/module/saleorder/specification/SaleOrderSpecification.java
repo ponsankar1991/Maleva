@@ -143,17 +143,42 @@ public class SaleOrderSpecification {
             }
 
             // Search filter (overrides date filters)
-            if (search != null && !search.trim().isEmpty()) {
+            String normalizedSearch = search != null ? search.trim().toLowerCase() : null;
+            if (normalizedSearch != null && !normalizedSearch.isEmpty()) {
+                String likeSearch = "%" + normalizedSearch + "%";
                 if (invoice != null && invoice) {
-                    // Search in SaleMaster.CNumberDisplay
+                    // Search in SaleMaster.CNumberDisplay using either invoice id linkage or SaleOrderMasterNo.
                     Subquery<Integer> invoiceSubquery = query.subquery(Integer.class);
                     Root<SaleMaster> saleRoot = invoiceSubquery.from(SaleMaster.class);
+
+                    Predicate invoiceDisplayMatches = cb.like(
+                            cb.lower(saleRoot.get("cNumberDisplay")),
+                            likeSearch
+                    );
+
+                    Predicate invoiceIdMatches = cb.and(
+                            cb.isNotNull(root.get("invoiceNo")),
+                            cb.greaterThan(root.get("invoiceNo"), 0),
+                            cb.equal(saleRoot.get("id"), root.get("invoiceNo"))
+                    );
+
+                    Predicate saleOrderLinkMatches = cb.equal(
+                            saleRoot.get("saleOrderMasterNo"),
+                            root.get("id")
+                    );
+
                     invoiceSubquery.select(saleRoot.get("id"))
-                            .where(cb.like(saleRoot.get("cNumberDisplay"), "%" + search + "%"));
-                    predicates.add(root.get("invoiceNo").in(invoiceSubquery));
+                            .where(cb.and(
+                                    cb.equal(saleRoot.get("companyRefId"), companyId),
+                                    cb.equal(saleRoot.get("active"), SaleOrderApiConstants.ACTIVE_STATUS),
+                                    invoiceDisplayMatches,
+                                    cb.or(invoiceIdMatches, saleOrderLinkMatches)
+                            ));
+
+                    predicates.add(cb.exists(invoiceSubquery));
                 } else {
                     // Search in SaleOrderMaster.CNumberDisplay
-                    predicates.add(cb.like(root.get("cNumberDisplay"), "%" + search + "%"));
+                    predicates.add(cb.like(cb.lower(root.get("cNumberDisplay")), likeSearch));
                 }
             } else {
                 // Date range filters (only applied when search is empty)
@@ -212,4 +237,5 @@ public class SaleOrderSpecification {
         }
     }
 }
+
 

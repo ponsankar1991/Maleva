@@ -55,6 +55,12 @@ public class PlanningMasterViewModel {
     @JsonProperty("Remarks")
     private String remarks;
 
+    @JsonProperty("EmployeeName")
+    private String employeeName;
+
+    @JsonProperty("TotalOrders")
+    private Integer totalOrders;
+
     @JsonProperty("Active")
     private Integer active;
 

@@ -1,8 +1,8 @@
 package my.maleva.api.module.rti.service.impl;
 
 import my.maleva.api.module.rti.dto.RTIMasterDto;
-import my.maleva.api.module.rti.mapper.RTIMasterMapper;
 import my.maleva.api.module.rti.entity.RTIMaster;
+import my.maleva.api.module.rti.mapper.RTIMasterMapper;
 import my.maleva.api.module.rti.repository.RTIMasterRepository;
 import my.maleva.api.module.rti.service.RTIMasterService;
 import org.slf4j.Logger;
@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,8 +18,7 @@ import java.util.stream.Collectors;
 
 /**
  * RTIMasterServiceImpl
- * Service implementation for RTIMaster
- * Implements SP_RTIMaster stored procedure logic
+ * Service implementation for RTIMaster.
  */
 @Service
 public class RTIMasterServiceImpl implements RTIMasterService {
@@ -32,6 +32,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     private RTIMasterMapper mapper;
 
     @Override
+    @Transactional(readOnly = true)
     public List<RTIMasterDto> getAllByCompanyId(Integer companyRefId) {
         logger.info("Fetching all RTIMaster records for company: {}", companyRefId);
         return rtiMasterRepository.findByCompanyRefId(companyRefId)
@@ -41,6 +42,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RTIMasterDto> getActiveByCompanyId(Integer companyRefId) {
         logger.info("Fetching active RTIMaster records for company: {}", companyRefId);
         return rtiMasterRepository.findByCompanyRefIdAndActive(companyRefId, 1)
@@ -50,6 +52,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<RTIMasterDto> getById(Integer id) {
         logger.info("Fetching RTIMaster by ID: {}", id);
         return rtiMasterRepository.findById(id)
@@ -60,15 +63,43 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     @Transactional
     public RTIMasterDto create(RTIMasterDto dto) {
         logger.info("Creating new RTIMaster for company: {}", dto.getCompanyRefId());
+
         RTIMaster entity = mapper.toEntity(dto);
-        entity.setCreatedDate(LocalDateTime.now());
-        entity.setModifiedDate(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+
+        // Force insert semantics even if the client accidentally posts id=0.
+        entity.setId(null);
+        entity.setCreatedDate(now);
+        entity.setModifiedDate(now);
+
+        if (entity.getCreatedBy() == null || entity.getCreatedBy().isBlank()) {
+            entity.setCreatedBy("SYSTEM");
+        }
+        if (entity.getModifiedBy() == null || entity.getModifiedBy().isBlank()) {
+            entity.setModifiedBy(entity.getCreatedBy());
+        }
         if (entity.getActive() == null) {
-            entity.setActive(0);
+            entity.setActive(1);
         }
         if (entity.getSleeping() == null) {
             entity.setSleeping(0);
         }
+        if (entity.getPickup() == null) {
+            entity.setPickup(0);
+        }
+        if (entity.getPickupCount() == null) {
+            entity.setPickupCount(0);
+        }
+        if (entity.getDropCount() == null) {
+            entity.setDropCount(0);
+        }
+        if (entity.getAddDrop() == null) {
+            entity.setAddDrop(0);
+        }
+        if (entity.getExitYN() == null) {
+            entity.setExitYN(0);
+        }
+
         RTIMaster saved = rtiMasterRepository.save(entity);
         logger.info("RTIMaster created with ID: {}", saved.getId());
         return mapper.toDto(saved);
@@ -80,8 +111,15 @@ public class RTIMasterServiceImpl implements RTIMasterService {
         logger.info("Updating RTIMaster with ID: {}", id);
         RTIMaster entity = rtiMasterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("RTIMaster not found with ID: " + id));
+
         mapper.updateEntityFromDto(dto, entity);
+        entity.setId(id);
         entity.setModifiedDate(LocalDateTime.now());
+
+        if (entity.getModifiedBy() == null || entity.getModifiedBy().isBlank()) {
+            entity.setModifiedBy(entity.getCreatedBy() != null ? entity.getCreatedBy() : "SYSTEM");
+        }
+
         RTIMaster updated = rtiMasterRepository.save(entity);
         logger.info("RTIMaster updated with ID: {}", id);
         return mapper.toDto(updated);
@@ -101,6 +139,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<RTIMasterDto> getByCNumber(Integer companyRefId, Integer cNumber) {
         logger.info("Fetching RTIMaster by CNumber: {}", cNumber);
         return rtiMasterRepository.findByCompanyRefIdAndCNumber(companyRefId, cNumber)
@@ -108,6 +147,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RTIMasterDto> getByEmployee(Integer companyRefId, Integer employeeRefId) {
         logger.info("Fetching RTIMaster for employee: {}", employeeRefId);
         return rtiMasterRepository.findByCompanyRefIdAndEmployeeRefId(companyRefId, employeeRefId)
@@ -117,6 +157,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RTIMasterDto> getByAgent(Integer companyRefId, Integer agentMasterRefId) {
         logger.info("Fetching RTIMaster for agent: {}", agentMasterRefId);
         return rtiMasterRepository.findByCompanyRefIdAndAgentMasterRefId(companyRefId, agentMasterRefId)
@@ -126,6 +167,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RTIMasterDto> getByDateRange(Integer companyRefId, LocalDateTime startDate, LocalDateTime endDate) {
         logger.info("Fetching RTIMaster between dates: {} to {}", startDate, endDate);
         return rtiMasterRepository.findByCompanyRefIdAndSaleDateBetween(companyRefId, startDate, endDate)
@@ -135,6 +177,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<RTIMasterDto> getByCNumberDisplay(String cNumberDisplay) {
         logger.info("Fetching RTIMaster by CNumberDisplay: {}", cNumberDisplay);
         return rtiMasterRepository.findByCNumberDisplay(cNumberDisplay)
@@ -142,6 +185,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RTIMasterDto> getSleepingRecords(Integer companyRefId) {
         logger.info("Fetching sleeping RTIMaster records for company: {}", companyRefId);
         return rtiMasterRepository.findByCompanyRefIdAndSleeping(companyRefId, 1)
@@ -151,6 +195,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RTIMasterDto> getByTruck(Integer companyRefId, Integer truckRefId) {
         logger.info("Fetching RTIMaster for truck: {}", truckRefId);
         return rtiMasterRepository.findByCompanyRefIdAndTruckRefId(companyRefId, truckRefId)
@@ -206,8 +251,6 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     @Override
     public String generateCNumberDisplay(Integer cNumber) {
         logger.info("Generating CNumberDisplay for CNumber: {}", cNumber);
-        // Format: RTI + 9 digit zero-padded number (e.g., RTI000000001)
         return String.format("RTI%09d", cNumber);
     }
 }
-

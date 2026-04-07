@@ -46,12 +46,13 @@ public class SecurityConfig {
 
         config.setAllowedHeaders(java.util.List.of(
                 "Authorization",
-                "Content-Type"
+                "Content-Type",
+                "Comid"
         ));
 
         config.setExposedHeaders(java.util.List.of(
                 "Authorization",
-                "Content-Type"
+                "Content-Type", "Comid"
         ));
 
         config.setAllowCredentials(true);

@@ -2,6 +2,7 @@ package my.maleva.api.module.planning.repository;
 
 import my.maleva.api.module.planning.entity.PlanningMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -66,4 +67,12 @@ public interface PlanningMasterRepository extends JpaRepository<PlanningMaster, 
             @Param("employeeId") Integer employeeId,
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate);
+
+    /**
+     * Update CNumberDisplay and CNumber for a planning record.
+     * Used during sequence number generation (SP_PLANINGMaster logic).
+     */
+    @Modifying
+    @Query("UPDATE PlanningMaster p SET p.cNumberDisplay = :cNumberDisplay, p.cNumber = :cNumber WHERE p.id = :id")
+    void updateCNumberDisplay(@Param("id") Integer id, @Param("cNumberDisplay") String cNumberDisplay, @Param("cNumber") Integer cNumber);
 }

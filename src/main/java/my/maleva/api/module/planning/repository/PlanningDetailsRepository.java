@@ -45,8 +45,8 @@ public interface PlanningDetailsRepository extends JpaRepository<PlanningDetails
      * Uses correct table names: PLANINGMaster and PLANINGDetails
      * Fetches comprehensive logistics and tracking data
      */
-    @Query(value = "SELECT B.Id, B.SDId, B.PLANINGMasterRefId, B.SaleOrderMasterRefId, " +
-            "B.TruckRefid, ISNULL(T.TruckName, '') as TruckName, ISNULL(D.DriverName, '') as DriverName, " +
+    @Query(value = "SELECT B.Id, 0 as SDId, B.PLANINGMasterRefId, B.SaleOrderMasterRefId, " +
+            "B.TruckRefid, ISNULL(T.TruckName, '') as TruckName, ISNULL(B.DriverNameD, '') as DriverName, " +
             "SM.CNumberDisplay as JobNo, FORMAT(ISNULL(SM.SaleDate, '1900-01-01'), 'dd/MM/yyyy') as JobDate, " +
             "ISNULL(JS.Name, '') as JobStatus, ISNULL(B.OriginD, '') as OriginD, " +
             "ISNULL(B.DestinationD, '') as DestinationD, ISNULL(C.CustomerName, '') as CustomerName, " +
@@ -63,7 +63,6 @@ public interface PlanningDetailsRepository extends JpaRepository<PlanningDetails
             "INNER JOIN SaleOrderMaster SM WITH(NOLOCK) ON SM.Id = B.SaleOrderMasterRefId " +
             "LEFT JOIN Customer C WITH(NOLOCK) ON C.Id = SM.CustomerRefId " +
             "LEFT JOIN TruckMaster T WITH(NOLOCK) ON T.Id = B.TruckRefid " +
-            "LEFT JOIN DriverMaster D WITH(NOLOCK) ON D.Id = T.DriverRefId " +
             "LEFT JOIN JobStatusMaster JS WITH(NOLOCK) ON JS.Id = SM.JStatus " +
             "WHERE A.CompanyRefId = :companyId AND A.Active = 1 " +
             "AND (:employeeId IS NULL OR A.EmployeeRefId = :employeeId) " +

@@ -1,12 +1,18 @@
 package my.maleva.api.module.planning.controller;
 
 import my.maleva.api.module.planning.dto.PlaningNumberResponseDTO;
+import my.maleva.api.module.planning.dto.PlanningEditResponseDto;
+import my.maleva.api.module.planning.dto.PlanningRequest;
+import my.maleva.api.module.planning.dto.PlanningSaveResponseDto;
 import my.maleva.api.module.master.service.SequenceNoMasterService;
 import my.maleva.api.module.planning.dto.PlanningF5View;
 import my.maleva.api.module.planning.dto.request.PlanningF5RequestDto;
 import my.maleva.api.module.planning.dto.request.PLANINGSearchRequestDto;
 import my.maleva.api.module.planning.dto.PlanningDetailsModel;
 import my.maleva.api.module.planning.service.PlanningMasterService;
+import my.maleva.api.module.planning.service.PlanningSaveService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,10 +23,8 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 /**
- * REST Controller for PLANNING Sequence Generation
- *
- * Single production-ready endpoint to get the next PLANNING sequence number.
- * Equivalent to .NET: public ResponseViewModel MaxPLANINGNo(int Comid, string BillType)
+ * REST Controller for PLANNING operations.
+ * Handles sequence generation, insert/update, delete, and search.
  *
  * Features:
  * - Input validation (@NotNull @Positive)
@@ -32,13 +36,18 @@ import java.util.List;
 @RequestMapping("/api/planing")
 public class PlaningController {
 
+    private static final Logger logger = LoggerFactory.getLogger(PlaningController.class);
+
     private final SequenceNoMasterService sequenceNoMasterService;
     private final PlanningMasterService planningMasterService;
+    private final PlanningSaveService planningSaveService;
 
     public PlaningController(SequenceNoMasterService sequenceNoMasterService,
-                            PlanningMasterService planningMasterService) {
+                            PlanningMasterService planningMasterService,
+                            PlanningSaveService planningSaveService) {
         this.sequenceNoMasterService = sequenceNoMasterService;
         this.planningMasterService = planningMasterService;
+        this.planningSaveService = planningSaveService;
     }
 
     /**
@@ -139,6 +148,17 @@ public class PlaningController {
         PlanningF5View result = planningMasterService.selectPlanning(filter);
         return ResponseEntity.ok(result);
     }
+
+    @GetMapping("/edit")
+    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    public ResponseEntity<PlanningEditResponseDto> editPlanning(
+            @RequestParam(required = false) @Positive Integer id,
+            @RequestParam(required = false) @Positive Integer planningNo,
+            @RequestParam("companyId") @NotNull @Positive Integer companyId) {
+        PlanningEditResponseDto result = planningMasterService.editPlanning(id, planningNo, companyId);
+        return ResponseEntity.ok(result);
+    }
+
     @PostMapping("/search")
     @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
     public ResponseEntity<List<PlanningDetailsModel>> planningSearch(
@@ -147,6 +167,78 @@ public class PlaningController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Save (Insert or Update) Planning records.
+     * Matches .NET: [HttpPost] InsertPLANING(List<PLANINGMasterModel> objBrand)
+     *
+     * Endpoint: POST /api/planing/save
+     *
+     * Frontend sends JSON array (List):
+     * [
+     *   {
+     *     "id": 0,
+     *     "sdid": 0,
+     *     "companyRefId": 1,
+     *     "employeeRefId": 123,
+     *     "fDate": "2026/04/01",
+     *     "tDate": "2026/04/30",
+     *     "saleDate": "2026/04/05",
+     *     "cNumberDisplay": "PL000000001",
+     *     "cNumber": 1,
+     *     "remarks": "Optional remarks",
+     *     "search": "PORT1,PORT2",
+     *     "saleDetails": [
+     *       {
+     *         "saleOrderMasterRefId": 456,
+     *         "sortBy": 1,
+     *         "truckRefid": 789,
+     *         "originD": "Port A",
+     *         "destinationD": "Port B",
+     *         "pickupDate": "2026/04/10 08:00",
+     *         "deliveryDate": "2026/04/15 18:00"
+     *       }
+     *     ]
+     *   }
+     * ]
+     *
+     * Response (Success):
+     * [{ "ok": true, "message": "Planning saved successfully", "name": "PL000000001", "id": 1 }]
+     *
+     * Response (Error):
+     * [{ "ok": false, "message": "Error description" }]
+     */
+    @PostMapping("/save")
+    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    public ResponseEntity<List<PlanningSaveResponseDto>> savePlanning(
+            @RequestBody List<PlanningRequest> requests,
+            @RequestHeader(value = "Comid") Integer comid) {
+
+        logger.info("Received save planning request: {} records, comid={}", requests.size(), comid);
+
+        List<PlanningSaveResponseDto> results = planningSaveService.saveAll(requests, comid);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Delete (soft delete) a Planning record.
+     *
+     * Endpoint: DELETE /api/planing/{id}?companyId=1
+     *
+     * Response (Success):
+     * { "ok": true, "message": "Planning deleted successfully", "id": 1 }
+     *
+     * Response (Error):
+     * { "ok": false, "message": "Planning not found" }
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    public ResponseEntity<PlanningSaveResponseDto> deletePlanning(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+
+        PlanningSaveResponseDto result = planningSaveService.delete(id, companyId);
+        return ResponseEntity.ok(result);
+    }
 }
 
 

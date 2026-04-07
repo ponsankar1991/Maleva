@@ -35,6 +35,12 @@ public interface EmployeeMasterRepository extends JpaRepository<EmployeeMaster, 
     // Get all active employees by company and employee type
     @Query("SELECT e FROM EmployeeMaster e WHERE e.companyRefId = :companyRefId AND e.active != 2 AND e.employeeType = :employeeType ORDER BY e.employeeName ASC")
     List<EmployeeMaster> findAllActiveByCompanyRefIdAndEmployeeType(@Param("companyRefId") Integer companyRefId, @Param("employeeType") String employeeType);
+
+    /**
+     * Check if employee exists by ID, company, and active status.
+     * Used for SP validation: EmployeeMaster with CompanyRefId and Active=1
+     */
+    boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
 }
 
 

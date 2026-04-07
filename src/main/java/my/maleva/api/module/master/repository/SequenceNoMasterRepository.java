@@ -45,7 +45,7 @@ public interface SequenceNoMasterRepository extends JpaRepository<SequenceNoMast
      */
     @Query("SELECT COALESCE(MAX(s.sequenceNo), 0) FROM SequenceNoMaster s " +
             "WHERE s.companyRefId = :companyRefId AND s.sequenceName = :sequenceName")
-    Integer findMaxSequenceNoByCompanyAndName(
+    Integer findMaxSequenceNoByCompanyAndSequenceName(
             @Param("companyRefId") Integer companyRefId,
             @Param("sequenceName") String sequenceName);
 

@@ -849,7 +849,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
             int currentSequence = existingSequence
                     .map(SequenceNoMaster::getSequenceNo)
                     .orElseGet(() -> Optional.ofNullable(
-                            sequenceNoMasterRepository.findMaxSequenceNoByCompanyAndName(companyRefId, sequenceName)
+                            sequenceNoMasterRepository.findMaxSequenceNoByCompanyAndSequenceName(companyRefId, sequenceName)
                     ).orElse(0));
 
             int nextSequence = currentSequence + 1;

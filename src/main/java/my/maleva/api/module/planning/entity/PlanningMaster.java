@@ -20,9 +20,6 @@ public class PlanningMaster {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "SDId")
-    private Integer sdId;
-
     @Column(name = "CompanyRefId", nullable = false)
     private Integer companyRefId;
 
