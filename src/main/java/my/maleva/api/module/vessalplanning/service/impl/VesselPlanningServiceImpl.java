@@ -11,7 +11,6 @@ import my.maleva.api.module.vessalplanning.repository.VesselPlanningDetailsRepos
 import my.maleva.api.module.vessalplanning.service.VesselPlanningService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,17 +30,21 @@ public class VesselPlanningServiceImpl implements VesselPlanningService {
 
     private static final Logger logger = LoggerFactory.getLogger(VesselPlanningServiceImpl.class);
 
-    @Autowired
-    private VesselPlanningMasterRepository repository;
+    private final VesselPlanningMasterRepository repository;
+    private final VesselPlanningDetailsRepository detailsRepository;
+    private final VesselPlanningMasterMapper mapper;
+    private final VesselPlanningDetailsMapper detailsMapper;
 
-    @Autowired
-    private VesselPlanningDetailsRepository detailsRepository;
-
-    @Autowired
-    private VesselPlanningMasterMapper mapper;
-
-    @Autowired
-    private VesselPlanningDetailsMapper detailsMapper;
+    public VesselPlanningServiceImpl(
+            VesselPlanningMasterRepository repository,
+            VesselPlanningDetailsRepository detailsRepository,
+            VesselPlanningMasterMapper mapper,
+            VesselPlanningDetailsMapper detailsMapper) {
+        this.repository = repository;
+        this.detailsRepository = detailsRepository;
+        this.mapper = mapper;
+        this.detailsMapper = detailsMapper;
+    }
 
     @Override
     public List<VesselPlanningMasterDto> getByCompanyRefId(Integer companyRefId) {
@@ -67,14 +70,7 @@ public class VesselPlanningServiceImpl implements VesselPlanningService {
         return repository.findByCNumberAndCompanyRefId(cNumber, companyRefId).map(mapper::toDto);
     }
 
-    @Override
-    public List<VesselPlanningMasterDto> getByUserRefId(Integer userRefId) {
-        logger.info("Fetching VesselPlanning for user: {}", userRefId);
-        return repository.findByUserRefId(userRefId)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
+
 
     @Override
     public List<VesselPlanningMasterDto> getByEmployeeRefId(Integer employeeRefId) {
@@ -288,16 +284,14 @@ public class VesselPlanningServiceImpl implements VesselPlanningService {
 
     private void validateReferencedEntities(VesselPlanningMasterDto dto) {
         logger.debug("Validating referenced entities for VesselPlanning");
-        if (dto.getUserRefId() != null && dto.getUserRefId() > 0) {
-            logger.debug("User ID to validate: {}", dto.getUserRefId());
-        }
+
         if (dto.getEmployeeRefId() != null && dto.getEmployeeRefId() > 0) {
             logger.debug("Employee ID to validate: {}", dto.getEmployeeRefId());
         }
     }
 
     private void generateSequenceNumber(VesselPlanningMasterDto dto, Integer companyId) {
-        logger.debug("Generating sequence number for VesselPlanning: {}", dto.getId());
+        logger.debug("Generating sequence number for VesselPlanning ID: {} for company: {}", dto.getId(), companyId);
         // Format: VPL + 9 digits
         String sequenceDisplay = String.format("VPL%09d", dto.getId());
         logger.debug("Generated sequence: {}", sequenceDisplay);

@@ -1,10 +1,12 @@
 package my.maleva.api.module.rti.service.impl;
 
+import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.rti.dto.RTIMasterDto;
 import my.maleva.api.module.rti.entity.RTIMaster;
 import my.maleva.api.module.rti.mapper.RTIMasterMapper;
 import my.maleva.api.module.rti.repository.RTIMasterRepository;
 import my.maleva.api.module.rti.service.RTIMasterService;
+import my.maleva.api.module.saleorder.repository.SaleOrderMasterRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,9 @@ public class RTIMasterServiceImpl implements RTIMasterService {
 
     @Autowired
     private RTIMasterRepository rtiMasterRepository;
+
+    @Autowired
+    private SaleOrderMasterRepository saleOrderMasterRepository;
 
     @Autowired
     private RTIMasterMapper mapper;
@@ -202,6 +207,21 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                 .stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RTIJobLookupDto> searchJobNo(Integer companyRefId, String jobNo) {
+        logger.info("Searching sale order job number '{}' for RTI company: {}", jobNo, companyRefId);
+
+        if (companyRefId == null || jobNo == null || jobNo.isBlank()) {
+            return List.of();
+        }
+
+        return saleOrderMasterRepository.findRTIJobLookupByCompanyRefIdAndJobNo(
+                companyRefId,
+                jobNo.trim()
+        );
     }
 
     @Override

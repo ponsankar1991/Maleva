@@ -1,5 +1,6 @@
 package my.maleva.api.module.rti.controller;
 
+import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.rti.dto.RTIMasterDto;
 import my.maleva.api.module.rti.service.RTIMasterService;
 import org.springframework.beans.factory.annotation.Autowired;

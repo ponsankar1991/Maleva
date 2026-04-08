@@ -1,228 +1,144 @@
 package my.maleva.api.module.vessalplanning.controller;
 
-import my.maleva.api.module.vessalplanning.dto.VesselPlanningMasterDto;
+import jakarta.validation.Valid;
+import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.vessalplanning.dto.VesselPlanningDetailsDto;
+import my.maleva.api.module.vessalplanning.dto.VesselPlanningLegacyDtos;
+import my.maleva.api.module.vessalplanning.dto.VesselPlanningMasterDto;
+import my.maleva.api.module.vessalplanning.service.IVesselPlanningMasterService;
+import my.maleva.api.module.vessalplanning.service.IVesselPlanningSaveService;
 import my.maleva.api.module.vessalplanning.service.VesselPlanningService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
 
-/**
- * VesselPlanningController - REST Controller for VesselPlanning API
- */
 @RestController
 @RequestMapping("/api/vessel-plannings")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_100')")
 public class VesselPlanningController {
 
     private static final Logger logger = LoggerFactory.getLogger(VesselPlanningController.class);
 
-    @Autowired
-    private VesselPlanningService service;
+    private final VesselPlanningService crudService;
+    private final IVesselPlanningMasterService vesselPlanningMasterService;
+    private final IVesselPlanningSaveService vesselPlanningSaveService;
 
-    /**
-     * Get all VesselPlanning records by company ID
-     * GET /api/vessel-plannings/company/{companyRefId}
-     */
+    public VesselPlanningController(
+            VesselPlanningService crudService,
+            IVesselPlanningMasterService vesselPlanningMasterService,
+            IVesselPlanningSaveService vesselPlanningSaveService) {
+        this.crudService = crudService;
+        this.vesselPlanningMasterService = vesselPlanningMasterService;
+        this.vesselPlanningSaveService = vesselPlanningSaveService;
+    }
+
     @GetMapping("/company/{companyRefId}")
-    public ResponseEntity<List<VesselPlanningMasterDto>> getByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Fetching VesselPlanning for company: {}", companyRefId);
-        return ResponseEntity.ok(service.getByCompanyRefId(companyRefId));
-    }
+    public ResponseEntity<List<VesselPlanningMasterDto>> getByCompanyRefId(@PathVariable Integer companyRefId) { return ResponseEntity.ok(crudService.getByCompanyRefId(companyRefId)); }
 
-    /**
-     * Get active VesselPlanning records by company
-     * GET /api/vessel-plannings/company/{companyRefId}/active
-     */
     @GetMapping("/company/{companyRefId}/active")
-    public ResponseEntity<List<VesselPlanningMasterDto>> getActiveByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Fetching active VesselPlanning for company: {}", companyRefId);
-        return ResponseEntity.ok(service.getActiveByCompanyRefId(companyRefId));
-    }
+    public ResponseEntity<List<VesselPlanningMasterDto>> getActiveByCompanyRefId(@PathVariable Integer companyRefId) { return ResponseEntity.ok(crudService.getActiveByCompanyRefId(companyRefId)); }
 
-    /**
-     * Get VesselPlanning by C Number
-     * GET /api/vessel-plannings/c-number/{cNumber}/company/{companyRefId}
-     */
     @GetMapping("/c-number/{cNumber}/company/{companyRefId}")
     public ResponseEntity<?> getByCNumber(@PathVariable Integer cNumber, @PathVariable Integer companyRefId) {
-        logger.info("Fetching VesselPlanning by C Number: {} for company: {}", cNumber, companyRefId);
-        Optional<VesselPlanningMasterDto> record = service.getByCNumber(cNumber, companyRefId);
-        return record.isPresent() ? ResponseEntity.ok(record.get()) :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        Optional<VesselPlanningMasterDto> record = crudService.getByCNumber(cNumber, companyRefId);
+        return record.isPresent() ? ResponseEntity.ok(record.get()) : ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
     }
-
-    /**
-     * Get VesselPlanning records by user ID
-     * GET /api/vessel-plannings/user/{userRefId}
-     */
-    @GetMapping("/user/{userRefId}")
-    public ResponseEntity<List<VesselPlanningMasterDto>> getByUserRefId(@PathVariable Integer userRefId) {
-        logger.info("Fetching VesselPlanning for user: {}", userRefId);
-        return ResponseEntity.ok(service.getByUserRefId(userRefId));
-    }
-
-    /**
-     * Get VesselPlanning records by employee ID
-     * GET /api/vessel-plannings/employee/{employeeRefId}
-     */
     @GetMapping("/employee/{employeeRefId}")
-    public ResponseEntity<List<VesselPlanningMasterDto>> getByEmployeeRefId(@PathVariable Integer employeeRefId) {
-        logger.info("Fetching VesselPlanning for employee: {}", employeeRefId);
-        return ResponseEntity.ok(service.getByEmployeeRefId(employeeRefId));
-    }
+    public ResponseEntity<List<VesselPlanningMasterDto>> getByEmployeeRefId(@PathVariable Integer employeeRefId) { return ResponseEntity.ok(crudService.getByEmployeeRefId(employeeRefId)); }
 
-    /**
-     * Get VesselPlanning by ID
-     * GET /api/vessel-plannings/{id}
-     */
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Integer id) {
-        logger.info("Fetching VesselPlanning by ID: {}", id);
-        Optional<VesselPlanningMasterDto> record = service.getById(id);
-        return record.isPresent() ? ResponseEntity.ok(record.get()) :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        Optional<VesselPlanningMasterDto> record = crudService.getById(id);
+        return record.isPresent() ? ResponseEntity.ok(record.get()) : ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
     }
 
-    /**
-     * Create new VesselPlanning
-     * POST /api/vessel-plannings
-     */
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody VesselPlanningMasterDto dto) {
-        logger.info("Creating new VesselPlanning");
-        try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
-        }
+        try { return ResponseEntity.status(HttpStatus.CREATED).body(crudService.create(dto)); }
+        catch (RuntimeException e) { return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage()); }
     }
 
-    /**
-     * Process VesselPlanning (SP_VESSELPLANINGMaster logic - INSERT or UPDATE with details)
-     * POST /api/vessel-plannings/process?companyId=1
-     */
     @PostMapping("/process")
-    public ResponseEntity<?> processVesselPlanning(
-            @Valid @RequestBody VesselPlanningRequest request,
-            @RequestParam Integer companyId) {
-        logger.info("Processing VesselPlanning with SP_VESSELPLANINGMaster logic for company: {}", companyId);
+    public ResponseEntity<?> processVesselPlanning(@Valid @RequestBody VesselPlanningProcessRequest request, @RequestParam Integer companyId) {
         try {
-            VesselPlanningMasterDto result = service.processVesselPlanning(
-                    request.getVesselPlanning(),
-                    request.getDetails(),
-                    companyId);
+            VesselPlanningMasterDto result = crudService.processVesselPlanning(request.getVesselPlanning(), request.getDetails(), companyId);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
         }
     }
 
-    /**
-     * Update VesselPlanning
-     * PUT /api/vessel-plannings/{id}
-     */
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody VesselPlanningMasterDto dto) {
-        logger.info("Updating VesselPlanning with ID: {}", id);
-        try {
-            return ResponseEntity.ok(service.update(id, dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        }
+        try { return ResponseEntity.ok(crudService.update(id, dto)); }
+        catch (RuntimeException e) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found"); }
     }
 
-    /**
-     * Delete VesselPlanning
-     * DELETE /api/vessel-plannings/{id}
-     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Integer id) {
-        logger.info("Deleting VesselPlanning with ID: {}", id);
-        return service.delete(id) ? ResponseEntity.noContent().build() :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-    }
+    public ResponseEntity<VesselPlanningLegacyDtos.SaveResponse> delete(@PathVariable Integer id, @RequestParam Integer companyId) { return ResponseEntity.ok(vesselPlanningSaveService.delete(id, companyId)); }
 
-    /**
-     * Activate VesselPlanning
-     * PUT /api/vessel-plannings/{id}/activate
-     */
     @PutMapping("/{id}/activate")
     public ResponseEntity<?> activateVesselPlanning(@PathVariable Integer id) {
-        logger.info("Activating VesselPlanning with ID: {}", id);
-        try {
-            return ResponseEntity.ok(service.activateVesselPlanning(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        }
+        try { return ResponseEntity.ok(crudService.activateVesselPlanning(id)); }
+        catch (RuntimeException e) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found"); }
     }
 
-    /**
-     * Deactivate VesselPlanning
-     * PUT /api/vessel-plannings/{id}/deactivate
-     */
     @PutMapping("/{id}/deactivate")
     public ResponseEntity<?> deactivateVesselPlanning(@PathVariable Integer id) {
-        logger.info("Deactivating VesselPlanning with ID: {}", id);
-        try {
-            return ResponseEntity.ok(service.deactivateVesselPlanning(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        }
+        try { return ResponseEntity.ok(crudService.deactivateVesselPlanning(id)); }
+        catch (RuntimeException e) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found"); }
     }
 
-    /**
-     * Count VesselPlanning records by company ID
-     * GET /api/vessel-plannings/company/{companyRefId}/count
-     */
     @GetMapping("/company/{companyRefId}/count")
-    public ResponseEntity<?> countByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Counting VesselPlanning for company: {}", companyRefId);
-        long count = service.countByCompanyRefId(companyRefId);
-        return ResponseEntity.ok("Total: " + count);
-    }
+    public ResponseEntity<?> countByCompanyRefId(@PathVariable Integer companyRefId) { return ResponseEntity.ok("Total: " + crudService.countByCompanyRefId(companyRefId)); }
 
-    /**
-     * Count active VesselPlanning records by company
-     * GET /api/vessel-plannings/company/{companyRefId}/active/count
-     */
     @GetMapping("/company/{companyRefId}/active/count")
-    public ResponseEntity<?> countActiveByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Counting active VesselPlanning for company: {}", companyRefId);
-        long count = service.countActiveByCompanyRefId(companyRefId);
-        return ResponseEntity.ok("Total: " + count);
+    public ResponseEntity<?> countActiveByCompanyRefId(@PathVariable Integer companyRefId) { return ResponseEntity.ok("Total: " + crudService.countActiveByCompanyRefId(companyRefId)); }
+
+    @PostMapping("/max-vessel-planning-no/{companyId}")
+    public ResponseEntity<VesselPlanningLegacyDtos.NumberResponse> getMaxVesselPlanningNo(@PathVariable Integer companyId) {
+        String sequenceNumber = vesselPlanningSaveService.getMaxVesselPlanningNo(companyId);
+        return ResponseEntity.ok(VesselPlanningLegacyDtos.NumberResponse.builder().sequenceNumber(sequenceNumber).companyId(companyId).success(true).build());
     }
 
-    /**
-     * Inner class for VesselPlanning request with details
-     */
-    public static class VesselPlanningRequest {
+    @PostMapping("/select-vessel-planning")
+    public ResponseEntity<VesselPlanningLegacyDtos.F5View> selectVesselPlanning(@RequestBody @Valid VesselPlanningLegacyDtos.F5Request filter) { return ResponseEntity.ok(vesselPlanningMasterService.selectVesselPlanning(filter)); }
+
+    @GetMapping("/edit")
+    public ResponseEntity<VesselPlanningLegacyDtos.EditResponse> editVesselPlanning(@RequestParam(required = false) Integer id, @RequestParam(required = false) Integer vesselPlanningNo, @RequestParam Integer companyId) { return ResponseEntity.ok(vesselPlanningMasterService.editVesselPlanning(id, vesselPlanningNo, companyId)); }
+
+    @PostMapping("/search")
+    public ResponseEntity<List<VesselPlanningLegacyDtos.DetailsModel>> search(@RequestBody @Valid VesselPlanningLegacyDtos.SearchRequest filter) { return ResponseEntity.ok(vesselPlanningMasterService.vesselPlanningSearch(filter)); }
+
+    @PostMapping("/save")
+    public ResponseEntity<List<VesselPlanningLegacyDtos.SaveResponse>> save(@RequestBody @Valid List<VesselPlanningLegacyDtos.SaveRequest> requests, @RequestHeader(value = "Comid", required = false) Integer companyIdHeader) {
+        Integer companyId = resolveCompanyId(requests, companyIdHeader);
+        logger.info("Saving {} vessel planning record(s) for company {}", requests.size(), companyId);
+        return ResponseEntity.ok(vesselPlanningSaveService.saveAll(requests, companyId));
+    }
+
+    @PostMapping("/view")
+    public ResponseEntity<List<VesselPlanningLegacyDtos.ViewModel>> view(@RequestBody @Valid VesselPlanningLegacyDtos.ViewRequest request) { return ResponseEntity.ok(vesselPlanningMasterService.vesselPlanningView(request.getSoId(), request.getComid())); }
+
+    private Integer resolveCompanyId(List<VesselPlanningLegacyDtos.SaveRequest> requests, Integer companyIdHeader) {
+        if (companyIdHeader != null && companyIdHeader > 0) return companyIdHeader;
+        if (requests != null && !requests.isEmpty() && requests.get(0).getCompanyRefId() != null && requests.get(0).getCompanyRefId() > 0) return requests.get(0).getCompanyRefId();
+        throw new InvalidRequestException("Company ID is required for vessel planning save");
+    }
+
+    public static class VesselPlanningProcessRequest {
         private VesselPlanningMasterDto vesselPlanning;
         private List<VesselPlanningDetailsDto> details;
-
-        public VesselPlanningMasterDto getVesselPlanning() {
-            return vesselPlanning;
-        }
-
-        public void setVesselPlanning(VesselPlanningMasterDto vesselPlanning) {
-            this.vesselPlanning = vesselPlanning;
-        }
-
-        public List<VesselPlanningDetailsDto> getDetails() {
-            return details;
-        }
-
-        public void setDetails(List<VesselPlanningDetailsDto> details) {
-            this.details = details;
-        }
+        public VesselPlanningMasterDto getVesselPlanning() { return vesselPlanning; }
+        public void setVesselPlanning(VesselPlanningMasterDto vesselPlanning) { this.vesselPlanning = vesselPlanning; }
+        public List<VesselPlanningDetailsDto> getDetails() { return details; }
+        public void setDetails(List<VesselPlanningDetailsDto> details) { this.details = details; }
     }
 }
 

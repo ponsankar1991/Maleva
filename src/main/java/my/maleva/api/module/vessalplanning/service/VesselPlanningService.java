@@ -18,7 +18,7 @@ public interface VesselPlanningService {
 
     Optional<VesselPlanningMasterDto> getByCNumber(Integer cNumber, Integer companyRefId);
 
-    List<VesselPlanningMasterDto> getByUserRefId(Integer userRefId);
+
 
     List<VesselPlanningMasterDto> getByEmployeeRefId(Integer employeeRefId);
 

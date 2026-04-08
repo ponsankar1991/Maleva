@@ -1,5 +1,6 @@
 package my.maleva.api.module.rti.service;
 
+import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.rti.dto.RTIMasterDto;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -75,6 +76,11 @@ public interface RTIMasterService {
      * Get RTIMaster by truck
      */
     List<RTIMasterDto> getByTruck(Integer companyRefId, Integer truckRefId);
+
+    /**
+     * Find one or more sale orders by exact job number for RTI grid fill.
+     */
+    List<RTIJobLookupDto> searchJobNo(Integer companyRefId, String jobNo);
 
     /**
      * Check if CNumber exists

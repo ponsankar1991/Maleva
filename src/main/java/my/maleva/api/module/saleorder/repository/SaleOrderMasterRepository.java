@@ -1,5 +1,6 @@
 package my.maleva.api.module.saleorder.repository;
 
+import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -17,6 +18,23 @@ import java.util.Optional;
 @Repository
 public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster, Integer>,
         JpaSpecificationExecutor<SaleOrderMaster> {
+
+    @Query("""
+            select new my.maleva.api.module.rti.dto.RTIJobLookupDto(
+                    s.id,
+                    s.cNumberDisplay,
+                    s.saleDate,
+                    c.customerName
+            )
+            from SaleOrderMaster s
+            join Customer c on c.id = s.customerRefId
+            where s.companyRefId = :companyRefId
+              and c.companyRefId = s.companyRefId
+              and s.active <> 2
+              and s.cNumberDisplay = :jobNo
+            order by s.id desc
+            """)
+    List<RTIJobLookupDto> findRTIJobLookupByCompanyRefIdAndJobNo(@Param("companyRefId") Integer companyRefId, @Param("jobNo") String jobNo);
 
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN TRUE ELSE FALSE END FROM SaleOrderMaster s WHERE s.companyRefId = :companyRefId AND s.cNumber = :cNumber")
     boolean existsByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);
