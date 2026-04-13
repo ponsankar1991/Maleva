@@ -1102,7 +1102,428 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Dashboard",
+			"description": "Dashboard APIs for sales, expenses, forwarding, and vessel planning data",
+			"item": [
+				{
+					"name": "Get Sales Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/sales/6?type=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "sales", "6"],
+							"query": [
+								{
+									"key": "type",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Sales Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-sales/6?type=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-sales", "6"],
+							"query": [
+								{
+									"key": "type",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Invoice Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-invoice/6?type=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-invoice", "6"],
+							"query": [
+								{
+									"key": "type",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Expense Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/expense/6?fromDate=2023-01-01&toDate=2023-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "expense", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Expense by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/expense-name/6?fromDate=2023-01-01&toDate=2023-12-31&expenseName=%",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "expense-name", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								},
+								{
+									"key": "expenseName",
+									"value": "%"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Supplier Expense",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/supplier-expense/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "supplier-expense", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get Forwarding Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/forwarding/6?fromDate=2023-01-01&toDate=2023-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "forwarding", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Sales Order Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/sales-order-status/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "sales-order-status", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Rules",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-rules/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-rules", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Performance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-performance/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-performance", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Weekly Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/weekly-report/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "weekly-report", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Monthly Sale",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/monthly-sale/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "monthly-sale", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Pending Payments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/pending-payment/6?dueDate=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "pending-payment", "6"],
+							"query": [
+								{
+									"key": "dueDate",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Completed Payments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/completed-payment/6?fromDate=2023-01-01&toDate=2023-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "completed-payment", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Unreleased Numbers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/unreleased/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "unreleased", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get K8 Unreleased Numbers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/k8-unreleased/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "k8-unreleased", "6"]
+						}
+					}
+				},
+				{
+					"name": "Check Sale Invoices",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/invoice-check/6?invoiceType=0&fromDate=2023-01-01&toDate=2023-12-31&employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "invoice-check", "6"],
+							"query": [
+								{
+									"key": "invoiceType",
+									"value": "0"
+								},
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								},
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Vessel Planning Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": 6,\n    \"Employeeid\": 0,\n    \"ETAType\": 1,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Search\": \"\",\n    \"StatusId\": 0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/vessel-planning/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "vessel-planning", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get Air Freight Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": 6,\n    \"Employeeid\": 0,\n    \"ETAType\": 5,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Search\": \"\",\n    \"StatusId\": 0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/air-freight/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "air-freight", "6"]
+						}
+					}
+				},
+				{
+					"name": "Check Sale Invoice Count",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": 6,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Employeeid\": 0,\n    \"Invoice\": false,\n    \"Remarks\": 0,\n    \"Statusid\": 0,\n    \"completestatusnotshow\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/check-invoice-count/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "check-invoice-count", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "admin"]
+						}
+					}
+				},
+				{
+					"name": "Get Super Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/super-admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "super-admin"]
+						}
+					}
+				}
+			]
 		}
 	]
 }
-

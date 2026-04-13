@@ -96,5 +96,28 @@ public class ApiResponse<T> {
                 error
         );
     }
+
+    /* ================= ERROR (Convenience Methods) ================= */
+
+    /**
+     * Convenience method for error responses with 400 Bad Request status
+     */
+    public static <T> ApiResponse<T> error(String message) {
+        return failure(HttpStatus.BAD_REQUEST, message);
+    }
+
+    /**
+     * Convenience method for error responses with custom status
+     */
+    public static <T> ApiResponse<T> error(HttpStatus status, String message) {
+        return failure(status, message);
+    }
+
+    /**
+     * Convenience method for error responses with error details
+     */
+    public static <T> ApiResponse<T> error(String message, Object errorDetails) {
+        return failure(HttpStatus.BAD_REQUEST, message, errorDetails);
+    }
 }
 
