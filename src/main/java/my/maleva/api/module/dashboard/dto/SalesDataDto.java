@@ -11,6 +11,7 @@ import java.util.List;
 /**
  * DTO for sales data response
  * Maps to legacy GetSalesData API response
+ * All fields use PascalCase to match legacy frontend expectations
  */
 @Data
 @Builder

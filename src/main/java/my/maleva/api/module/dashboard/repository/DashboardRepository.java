@@ -6,6 +6,7 @@ import my.maleva.api.module.dashboard.dto.VesselPlanningSearchModel;
 import my.maleva.api.module.dashboard.dto.F5ViewModel;
 import my.maleva.api.module.dashboard.dto.VesselPlanningDashboardModel;
 import my.maleva.api.module.dashboard.dto.SaleOrderInvoiceCheckModel;
+import my.maleva.api.module.dashboard.dto.DashBoardMonthWiseModel;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,9 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -36,26 +39,33 @@ public class DashboardRepository {
     public List<SalesSummaryRow> getSalesSummary(Integer comId, Integer type) {
         String baseQuery = switch (type) {
             case 0 -> getInvoiceSalesQuery();
+            case 1 -> getAllSalesQuery();  // Type 1 = SaleOrder (all)
             case 2 -> getPartialSalesQuery();
             case 3 -> getPendingSalesQuery();
             default -> getAllSalesQuery();
         };
+
+        // For type 0 (Invoice), we need 8 parameters. For types 1-3, we also need 8 parameters.
         return jdbcTemplate.query(baseQuery,
                 new BeanPropertyRowMapper<>(SalesSummaryRow.class),
                 comId, comId, comId, comId, comId, comId, comId, comId);
     }
 
+    /**
+     * Type 0: Invoice Sales - Uses SaleMaster table (NOT SaleOrderMaster)
+     * This matches the original .NET implementation exactly
+     */
     private String getInvoiceSalesQuery() {
         return """
             SELECT
-                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate = CAST(GETDATE() AS DATE) AND Active != 2 AND CompanyRefId = ? AND InvoiceNo != 0) as TodaySales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.InvoiceNo != 0) as TodayAmount,
-                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND Active != 2 AND CompanyRefId = ? AND InvoiceNo != 0) as YesterdaySales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.InvoiceNo != 0) as YesterdayAmount,
-                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND Active != 2 AND CompanyRefId = ? AND InvoiceNo != 0) as WeekSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.InvoiceNo != 0) as WeekAmount,
-                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND Active != 2 AND CompanyRefId = ? AND InvoiceNo != 0) as MonthSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ? AND A.InvoiceNo != 0) as MonthAmount
+                (SELECT COUNT(Id) FROM SaleMaster WITH (NOLOCK) WHERE SaleDate = CAST(GETDATE() AS DATE) AND Active != 2 AND CompanyRefId = ?) as TodaySales,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleMaster A WITH (NOLOCK), SaleDetails B WITH (NOLOCK) WHERE A.id = B.SaleMasterRefId AND A.SaleDate = CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ?) as TodayAmount,
+                (SELECT COUNT(Id) FROM SaleMaster WITH (NOLOCK) WHERE SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND Active != 2 AND CompanyRefId = ?) as YesterdaySales,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleMaster A WITH (NOLOCK), SaleDetails B WITH (NOLOCK) WHERE A.id = B.SaleMasterRefId AND A.SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND A.Active != 2 AND A.CompanyRefId = ?) as YesterdayAmount,
+                (SELECT COUNT(Id) FROM SaleMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND Active != 2 AND CompanyRefId = ?) as WeekSales,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleMaster A WITH (NOLOCK), SaleDetails B WITH (NOLOCK) WHERE A.id = B.SaleMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND A.Active != 2 AND A.CompanyRefId = ?) as WeekAmount,
+                (SELECT COUNT(Id) FROM SaleMaster WITH (NOLOCK) WHERE SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND Active != 2 AND CompanyRefId = ?) as MonthSales,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleMaster A WITH (NOLOCK), SaleDetails B WITH (NOLOCK) WHERE A.id = B.SaleMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ?) as MonthAmount
             """;
     }
 
@@ -66,8 +76,8 @@ public class DashboardRepository {
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ?) as TodayAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND Active != 2 AND CompanyRefId = ?) as YesterdaySales,
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND A.Active != 2 AND A.CompanyRefId = ?) as YesterdayAmount,
-                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND Active != 2 AND CompanyRefId = ?) as WeekSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ?) as WeekAmount,
+                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND Active != 2 AND CompanyRefId = ?) as WeekSales,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND A.Active != 2 AND A.CompanyRefId = ?) as WeekAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND Active != 2 AND CompanyRefId = ?) as MonthSales,
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ?) as MonthAmount
             """;
@@ -80,8 +90,8 @@ public class DashboardRepository {
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') != '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as TodayAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND Active != 2 AND CompanyRefId = ? AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') != '') OR (SaleDate >= '2024-10-01' AND InvoiceNo != 0))) as YesterdaySales,
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') != '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as YesterdayAmount,
-                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND Active != 2 AND CompanyRefId = ? AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') != '') OR (SaleDate >= '2024-10-01' AND InvoiceNo != 0))) as WeekSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') != '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as WeekAmount,
+                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND Active != 2 AND CompanyRefId = ? AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') != '') OR (SaleDate >= '2024-10-01' AND InvoiceNo != 0))) as WeekSales,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND A.Active != 2 AND A.CompanyRefId = ? AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') != '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as WeekAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND Active != 2 AND CompanyRefId = ? AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') != '') OR (SaleDate >= '2024-10-01' AND InvoiceNo != 0))) as MonthSales,
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ? AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') != '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as MonthAmount
             """;
@@ -94,44 +104,154 @@ public class DashboardRepository {
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as TodayAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as YesterdaySales,
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as YesterdayAmount,
-                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as WeekSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as WeekAmount,
+                (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as WeekSales,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as WeekAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as MonthSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as MonthAmount
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as MonthAmount
             """;
     }
 
     /**
      * Get monthly sales for chart (last 12 months)
+     * Type 0: SaleMaster + SaleDetails
+     * Type 1-3: SaleOrderMaster + SaleOrderDetails
      */
     public List<MonthlySalesRow> getMonthlySales(Integer comId, Integer type) {
-        String invoiceFilter = switch (type) {
-            case 0 -> "AND A.InvoiceNo != 0";
-            case 2 -> "AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') != '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))";
-            case 3 -> "AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))";
-            default -> "";
+        return switch (type) {
+            case 0 -> getMonthlySalesType0(comId);  // SaleMaster
+            case 1 -> getMonthlySalesType1(comId);  // SaleOrderMaster (all)
+            case 2 -> getMonthlySalesType2(comId);  // SaleOrderMaster (partial)
+            case 3 -> getMonthlySalesType3(comId);  // SaleOrderMaster (pending)
+            default -> getMonthlySalesType1(comId);
         };
+    }
 
+    /**
+     * Type 0: Invoice Sales - SaleMaster table (no filters)
+     * Matches .NET query exactly: returns 12 rows (current month first, then previous 11 months)
+     * FIXED: MonthOffset now included in SELECT statement to properly identify each month
+     */
+    private List<MonthlySalesRow> getMonthlySalesType0(Integer comId) {
         StringBuilder sql = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+
         for (int i = 0; i >= -11; i--) {
-            if (!sql.isEmpty()) sql.append(" UNION ALL ");
-            sql.append(String.format("""
-                SELECT %d as MonthOffset,
-                    COUNT(DISTINCT A.Id) as SalesCount,
-                    ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) as SalesAmount
-                FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK)
-                WHERE A.id = B.SaleOrderMasterRefId
-                    AND YEAR(A.SaleDate) = YEAR(DATEADD(mm, %d, GETDATE()))
-                    AND MONTH(A.SaleDate) = MONTH(DATEADD(mm, %d, GETDATE()))
-                    AND A.Active != 2 AND A.CompanyRefId = %d %s
-                """, -i, i, i, comId, invoiceFilter));
+            if (i < 0) sql.append(" UNION ALL ");
+            sql.append(
+                "SELECT COUNT(DISTINCT A.Id) as SalesCount, ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) as SalesAmount " +
+                "FROM SaleMaster A WITH (NOLOCK), SaleDetails B WITH (NOLOCK) " +
+                "WHERE A.id = B.SaleMasterRefId " +
+                "AND YEAR(A.SaleDate) = YEAR(DATEADD(mm, ?, GETDATE())) " +
+                "AND MONTH(A.SaleDate) = MONTH(DATEADD(mm, ?, GETDATE())) " +
+                "AND A.Active != 2 AND A.CompanyRefId = ?");
+            params.add(i);
+            params.add(i);
+            params.add(comId);
         }
-        try {
-            return jdbcTemplate.query(sql.toString(), new BeanPropertyRowMapper<>(MonthlySalesRow.class));
-        } catch (Exception e) {
-            log.error("Error fetching monthly sales: {}", e.getMessage());
-            return Collections.emptyList();
+
+        List<MonthlySalesRow> results = jdbcTemplate.query(sql.toString(),
+            (rs, rowNum) -> {
+                MonthlySalesRow row = new MonthlySalesRow();
+                row.MonthOffset = 11 - rowNum;
+                row.SalesCount = rs.getInt("SalesCount");
+                row.SalesAmount = rs.getDouble("SalesAmount");
+                return row;
+            }, params.toArray());
+
+        return results;
+    }
+
+    private List<MonthlySalesRow> getMonthlySalesType1(Integer comId) {
+        StringBuilder sql = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+
+        for (int i = 0; i >= -11; i--) {
+            if (i < 0) sql.append(" UNION ALL ");
+            sql.append(
+                "SELECT COUNT(DISTINCT A.Id) as SalesCount, ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) as SalesAmount " +
+                "FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) " +
+                "WHERE A.id = B.SaleOrderMasterRefId " +
+                "AND YEAR(A.SaleDate) = YEAR(DATEADD(mm, ?, GETDATE())) " +
+                "AND MONTH(A.SaleDate) = MONTH(DATEADD(mm, ?, GETDATE())) " +
+                "AND A.Active != 2 AND A.CompanyRefId = ?");
+            params.add(i);
+            params.add(i);
+            params.add(comId);
         }
+
+        List<MonthlySalesRow> results = jdbcTemplate.query(sql.toString(),
+            (rs, rowNum) -> {
+                MonthlySalesRow row = new MonthlySalesRow();
+                row.MonthOffset = 11 - rowNum;
+                row.SalesCount = rs.getInt("SalesCount");
+                row.SalesAmount = rs.getDouble("SalesAmount");
+                return row;
+            }, params.toArray());
+
+        return results;
+    }
+
+    private List<MonthlySalesRow> getMonthlySalesType2(Integer comId) {
+        StringBuilder sql = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+
+        for (int i = 0; i >= -11; i--) {
+            if (i < 0) sql.append(" UNION ALL ");
+            sql.append(
+                "SELECT COUNT(DISTINCT A.Id) as SalesCount, ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) as SalesAmount " +
+                "FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) " +
+                "WHERE A.id = B.SaleOrderMasterRefId " +
+                "AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') != '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0)) " +
+                "AND YEAR(A.SaleDate) = YEAR(DATEADD(mm, ?, GETDATE())) " +
+                "AND MONTH(A.SaleDate) = MONTH(DATEADD(mm, ?, GETDATE())) " +
+                "AND A.Active != 2 AND A.CompanyRefId = ?");
+            params.add(i);
+            params.add(i);
+            params.add(comId);
+        }
+
+        List<MonthlySalesRow> results = jdbcTemplate.query(sql.toString(),
+            (rs, rowNum) -> {
+                MonthlySalesRow row = new MonthlySalesRow();
+                row.MonthOffset = 11 - rowNum;
+                row.SalesCount = rs.getInt("SalesCount");
+                row.SalesAmount = rs.getDouble("SalesAmount");
+                return row;
+            }, params.toArray());
+
+        return results;
+    }
+
+    private List<MonthlySalesRow> getMonthlySalesType3(Integer comId) {
+        StringBuilder sql = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+
+        for (int i = 0; i >= -11; i--) {
+            if (i < 0) sql.append(" UNION ALL ");
+            sql.append(
+                "SELECT COUNT(DISTINCT A.Id) as SalesCount, ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) as SalesAmount " +
+                "FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) " +
+                "WHERE A.id = B.SaleOrderMasterRefId " +
+                "AND A.Jstatus NOT IN (8, 12) " +
+                "AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0)) " +
+                "AND YEAR(A.SaleDate) = YEAR(DATEADD(mm, ?, GETDATE())) " +
+                "AND MONTH(A.SaleDate) = MONTH(DATEADD(mm, ?, GETDATE())) " +
+                "AND A.Active != 2 AND A.CompanyRefId = ?");
+            params.add(i);
+            params.add(i);
+            params.add(comId);
+        }
+
+        List<MonthlySalesRow> results = jdbcTemplate.query(sql.toString(),
+            (rs, rowNum) -> {
+                MonthlySalesRow row = new MonthlySalesRow();
+                row.MonthOffset = 11 - rowNum;
+                row.SalesCount = rs.getInt("SalesCount");
+                row.SalesAmount = rs.getDouble("SalesAmount");
+                return row;
+            }, params.toArray());
+
+        return results;
     }
 
     // ========== EXPENSE DATA QUERIES ==========
@@ -639,8 +759,8 @@ public class DashboardRepository {
             log.debug("SQL Query: {}", sql);
             log.debug("Query Parameters: {}", Arrays.toString(params));
 
-            return jdbcTemplate.query(sql, params,
-                    new BeanPropertyRowMapper<>(VesselPlanningDashboardModel.class));
+            return jdbcTemplate.query(sql,
+                    new BeanPropertyRowMapper<>(VesselPlanningDashboardModel.class), params);
         } catch (Exception e) {
             log.error("Error executing vessel planning query: {}", e.getMessage(), e);
             log.error("SQL Query: {}", sql);
@@ -659,8 +779,8 @@ public class DashboardRepository {
             log.debug("SQL Query: {}", sql);
             log.debug("Query Parameters: {}", Arrays.toString(queryBuilder.getParameters()));
 
-            return jdbcTemplate.query(sql, queryBuilder.getParameters(),
-                    new BeanPropertyRowMapper<>(VesselPlanningDashboardModel.class));
+            return jdbcTemplate.query(sql,
+                    new BeanPropertyRowMapper<>(VesselPlanningDashboardModel.class), queryBuilder.getParameters());
         } catch (Exception e) {
             log.error("Error executing air freight query: {}", e.getMessage(), e);
             log.error("SQL Query: {}", sql);
@@ -679,8 +799,8 @@ public class DashboardRepository {
             log.debug("SQL Query: {}", sql);
             log.debug("Query Parameters: {}", Arrays.toString(queryBuilder.getParameters()));
 
-            return jdbcTemplate.query(sql, queryBuilder.getParameters(),
-                    new BeanPropertyRowMapper<>(SaleOrderInvoiceCheckModel.class));
+            return jdbcTemplate.query(sql,
+                    new BeanPropertyRowMapper<>(SaleOrderInvoiceCheckModel.class), queryBuilder.getParameters());
         } catch (Exception e) {
             log.error("Error executing invoice check query: {}", e.getMessage(), e);
             log.error("SQL Query: {}", sql);
@@ -747,7 +867,6 @@ public class DashboardRepository {
             WHERE S.CompanyRefId = ? AND S.Active != 2
             AND S.JStatus NOT IN (6, 5, 20, 8, 15, 12, 16, 19)
             AND S.JStatus NOT IN (SELECT Id FROM JobStatusMaster WHERE MId = 5 AND Active = 1 AND CompanyRefId = ?)
-            AND S.JStatus != ''
             """;
     }
 
@@ -795,7 +914,6 @@ public class DashboardRepository {
             WHERE S.CompanyRefId = ? AND S.Active != 2
             AND S.JStatus NOT IN (6, 5, 20, 8, 15, 12, 16, 9, 4, 19, 22)
             AND S.JStatus NOT IN (SELECT Id FROM JobStatusMaster WHERE MId = 5 AND Active = 1 AND CompanyRefId = ?)
-            AND S.JStatus != ''
             """;
     }
 
@@ -872,6 +990,39 @@ public class DashboardRepository {
             AND S.JStatus NOT IN (SELECT Id FROM JobStatusMaster WHERE MId = 5 AND Active = 1 AND CompanyRefId = ?)
             AND S.JStatus != ''
             """;
+    }
+
+    // ========== HELPER METHODS ==========
+
+    /**
+     * Ensure complete monthly data for all 12 months (0-11)
+     * Fills missing months with 0 sales and 0 amount
+     */
+    private List<MonthlySalesRow> ensureCompleteMonthlyData(List<MonthlySalesRow> results) {
+        // Create a map for quick lookup
+        Map<Integer, MonthlySalesRow> monthMap = new HashMap<>();
+        for (MonthlySalesRow row : results) {
+            if (row.MonthOffset != null) {
+                monthMap.put(row.MonthOffset, row);
+            }
+        }
+
+        // Build complete list with all 12 months (0-11)
+        List<MonthlySalesRow> completeData = new ArrayList<>();
+        for (int monthOffset = 0; monthOffset <= 11; monthOffset++) {
+            if (monthMap.containsKey(monthOffset)) {
+                completeData.add(monthMap.get(monthOffset));
+            } else {
+                // Add zero-filled row for missing month
+                MonthlySalesRow zeroRow = new MonthlySalesRow();
+                zeroRow.MonthOffset = monthOffset;
+                zeroRow.SalesCount = 0;
+                zeroRow.SalesAmount = 0.0;
+                completeData.add(zeroRow);
+            }
+        }
+
+        return completeData;
     }
 
     // ========== HELPER CLASSES ==========

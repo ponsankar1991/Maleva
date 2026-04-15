@@ -64,37 +64,41 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public SalesDataDto getSalesData(Integer comId, Integer type) {
-        log.info("Fetching sales data for comId={}, type={}", comId, type);
+        log.info("=== SALES DATA REQUEST: comId={}, type={} ===", comId, type);
 
         try {
             List<DashboardRepository.SalesSummaryRow> summary =
                     dashboardRepository.getSalesSummary(comId, type);
 
-            if (summary == null) {
-                log.warn("No sales summary data found for comId={}", comId);
+            log.debug("Sales summary result: {} rows", summary == null ? 0 : summary.size());
+
+            if (summary == null || summary.isEmpty()) {
+                log.warn("No sales summary data found for comId={}, type={}", comId, type);
                 return buildEmptySalesData();
             }
 
             List<DashboardRepository.MonthlySalesRow> monthlyRows =
                     dashboardRepository.getMonthlySales(comId, type);
 
+            log.debug("Monthly sales result: {} rows", monthlyRows == null ? 0 : monthlyRows.size());
+
             if (monthlyRows == null) {
-                log.warn("No monthly sales data found for comId={}", comId);
+                log.warn("No monthly sales data found for comId={}, type={}", comId, type);
                 monthlyRows = Collections.emptyList();
             }
 
-            DashboardRepository.SalesSummaryRow row = summary.isEmpty()
-                    ? new DashboardRepository.SalesSummaryRow()
-                    : summary.get(0);
+            DashboardRepository.SalesSummaryRow row = summary.get(0);
 
             List<SalesDataDto.MonthlySalesDto> monthlySales = monthlyRows.stream()
                     .filter(m -> m.MonthOffset != null)
                     .map(m -> SalesDataDto.MonthlySalesDto.builder()
                             .salesCount(m.SalesCount != null ? m.SalesCount : 0)
                             .salesAmount(m.SalesAmount != null ? m.SalesAmount : 0.0)
-                            .monthName(getMonthName(Math.abs(m.MonthOffset)))
+                            .monthName(getMonthName(m.MonthOffset))
                             .build())
                     .collect(Collectors.toList());
+
+            log.info("Built {} monthly sales records for comId={}", monthlySales.size(), comId);
 
             return SalesDataDto.builder()
                     .todaySales(row.TodaySales != null ? row.TodaySales : 0)
@@ -233,9 +237,9 @@ public class DashboardServiceImpl implements DashboardService {
     public List<SalesOrderStatusDto.SalesOrderStatusItemDto> getSalesOrderStatus(Integer comId, Integer employeeId) {
         return dashboardRepository.getSalesOrderStatus(comId, employeeId).stream()
                 .map(r -> SalesOrderStatusDto.SalesOrderStatusItemDto.builder()
-                        .id(r.Id)
+                        .id(r.Id != null ? r.Id : 0)
                         .jobStatus(r.JobStatus)
-                        .dayCount(r.DayCount)
+                        .dayCount(r.DayCount != null ? r.DayCount : 0)
                         .build())
                 .collect(Collectors.toList());
     }
