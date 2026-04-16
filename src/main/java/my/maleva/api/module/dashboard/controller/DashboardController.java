@@ -44,13 +44,11 @@ public class DashboardController {
             log.warn("Invalid comId provided: {}", comId);
             return ResponseEntity.badRequest().body(ApiResponse.error("Invalid company ID. Must be a positive number"));
         }
-
         if (type < 0 || type > 3) {
             log.warn("Invalid sales type: {}", type);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Invalid sales type. Expected 0-3 (0=Invoice, 1=SaleOrder, 2=Partial, 3=Pending)"));
         }
-
         log.info("GET /api/dashboard/sales/{} type={}", comId, type);
         try {
             SalesDataDto data = dashboardService.getSalesData(comId, type);

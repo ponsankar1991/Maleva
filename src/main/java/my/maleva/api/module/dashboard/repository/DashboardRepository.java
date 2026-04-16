@@ -328,29 +328,223 @@ public class DashboardRepository {
 
     // ========== FORWARDING DATA QUERIES ==========
 
+    /**
+     * Get forwarding summary for K1/K2/K3/K8 with Release/WithRelease counts.
+     * Mirrors the legacy RT_ForwardingReport stored procedure logic.
+     * Handles Forwarding, Forwarding2, Forwarding3 columns.
+     */
     public ForwardingSummaryRow getForwardingSummary(Integer comId, String fromDate, String toDate) {
         String sql = """
             SELECT
-                ISNULL(SUM(K1Count), 0) as K1Count, ISNULL(SUM(K1Release), 0) as K1Release, ISNULL(SUM(K1WithRelease), 0) as K1WithRelease,
-                ISNULL(SUM(K2Count), 0) as K2Count, ISNULL(SUM(K2Release), 0) as K2Release, ISNULL(SUM(K2WithRelease), 0) as K2WithRelease,
-                ISNULL(SUM(K3Count), 0) as K3Count, ISNULL(SUM(K3Release), 0) as K3Release, ISNULL(SUM(K3WithRelease), 0) as K3WithRelease,
-                ISNULL(SUM(K8Count), 0) as K8Count, ISNULL(SUM(K8Release), 0) as K8Release, ISNULL(SUM(K8WithRelease), 0) as K8WithRelease
+                ISNULL(SUM(K1Count), 0) as K1Count,
+                ISNULL(SUM(K1Release), 0) as K1Release,
+                ISNULL(SUM(K1WithRelease), 0) as K1WithRelease,
+                ISNULL(SUM(K2Count), 0) as K2Count,
+                ISNULL(SUM(K2Release), 0) as K2Release,
+                ISNULL(SUM(K2WithRelease), 0) as K2WithRelease,
+                ISNULL(SUM(K3Count), 0) as K3Count,
+                ISNULL(SUM(K3Release), 0) as K3Release,
+                ISNULL(SUM(K3WithRelease), 0) as K3WithRelease,
+                ISNULL(SUM(K8Count), 0) as K8Count,
+                ISNULL(SUM(K8Release), 0) as K8Release,
+                ISNULL(SUM(K8WithRelease), 0) as K8WithRelease
             FROM (
-                SELECT COUNT(Id) as K1Count, 0 as K1Release, 0 as K1WithRelease, 0 as K2Count, 0 as K2Release, 0 as K2WithRelease, 0 as K3Count, 0 as K3Release, 0 as K3WithRelease, 0 as K8Count, 0 as K8Release, 0 as K8WithRelease
-                FROM SaleOrderMaster WITH (NOLOCK) WHERE ForwardingDate BETWEEN ? AND ? AND Forwarding = 'K1' AND Active != 2 AND CompanyRefId = ?
+                -- K1 Forwarding counts
+                SELECT COUNT(Id) as K1Count, 0 as K1Release, 0 as K1WithRelease,
+                       0 as K2Count, 0 as K2Release, 0 as K2WithRelease,
+                       0 as K3Count, 0 as K3Release, 0 as K3WithRelease,
+                       0 as K8Count, 0 as K8Release, 0 as K8WithRelease
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE ForwardingDate BETWEEN ? AND ? AND Forwarding = 'K1' AND Active != 2 AND CompanyRefId = ?
                 UNION ALL
                 SELECT 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                FROM SaleOrderMaster A WITH (NOLOCK) WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K1' AND ISNULL(A.ForwardingExitRef, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K1'
+                  AND ISNULL(A.ForwardingExitRef, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
                 UNION ALL
                 SELECT 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0, 0, 0
-                FROM SaleOrderMaster A WITH (NOLOCK) WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K1' AND ISNULL(A.ForwardingExitRef, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K1'
+                  AND ISNULL(A.ForwardingExitRef, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K2 Forwarding counts
+                UNION ALL
+                SELECT 0, 0, 0, COUNT(Id), 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE ForwardingDate BETWEEN ? AND ? AND Forwarding = 'K2' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K2'
+                  AND ISNULL(A.ForwardingExitRef, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K2'
+                  AND ISNULL(A.ForwardingExitRef, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K3 Forwarding counts
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, COUNT(Id), 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE ForwardingDate BETWEEN ? AND ? AND Forwarding = 'K3' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K3'
+                  AND ISNULL(A.ForwardingExitRef, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K3'
+                  AND ISNULL(A.ForwardingExitRef, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K8 Forwarding counts
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(Id), 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE ForwardingDate BETWEEN ? AND ? AND Forwarding = 'K8' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K8'
+                  AND ISNULL(A.ForwardingExitRef, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id)
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.ForwardingDate BETWEEN ? AND ? AND A.Forwarding = 'K8'
+                  AND ISNULL(A.ForwardingExitRef, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K1 Forwarding2 counts
+                UNION ALL
+                SELECT COUNT(Id), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding2Date BETWEEN ? AND ? AND Forwarding2 = 'K1' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K1'
+                  AND ISNULL(A.ForwardingExitRef2, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K1'
+                  AND ISNULL(A.ForwardingExitRef2, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K2 Forwarding2 counts
+                UNION ALL
+                SELECT 0, 0, 0, COUNT(Id), 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding2Date BETWEEN ? AND ? AND Forwarding2 = 'K2' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K2'
+                  AND ISNULL(A.ForwardingExitRef2, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K2'
+                  AND ISNULL(A.ForwardingExitRef2, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K3 Forwarding2 counts
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, COUNT(Id), 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding2Date BETWEEN ? AND ? AND Forwarding2 = 'K3' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K3'
+                  AND ISNULL(A.ForwardingExitRef2, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K3'
+                  AND ISNULL(A.ForwardingExitRef2, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K8 Forwarding2 counts
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(Id), 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding2Date BETWEEN ? AND ? AND Forwarding2 = 'K8' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K8'
+                  AND ISNULL(A.ForwardingExitRef2, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id)
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding2Date BETWEEN ? AND ? AND A.Forwarding2 = 'K8'
+                  AND ISNULL(A.ForwardingExitRef2, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K1 Forwarding3 counts
+                UNION ALL
+                SELECT COUNT(Id), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding3Date BETWEEN ? AND ? AND Forwarding3 = 'K1' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K1'
+                  AND ISNULL(A.ForwardingExitRef3, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K1'
+                  AND ISNULL(A.ForwardingExitRef3, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K2 Forwarding3 counts
+                UNION ALL
+                SELECT 0, 0, 0, COUNT(Id), 0, 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding3Date BETWEEN ? AND ? AND Forwarding3 = 'K2' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K2'
+                  AND ISNULL(A.ForwardingExitRef3, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K2'
+                  AND ISNULL(A.ForwardingExitRef3, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K3 Forwarding3 counts
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, COUNT(Id), 0, 0, 0, 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding3Date BETWEEN ? AND ? AND Forwarding3 = 'K3' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K3'
+                  AND ISNULL(A.ForwardingExitRef3, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0, 0, 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K3'
+                  AND ISNULL(A.ForwardingExitRef3, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
+                -- K8 Forwarding3 counts
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(Id), 0, 0
+                FROM SaleOrderMaster WITH (NOLOCK)
+                WHERE Forwarding3Date BETWEEN ? AND ? AND Forwarding3 = 'K8' AND Active != 2 AND CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id), 0
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K8'
+                  AND ISNULL(A.ForwardingExitRef3, '') = '' AND A.Active != 2 AND A.CompanyRefId = ?
+                UNION ALL
+                SELECT 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, COUNT(A.Id)
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.Forwarding3Date BETWEEN ? AND ? AND A.Forwarding3 = 'K8'
+                  AND ISNULL(A.ForwardingExitRef3, '') != '' AND A.Active != 2 AND A.CompanyRefId = ?
             ) t
             """;
         try {
-            return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(ForwardingSummaryRow.class),
-                    fromDate, toDate, comId, fromDate, toDate, comId, fromDate, toDate, comId);
+            // Parameters: for each of 36 UNION ALL parts, 3 params each (fromDate, toDate, comId) = 108 params
+            Object[] params = new Object[108];
+            int idx = 0;
+            for (int i = 0; i < 36; i++) {
+                params[idx++] = fromDate;
+                params[idx++] = toDate;
+                params[idx++] = comId;
+            }
+            return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(ForwardingSummaryRow.class), params);
         } catch (Exception e) {
-            log.error("Error fetching forwarding summary: {}", e.getMessage());
+            log.error("Error fetching forwarding summary: {}", e.getMessage(), e);
             return new ForwardingSummaryRow();
         }
     }
