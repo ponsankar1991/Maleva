@@ -33,6 +33,15 @@ public interface DashboardService {
      */
     List<EmployeeSalesDto.EmployeeSalesItemDto> getEmployeeInvoiceData(Integer comId, Integer type);
 
+    /**
+     * Get current month sales breakdown by employee
+     * Shows which employees generated the most sales in current month
+     * @param comId Company ID
+     * @param baseDate Reference date for current month calculation
+     * @return List of employees with their current month sales totals
+     */
+    List<EmployeeWiseSalesDto> getEmployeeWiseSales(Integer comId, String baseDate);
+
     // ========== EXPENSE DATA ==========
 
     /**

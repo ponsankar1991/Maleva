@@ -276,6 +276,11 @@ public class DashboardRepository {
 
     // ========== EXPENSE DATA QUERIES ==========
 
+    /**
+     * Get expense summary - mirrors legacy GetExpData result query.
+     * Uses UNION ALL with 8 sub-queries (today/yesterday/week/month for PaymentVoucherMaster + Payment).
+     * Week boundary: DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE))
+     */
     public List<ExpenseSummaryRow> getExpenseSummary(Integer comId) {
         String sql = """
             SELECT
@@ -284,28 +289,83 @@ public class DashboardRepository {
                 SUM(WeekSales) as WeekSales, SUM(WeekAmount) as WeekAmount,
                 SUM(MonthSales) as MonthSales, SUM(MonthAmount) as MonthAmount
             FROM (
-                SELECT COUNT(Id) as TodaySales, ISNULL(ROUND(SUM(Amount), 2), 0) as TodayAmount, 0 as YesterdaySales, 0.0 as YesterdayAmount, 0 as WeekSales, 0.0 as WeekAmount, 0 as MonthSales, 0.0 as MonthAmount
-                FROM PaymentVoucherMaster WITH (NOLOCK) WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate = CAST(GETDATE() AS DATE)
+                -- PaymentVoucherMaster: Today
+                SELECT COUNT(Id) as TodaySales, ISNULL(ROUND(SUM(Amount), 2), 0) as TodayAmount,
+                    0 as YesterdaySales, 0.0 as YesterdayAmount, 0 as WeekSales, 0.0 as WeekAmount, 0 as MonthSales, 0.0 as MonthAmount
+                FROM PaymentVoucherMaster WITH (NOLOCK)
+                WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate = CAST(GETDATE() AS DATE)
                 UNION ALL
-                SELECT 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0, 0, 0.0 FROM PaymentVoucherMaster WITH (NOLOCK) WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
+                -- PaymentVoucherMaster: Yesterday
+                SELECT 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0, 0, 0.0
+                FROM PaymentVoucherMaster WITH (NOLOCK)
+                WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
                 UNION ALL
-                SELECT 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0 FROM PaymentVoucherMaster WITH (NOLOCK) WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE)
+                -- PaymentVoucherMaster: Week (Mon-Sun week, same as legacy)
+                SELECT 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0
+                FROM PaymentVoucherMaster WITH (NOLOCK)
+                WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate BETWEEN
+                    CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND
+                    DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE))
                 UNION ALL
-                SELECT 0, 0.0, 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0) FROM PaymentVoucherMaster WITH (NOLOCK) WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE())
+                -- PaymentVoucherMaster: Month
+                SELECT 0, 0.0, 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0)
+                FROM PaymentVoucherMaster WITH (NOLOCK)
+                WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate BETWEEN
+                    DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE())
                 UNION ALL
-                SELECT COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0, 0, 0.0, 0, 0.0 FROM Payment WITH (NOLOCK) WHERE CompanyRefId = ? AND PaymentDate = CAST(GETDATE() AS DATE)
+                -- Payment: Today
+                SELECT COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0, 0, 0.0, 0, 0.0
+                FROM Payment WITH (NOLOCK)
+                WHERE CompanyRefId = ? AND PaymentDate = CAST(GETDATE() AS DATE)
                 UNION ALL
-                SELECT 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0, 0, 0.0 FROM Payment WITH (NOLOCK) WHERE CompanyRefId = ? AND PaymentDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
+                -- Payment: Yesterday
+                SELECT 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0, 0, 0.0
+                FROM Payment WITH (NOLOCK)
+                WHERE CompanyRefId = ? AND PaymentDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
                 UNION ALL
-                SELECT 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0 FROM Payment WITH (NOLOCK) WHERE CompanyRefId = ? AND PaymentDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND CAST(GETDATE() AS DATE)
+                -- Payment: Week (Mon-Sun week, same as legacy)
+                SELECT 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), 0, 0.0
+                FROM Payment WITH (NOLOCK)
+                WHERE CompanyRefId = ? AND PaymentDate BETWEEN
+                    CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND
+                    DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE))
                 UNION ALL
-                SELECT 0, 0.0, 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0) FROM Payment WITH (NOLOCK) WHERE CompanyRefId = ? AND PaymentDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE())
+                -- Payment: Month
+                SELECT 0, 0.0, 0, 0.0, 0, 0.0, COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0)
+                FROM Payment WITH (NOLOCK)
+                WHERE CompanyRefId = ? AND PaymentDate BETWEEN
+                    DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE())
             ) t
             """;
-        return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(ExpenseSummaryRow.class),
+        try {
+            List<ExpenseSummaryRow> results = jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    ExpenseSummaryRow row = new ExpenseSummaryRow();
+                    row.TodaySales = rs.getInt("TodaySales");
+                    row.TodayAmount = rs.getDouble("TodayAmount");
+                    row.YesterdaySales = rs.getInt("YesterdaySales");
+                    row.YesterdayAmount = rs.getDouble("YesterdayAmount");
+                    row.WeekSales = rs.getInt("WeekSales");
+                    row.WeekAmount = rs.getDouble("WeekAmount");
+                    row.MonthSales = rs.getInt("MonthSales");
+                    row.MonthAmount = rs.getDouble("MonthAmount");
+                    return row;
+                },
                 comId, comId, comId, comId, comId, comId, comId, comId);
+            log.debug("getExpenseSummary for comId={} returned {} rows", comId, results.size());
+            return results;
+        } catch (Exception e) {
+            log.error("Error in getExpenseSummary for comId={}: {}", comId, e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
+    /**
+     * Get expense breakdown grouped by expense name.
+     * Mirrors legacy GetExpData result2 query.
+     * Both PaymentVoucherMaster and Payment use Description field (FIXED: was using Remarks incorrectly).
+     * IMPORTANT: Matches C# implementation exactly
+     */
     public List<ExpenseBreakdownRow> getExpenseBreakdown(Integer comId, String fromDate, String toDate) {
         String sql = """
             SELECT SUM(ExpCount) as ExpCount, SUM(ExpAmount) as ExpAmount, ExpenseName
@@ -315,15 +375,81 @@ public class DashboardRepository {
                 WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate BETWEEN ? AND ?
                 GROUP BY Description
                 UNION ALL
-                SELECT COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), ISNULL(Description, '')
+                SELECT COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), ISNULL(Description, '') as ExpenseName
                 FROM Payment WITH (NOLOCK)
                 WHERE CompanyRefId = ? AND PaymentDate BETWEEN ? AND ?
                 GROUP BY ISNULL(Description, '')
             ) t
             GROUP BY ExpenseName
             """;
-        return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(ExpenseBreakdownRow.class),
+        try {
+            List<ExpenseBreakdownRow> results = jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    ExpenseBreakdownRow row = new ExpenseBreakdownRow();
+                    row.ExpCount = rs.getInt("ExpCount");
+                    row.ExpAmount = rs.getDouble("ExpAmount");
+                    row.ExpenseName = rs.getString("ExpenseName");
+                    return row;
+                },
                 comId, fromDate, toDate, comId, fromDate, toDate);
+            log.debug("getExpenseBreakdown for comId={}, fromDate={}, toDate={} returned {} rows",
+                comId, fromDate, toDate, results.size());
+            return results;
+        } catch (Exception e) {
+            log.error("Error in getExpenseBreakdown: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Get expense details filtered by expense name.
+     * Used for drill-down from expense summary to individual expense entries.
+     * Both PaymentVoucherMaster and Payment use Description field (FIXED: was using Remarks incorrectly).
+     * IMPORTANT: Matches C# implementation exactly
+     */
+    public List<ExpenseBreakdownRow> getExpenseByName(Integer comId, String fromDate, String toDate, String expenseName) {
+        String sql;
+        List<Object> params;
+
+        if (expenseName == null || expenseName.trim().isEmpty() || "%".equals(expenseName.trim())) {
+            // Return all expenses (same as breakdown)
+            return getExpenseBreakdown(comId, fromDate, toDate);
+        }
+
+        sql = """
+            SELECT SUM(ExpCount) as ExpCount, SUM(ExpAmount) as ExpAmount, ExpenseName
+            FROM (
+                SELECT COUNT(Id) as ExpCount, ISNULL(ROUND(SUM(Amount), 2), 0) as ExpAmount, Description as ExpenseName
+                FROM PaymentVoucherMaster WITH (NOLOCK)
+                WHERE Active = 1 AND CompanyRefId = ? AND PaymentVoucherDate BETWEEN ? AND ?
+                AND Description = ?
+                GROUP BY Description
+                UNION ALL
+                SELECT COUNT(Id), ISNULL(ROUND(SUM(Amount), 2), 0), ISNULL(Description, '') as ExpenseName
+                FROM Payment WITH (NOLOCK)
+                WHERE CompanyRefId = ? AND PaymentDate BETWEEN ? AND ?
+                AND ISNULL(Description, '') = ?
+                GROUP BY ISNULL(Description, '')
+            ) t
+            GROUP BY ExpenseName
+            """;
+        params = List.of(comId, fromDate, toDate, expenseName, comId, fromDate, toDate, expenseName);
+        try {
+            List<ExpenseBreakdownRow> results = jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    ExpenseBreakdownRow row = new ExpenseBreakdownRow();
+                    row.ExpCount = rs.getInt("ExpCount");
+                    row.ExpAmount = rs.getDouble("ExpAmount");
+                    row.ExpenseName = rs.getString("ExpenseName");
+                    return row;
+                }, params.toArray());
+            log.debug("getExpenseByName for comId={}, expenseName={} returned {} rows",
+                comId, expenseName, results.size());
+            return results;
+        } catch (Exception e) {
+            log.error("Error in getExpenseByName: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     // ========== FORWARDING DATA QUERIES ==========
@@ -534,7 +660,6 @@ public class DashboardRepository {
             ) t
             """;
         try {
-            // Parameters: for each of 36 UNION ALL parts, 3 params each (fromDate, toDate, comId) = 108 params
             Object[] params = new Object[108];
             int idx = 0;
             for (int i = 0; i < 36; i++) {
@@ -542,9 +667,33 @@ public class DashboardRepository {
                 params[idx++] = toDate;
                 params[idx++] = comId;
             }
-            return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(ForwardingSummaryRow.class), params);
+            List<ForwardingSummaryRow> results = jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    ForwardingSummaryRow row = new ForwardingSummaryRow();
+                    row.K1Count = rs.getInt("K1Count");
+                    row.K1Release = rs.getInt("K1Release");
+                    row.K1WithRelease = rs.getInt("K1WithRelease");
+                    row.K2Count = rs.getInt("K2Count");
+                    row.K2Release = rs.getInt("K2Release");
+                    row.K2WithRelease = rs.getInt("K2WithRelease");
+                    row.K3Count = rs.getInt("K3Count");
+                    row.K3Release = rs.getInt("K3Release");
+                    row.K3WithRelease = rs.getInt("K3WithRelease");
+                    row.K8Count = rs.getInt("K8Count");
+                    row.K8Release = rs.getInt("K8Release");
+                    row.K8WithRelease = rs.getInt("K8WithRelease");
+                    return row;
+                }, params);
+            if (results.isEmpty()) {
+                log.warn("getForwardingSummary returned no rows for comId={}, fromDate={}, toDate={}",
+                    comId, fromDate, toDate);
+                return new ForwardingSummaryRow();
+            }
+            log.debug("getForwardingSummary for comId={} returned row with K1Count={}, K8Count={}",
+                comId, results.get(0).K1Count, results.get(0).K8Count);
+            return results.get(0);
         } catch (Exception e) {
-            log.error("Error fetching forwarding summary: {}", e.getMessage(), e);
+            log.error("Error fetching forwarding summary for comId={}: {}", comId, e.getMessage(), e);
             return new ForwardingSummaryRow();
         }
     }
@@ -561,6 +710,57 @@ public class DashboardRepository {
             GROUP BY EM.EmployeeName
             """, whereClause);
         return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(EmployeeSalesRow.class), comId);
+    }
+
+    /**
+     * Get current month sales breakdown by employee
+     * Shows which employees generated the most sales in current month
+     * @param comId Company ID
+     * @param baseDate Reference date for current month calculation
+     * @return List of employees with their current month sales totals
+     */
+    public List<EmployeeWiseSalesRow> getEmployeeWiseSales(Integer comId, String baseDate) {
+        String sql = """
+            DECLARE @BaseDate DATE = ?;
+            
+            SELECT 
+                em.EmployeeName,
+                SUM(sm.ActualNetAmount) AS CurrentMonthSales,
+                COUNT(DISTINCT sm.Id) AS SalesCount
+            FROM SaleOrderMaster sm WITH (NOLOCK)
+            INNER JOIN SaleMaster SI WITH (NOLOCK) 
+                ON sm.Id = SI.SaleOrderMasterNo     
+            INNER JOIN EmployeeMaster em WITH (NOLOCK) 
+                ON sm.EmployeeRefId = em.Id  
+            WHERE 
+                sm.Active = 1 
+                AND sm.CompanyRefId = ?
+                AND SI.SaleDate >= DATEFROMPARTS(YEAR(@BaseDate), MONTH(@BaseDate), 1)
+                AND SI.SaleDate < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(@BaseDate), MONTH(@BaseDate), 1))
+            GROUP BY 
+                em.EmployeeName
+            ORDER BY 
+                CurrentMonthSales DESC
+            """;
+
+        try {
+            List<EmployeeWiseSalesRow> results = jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    EmployeeWiseSalesRow row = new EmployeeWiseSalesRow();
+                    row.EmployeeName = rs.getString("EmployeeName");
+                    row.CurrentMonthSales = rs.getDouble("CurrentMonthSales");
+                    row.SalesCount = rs.getInt("SalesCount");
+                    return row;
+                },
+                baseDate, comId);
+
+            log.debug("getEmployeeWiseSales for comId={}, baseDate={} returned {} rows",
+                comId, baseDate, results.size());
+            return results;
+        } catch (Exception e) {
+            log.error("Error in getEmployeeWiseSales: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     // ========== SALES ORDER STATUS QUERY ==========
@@ -1312,5 +1512,11 @@ public class DashboardRepository {
         public Integer DetailedId;
         public String BankName;
         public String AccountNo;
+    }
+
+    public static class EmployeeWiseSalesRow {
+        public String EmployeeName;
+        public Double CurrentMonthSales;
+        public Integer SalesCount;
     }
 }

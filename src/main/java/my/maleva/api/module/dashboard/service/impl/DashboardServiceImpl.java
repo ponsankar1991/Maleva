@@ -25,28 +25,75 @@ public class DashboardServiceImpl implements DashboardService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    // ========== LEGACY DASHBOARD (Mock Implementation) ==========
+    // ========== LEGACY DASHBOARD ==========
 
+    /**
+     * Get admin dashboard data - mirrors legacy GetExpData result.
+     * Returns KPI stats from ExpenseSummary (Today/Yesterday/Week/Month counts & amounts).
+     * Uses today's date as the date range.
+     */
     @Override
     public DashboardDataDto getAdminDashboardData() {
-        return DashboardDataDto.builder()
-                .kpiStats(DashboardDataDto.KPIStats.builder()
-                        .totalRevenue(0.0)
-                        .activeOperations(0)
-                        .teamEfficiency(0.0)
-                        .pendingApprovals(0)
-                        .revenueChangePercent(0.0)
-                        .operationsChange(0)
-                        .todaySalesCount(0)
-                        .todaySalesAmount(0.0)
-                        .yesterdaySalesCount(0)
-                        .yesterdaySalesAmount(0.0)
-                        .weekSalesCount(0)
-                        .weekSalesAmount(0.0)
-                        .monthSalesCount(0)
-                        .monthSalesAmount(0.0)
-                        .build())
-                .build();
+        try {
+            // Use today's date as default for admin dashboard (mirrors legacy behavior)
+            String today = LocalDate.now().format(DATE_FORMAT);
+
+            // Get expense summary (Today/Yesterday/Week/Month)
+            List<DashboardRepository.ExpenseSummaryRow> summary =
+                    dashboardRepository.getExpenseSummary(6); // comId=6 is hardcoded in legacy
+
+            // Also get pending approvals count from sales order status
+            List<DashboardRepository.SalesOrderStatusRow> statusRows =
+                    dashboardRepository.getSalesOrderStatus(6, null);
+
+            DashboardRepository.ExpenseSummaryRow row = summary.isEmpty()
+                    ? new DashboardRepository.ExpenseSummaryRow()
+                    : summary.get(0);
+
+            int pendingApprovals = statusRows.stream()
+                    .filter(r -> r.JobStatus != null && !"JOB COMPLET".equals(r.JobStatus))
+                    .mapToInt(r -> r.DayCount != null ? r.DayCount : 0)
+                    .sum();
+
+            return DashboardDataDto.builder()
+                    .kpiStats(DashboardDataDto.KPIStats.builder()
+                            .totalRevenue(row.TodayAmount != null ? row.TodayAmount : 0.0)
+                            .activeOperations(pendingApprovals)
+                            .teamEfficiency(0.0)
+                            .pendingApprovals(pendingApprovals)
+                            .revenueChangePercent(0.0)
+                            .operationsChange(0)
+                            .todaySalesCount(row.TodaySales != null ? row.TodaySales : 0)
+                            .todaySalesAmount(row.TodayAmount != null ? row.TodayAmount : 0.0)
+                            .yesterdaySalesCount(row.YesterdaySales != null ? row.YesterdaySales : 0)
+                            .yesterdaySalesAmount(row.YesterdayAmount != null ? row.YesterdayAmount : 0.0)
+                            .weekSalesCount(row.WeekSales != null ? row.WeekSales : 0)
+                            .weekSalesAmount(row.WeekAmount != null ? row.WeekAmount : 0.0)
+                            .monthSalesCount(row.MonthSales != null ? row.MonthSales : 0)
+                            .monthSalesAmount(row.MonthAmount != null ? row.MonthAmount : 0.0)
+                            .build())
+                    .build();
+        } catch (Exception e) {
+            log.error("Error fetching admin dashboard data: {}", e.getMessage(), e);
+            return DashboardDataDto.builder()
+                    .kpiStats(DashboardDataDto.KPIStats.builder()
+                            .totalRevenue(0.0)
+                            .activeOperations(0)
+                            .teamEfficiency(0.0)
+                            .pendingApprovals(0)
+                            .revenueChangePercent(0.0)
+                            .operationsChange(0)
+                            .todaySalesCount(0)
+                            .todaySalesAmount(0.0)
+                            .yesterdaySalesCount(0)
+                            .yesterdaySalesAmount(0.0)
+                            .weekSalesCount(0)
+                            .weekSalesAmount(0.0)
+                            .monthSalesCount(0)
+                            .monthSalesAmount(0.0)
+                            .build())
+                    .build();
+        }
     }
 
     @Override
@@ -160,11 +207,18 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public ExpenseDataDto getExpenseData(Integer comId, String fromDate, String toDate) {
+        log.info("=== EXPENSE DATA REQUEST: comId={}, fromDate={}, toDate={} ===", comId, fromDate, toDate);
+
+        // Get expense summary - uses GETDATE() internally for fixed periods (today/yesterday/week/month)
+        // The fromDate/toDate are used for the breakdown query
         List<DashboardRepository.ExpenseSummaryRow> summary =
                 dashboardRepository.getExpenseSummary(comId);
+        log.debug("Expense summary returned {} rows", summary.size());
 
+        // Get expense breakdown filtered by fromDate/toDate (mirrors legacy GetExpData result2 query)
         List<DashboardRepository.ExpenseBreakdownRow> breakdown =
                 dashboardRepository.getExpenseBreakdown(comId, fromDate, toDate);
+        log.debug("Expense breakdown returned {} rows", breakdown.size());
 
         DashboardRepository.ExpenseSummaryRow row = summary.isEmpty()
                 ? new DashboardRepository.ExpenseSummaryRow()
@@ -177,6 +231,9 @@ public class DashboardServiceImpl implements DashboardService {
                         .expAmount(r.ExpAmount)
                         .build())
                 .collect(Collectors.toList());
+
+        log.info("Built expense data with {} breakdown items, TodaySales={}, MonthAmount={}",
+            expenses.size(), row.TodaySales, row.MonthAmount);
 
         return ExpenseDataDto.builder()
                 .todaySales(row.TodaySales != null ? row.TodaySales : 0)
@@ -193,8 +250,17 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public List<ExpenseNameDto.ExpenseNameItemDto> getExpenseByName(Integer comId, String fromDate, String toDate, String expenseName) {
-        // This would need a separate query - simplified for now
-        return Collections.emptyList();
+        List<DashboardRepository.ExpenseBreakdownRow> breakdown =
+                dashboardRepository.getExpenseByName(comId, fromDate, toDate, expenseName);
+
+        return breakdown.stream()
+                .map(r -> ExpenseNameDto.ExpenseNameItemDto.builder()
+                        .id(0) // Id not available in this query
+                        .expenseName(r.ExpenseName)
+                        .expCount(r.ExpCount)
+                        .expAmount(r.ExpAmount)
+                        .build())
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -207,12 +273,19 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public ForwardingDataDto getForwardingData(Integer comId, String fromDate, String toDate) {
+        log.info("=== FORWARDING DATA REQUEST: comId={}, fromDate={}, toDate={} ===", comId, fromDate, toDate);
         DashboardRepository.ForwardingSummaryRow row =
                 dashboardRepository.getForwardingSummary(comId, fromDate, toDate);
 
         if (row == null) {
             row = new DashboardRepository.ForwardingSummaryRow();
         }
+
+        log.info("Forwarding data - K1: {}/{}/{}, K2: {}/{}/{}, K3: {}/{}/{}, K8: {}/{}/{}",
+            row.K1Count, row.K1Release, row.K1WithRelease,
+            row.K2Count, row.K2Release, row.K2WithRelease,
+            row.K3Count, row.K3Release, row.K3WithRelease,
+            row.K8Count, row.K8Release, row.K8WithRelease);
 
         return ForwardingDataDto.builder()
                 .k1Count(row.K1Count)
@@ -370,6 +443,38 @@ public class DashboardServiceImpl implements DashboardService {
                 .monthAmount(0.0)
                 .monthlySales(Collections.emptyList())
                 .build();
+    }
+
+    @Override
+    public List<EmployeeWiseSalesDto> getEmployeeWiseSales(Integer comId, String baseDate) {
+        log.info("=== EMPLOYEE WISE SALES REQUEST: comId={}, baseDate={} ===", comId, baseDate);
+
+        try {
+            List<DashboardRepository.EmployeeWiseSalesRow> rows =
+                    dashboardRepository.getEmployeeWiseSales(comId, baseDate);
+
+            log.debug("Employee-wise sales returned {} rows", rows.size());
+
+            if (rows == null || rows.isEmpty()) {
+                log.warn("No employee-wise sales data found for comId={}, baseDate={}", comId, baseDate);
+                return Collections.emptyList();
+            }
+
+            List<EmployeeWiseSalesDto> result = rows.stream()
+                    .map(r -> EmployeeWiseSalesDto.builder()
+                            .employeeName(r.EmployeeName != null ? r.EmployeeName : "Unknown")
+                            .currentMonthSales(r.CurrentMonthSales != null ? r.CurrentMonthSales : 0.0)
+                            .salesCount(r.SalesCount != null ? r.SalesCount : 0)
+                            .build())
+                    .sorted((a, b) -> Double.compare(b.getCurrentMonthSales(), a.getCurrentMonthSales())) // Sort by sales desc
+                    .collect(Collectors.toList());
+
+            log.info("Built {} employee-wise sales records for comId={}", result.size(), comId);
+            return result;
+        } catch (Exception e) {
+            log.error("Error fetching employee-wise sales for comId={}, baseDate={}: {}", comId, baseDate, e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
 }
