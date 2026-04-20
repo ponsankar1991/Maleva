@@ -139,4 +139,13 @@ public interface DashboardService {
      * Check sale invoice count and status
      */
     List<SaleOrderInvoiceCheckModel> checkSaleInvoiceCount(F5ViewModel searchModel);
+
+    /**
+     * Get top employee performers (monthly comparison)
+     * Shows which employee generated the most sales in current and previous month
+     * @param comId Company ID
+     * @param baseDate Reference date for month calculation (YYYY-MM-DD)
+     * @return Response wrapper with top performers and metrics for both months
+     */
+    TopPerformerDto.TopPerformersResponseDto getTopPerformers(Integer comId, String baseDate);
 }

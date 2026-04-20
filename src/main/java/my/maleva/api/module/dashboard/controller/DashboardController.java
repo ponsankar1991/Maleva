@@ -441,4 +441,51 @@ public class DashboardController {
     private DashboardDataDto getSuperAdminDashboardData() {
         return getAdminDashboardData();
     }
+
+    /**
+     * Get top employee performers for current and previous month
+     * Shows highest performing employee in each month with growth analysis
+     * ACCESSIBLE TO ALL USERS - No role restriction
+     *
+     * @param comId Company ID
+     * @param baseDate Reference date for month calculation (YYYY-MM-DD, default: today)
+     * @return Top performers with monthly comparison and growth metrics
+     */
+    @GetMapping("/top-performers/{comId}")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<ApiResponse<TopPerformerDto.TopPerformersResponseDto>> getTopPerformers(
+            @PathVariable Integer comId,
+            @RequestParam(required = false) String baseDate) {
+
+        log.info("GET /api/dashboard/top-performers/{} baseDate={}", comId, baseDate);
+
+        if (comId == null || comId <= 0) {
+            log.warn("Invalid comId provided: {}", comId);
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid company ID. Must be a positive number"));
+        }
+
+        // Use current date if baseDate not provided
+        if (baseDate == null || baseDate.trim().isEmpty()) {
+            baseDate = LocalDate.now().toString();
+        }
+
+        try {
+            TopPerformerDto.TopPerformersResponseDto response = dashboardService.getTopPerformers(comId, baseDate);
+
+            if (response == null) {
+                log.warn("No top performers data found for comId={}, baseDate={}", comId, baseDate);
+                return ResponseEntity.ok(ApiResponse.success("No data available for the specified period", response));
+            }
+
+            log.info("Top performers retrieved for comId={}, current month performer: {}, previous month performer: {}",
+                    comId,
+                    response.getCurrentMonthTopPerformer() != null ? response.getCurrentMonthTopPerformer().getEmployeeName() : "None",
+                    response.getPreviousMonthTopPerformer() != null ? response.getPreviousMonthTopPerformer().getEmployeeName() : "None");
+
+            return ResponseEntity.ok(ApiResponse.success("Top performers data fetched successfully", response));
+        } catch (Exception e) {
+            log.error("Error fetching top performers for comId={}, baseDate={}: {}", comId, baseDate, e.getMessage(), e);
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to fetch top performers data. Please try again later."));
+        }
+    }
 }

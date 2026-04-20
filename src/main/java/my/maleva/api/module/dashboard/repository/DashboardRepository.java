@@ -115,11 +115,11 @@ public class DashboardRepository {
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate = CAST(GETDATE() AS DATE) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as TodaySales,
                 (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(GETDATE() AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as TodayAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as YesterdaySales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as YesterdayAmount,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleMasterRefId AND A.SaleDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as YesterdayAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as WeekSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as WeekAmount,
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleMasterRefId AND A.SaleDate BETWEEN CAST(DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1) AS DATE) AND DATEADD(DAY, 6 - DATEPART(WEEKDAY, GETDATE()), CAST(GETDATE() AS DATE)) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as WeekAmount,
                 (SELECT COUNT(Id) FROM SaleOrderMaster WITH (NOLOCK) WHERE SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND Active != 2 AND CompanyRefId = ? AND Jstatus NOT IN (8, 12) AND ((SaleDate < '2024-10-01' AND ISNULL(Remarks,'') = '') OR (SaleDate >= '2024-10-01' AND InvoiceNo = 0))) as MonthSales,
-                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleOrderMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo = 0))) as MonthAmount
+                (SELECT ISNULL(ROUND(SUM(B.ActualAmount), 2), 0) FROM SaleOrderMaster A WITH (NOLOCK), SaleOrderDetails B WITH (NOLOCK) WHERE A.id = B.SaleMasterRefId AND A.SaleDate BETWEEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND EOMONTH(GETDATE()) AND A.Active != 2 AND A.CompanyRefId = ? AND A.Jstatus NOT IN (8, 12) AND ((A.SaleDate < '2024-10-01' AND ISNULL(A.Remarks,'') = '') OR (A.SaleDate >= '2024-10-01' AND A.InvoiceNo != 0))) as MonthAmount
             """;
     }
 
@@ -710,6 +710,82 @@ public class DashboardRepository {
             GROUP BY EM.EmployeeName
             """, whereClause);
         return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(EmployeeSalesRow.class), comId);
+    }
+
+    /**
+     * Get top performers for current and previous month
+     * @param comId Company ID
+     * @param baseDate Reference date for month calculation
+     * @return List of top performers with CURRENT and PREVIOUS month types
+     */
+    public List<TopPerformerRow> getTopPerformers(Integer comId, String baseDate) {
+        String sql = """
+            DECLARE @BaseDate DATE = ?;
+            DECLARE @CompanyId INT = ?;
+            DECLARE @CurrentMonthStart DATE = DATEFROMPARTS(YEAR(@BaseDate), MONTH(@BaseDate), 1);
+            DECLARE @CurrentMonthEnd DATE = EOMONTH(@BaseDate);
+            DECLARE @PreviousMonthStart DATE = DATEFROMPARTS(YEAR(DATEADD(MONTH, -1, @BaseDate)), MONTH(DATEADD(MONTH, -1, @BaseDate)), 1);
+            
+            WITH CurrentMonthData AS (
+                SELECT 
+                    'CURRENT' as MonthType,
+                    em.EmployeeName,
+                    SUM(sm.ActualNetAmount) AS TotalSales,
+                    COUNT(DISTINCT sm.Id) AS SalesCount,
+                    ROW_NUMBER() OVER (ORDER BY SUM(sm.ActualNetAmount) DESC) as Rank
+                FROM SaleMaster sm WITH (NOLOCK)
+                INNER JOIN SaleOrderMaster som WITH (NOLOCK) ON som.Id = sm.SaleOrderMasterNo
+                INNER JOIN EmployeeMaster em WITH (NOLOCK) ON som.EmployeeRefId = em.Id
+                WHERE 
+                    som.Active = 1
+                    AND som.CompanyRefId = @CompanyId
+                    AND sm.SaleDate >= @CurrentMonthStart
+                    AND sm.SaleDate <= @CurrentMonthEnd
+                GROUP BY em.EmployeeName
+            ),
+            PreviousMonthData AS (
+                SELECT 
+                    'PREVIOUS' as MonthType,
+                    em.EmployeeName,
+                    SUM(sm.ActualNetAmount) AS TotalSales,
+                    COUNT(DISTINCT sm.Id) AS SalesCount,
+                    ROW_NUMBER() OVER (ORDER BY SUM(sm.ActualNetAmount) DESC) as Rank
+                FROM SaleMaster sm WITH (NOLOCK)
+                INNER JOIN SaleOrderMaster som WITH (NOLOCK) ON som.Id = sm.SaleOrderMasterNo
+                INNER JOIN EmployeeMaster em WITH (NOLOCK) ON som.EmployeeRefId = em.Id
+                WHERE 
+                    som.Active = 1
+                    AND som.CompanyRefId = @CompanyId
+                    AND sm.SaleDate >= @PreviousMonthStart
+                    AND sm.SaleDate < @CurrentMonthStart
+                GROUP BY em.EmployeeName
+            )
+            SELECT * FROM CurrentMonthData WHERE Rank = 1
+            UNION ALL
+            SELECT * FROM PreviousMonthData WHERE Rank = 1
+            ORDER BY MonthType DESC
+            """;
+
+        try {
+            List<TopPerformerRow> results = jdbcTemplate.query(sql,
+                (rs, rowNum) -> {
+                    TopPerformerRow row = new TopPerformerRow();
+                    row.MonthType = rs.getString("MonthType");
+                    row.EmployeeName = rs.getString("EmployeeName");
+                    row.TotalSales = rs.getDouble("TotalSales");
+                    row.SalesCount = rs.getInt("SalesCount");
+                    row.Rank = rs.getInt("Rank");
+                    return row;
+                },
+                baseDate, comId);
+
+            log.debug("getTopPerformers for comId={}, baseDate={} returned {} rows",
+                comId, baseDate, results.size());
+            return results;
+        } catch (Exception e) {
+            log.error("Error in getTopPerformers: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -1518,5 +1594,13 @@ public class DashboardRepository {
         public String EmployeeName;
         public Double CurrentMonthSales;
         public Integer SalesCount;
+    }
+
+    public static class TopPerformerRow {
+        public String MonthType;      // "CURRENT" or "PREVIOUS"
+        public String EmployeeName;
+        public Double TotalSales;
+        public Integer SalesCount;
+        public Integer Rank;          // ROW_NUMBER for each month
     }
 }

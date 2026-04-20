@@ -477,4 +477,133 @@ public class DashboardServiceImpl implements DashboardService {
         }
     }
 
+    /**
+     * Get top employee performers for current and previous month with comparison metrics
+     * Implements monthly performance comparison with growth analysis
+     */
+    @Override
+    public TopPerformerDto.TopPerformersResponseDto getTopPerformers(Integer comId, String baseDate) {
+        log.info("=== TOP PERFORMERS REQUEST: comId={}, baseDate={} ===", comId, baseDate);
+
+        try {
+            // Validate input
+            if (comId == null || comId <= 0) {
+                log.warn("Invalid comId provided: {}", comId);
+                return buildEmptyTopPerformersResponse(baseDate);
+            }
+
+            if (baseDate == null || baseDate.trim().isEmpty()) {
+                baseDate = LocalDate.now().format(DATE_FORMAT);
+                log.debug("Using default baseDate: {}", baseDate);
+            }
+
+            // Fetch top performers from repository
+            List<DashboardRepository.TopPerformerRow> rows =
+                    dashboardRepository.getTopPerformers(comId, baseDate);
+
+            log.debug("Top performers query returned {} rows", rows.size());
+
+            if (rows == null || rows.isEmpty()) {
+                log.warn("No top performers data found for comId={}, baseDate={}", comId, baseDate);
+                return buildEmptyTopPerformersResponse(baseDate);
+            }
+
+            // Separate current and previous month performers
+            TopPerformerDto currentMonthPerformer = null;
+            TopPerformerDto previousMonthPerformer = null;
+            double currentMonthTotal = 0.0;
+            double previousMonthTotal = 0.0;
+
+            for (DashboardRepository.TopPerformerRow row : rows) {
+                TopPerformerDto dto = TopPerformerDto.builder()
+                        .monthType(row.MonthType)
+                        .employeeName(row.EmployeeName != null ? row.EmployeeName : "Unknown")
+                        .totalSales(row.TotalSales != null ? row.TotalSales : 0.0)
+                        .salesCount(row.SalesCount != null ? row.SalesCount : 0)
+                        .rank(row.Rank != null ? row.Rank : 0)
+                        .build();
+
+                if ("CURRENT".equals(row.MonthType)) {
+                    currentMonthPerformer = dto;
+                    currentMonthTotal = row.TotalSales != null ? row.TotalSales : 0.0;
+                } else if ("PREVIOUS".equals(row.MonthType)) {
+                    previousMonthPerformer = dto;
+                    previousMonthTotal = row.TotalSales != null ? row.TotalSales : 0.0;
+                }
+            }
+
+            // Calculate growth metrics
+            double growthPercentage = calculateGrowthPercentage(currentMonthTotal, previousMonthTotal);
+            String performanceChange = determinePerformanceChange(growthPercentage);
+
+            // Build summary metrics
+            TopPerformerDto.TopPerformersResponseDto.MetricsSummary summary =
+                    TopPerformerDto.TopPerformersResponseDto.MetricsSummary.builder()
+                            .currentMonthTotalSales(currentMonthTotal)
+                            .previousMonthTotalSales(previousMonthTotal)
+                            .growthPercentage(growthPercentage)
+                            .performanceChange(performanceChange)
+                            .generatedDate(LocalDate.now().format(DATE_FORMAT))
+                            .build();
+
+            // Build response
+            TopPerformerDto.TopPerformersResponseDto response = TopPerformerDto.TopPerformersResponseDto.builder()
+                    .currentMonthTopPerformer(currentMonthPerformer)
+                    .previousMonthTopPerformer(previousMonthPerformer)
+                    .summary(summary)
+                    .period(baseDate)
+                    .build();
+
+            log.info("Successfully built top performers response for comId={}", comId);
+            return response;
+
+        } catch (Exception e) {
+            log.error("Error fetching top performers for comId={}, baseDate={}: {}",
+                    comId, baseDate, e.getMessage(), e);
+            return buildEmptyTopPerformersResponse(baseDate);
+        }
+    }
+
+    /**
+     * Calculate growth percentage between two months
+     * @param current Current month sales
+     * @param previous Previous month sales
+     * @return Growth percentage rounded to 2 decimal places
+     */
+    private double calculateGrowthPercentage(double current, double previous) {
+        if (previous == 0.0) {
+            return current > 0.0 ? 100.0 : 0.0;
+        }
+        return Math.round(((current - previous) / previous) * 100.0 * 100.0) / 100.0;
+    }
+
+    /**
+     * Determine performance trend based on growth percentage
+     * @param growthPercentage Calculated growth percentage
+     * @return "UP", "DOWN", or "SAME"
+     */
+    private String determinePerformanceChange(double growthPercentage) {
+        if (growthPercentage > 0.5) return "UP";
+        if (growthPercentage < -0.5) return "DOWN";
+        return "SAME";
+    }
+
+    /**
+     * Build empty response for error cases
+     */
+    private TopPerformerDto.TopPerformersResponseDto buildEmptyTopPerformersResponse(String baseDate) {
+        return TopPerformerDto.TopPerformersResponseDto.builder()
+                .currentMonthTopPerformer(null)
+                .previousMonthTopPerformer(null)
+                .summary(TopPerformerDto.TopPerformersResponseDto.MetricsSummary.builder()
+                        .currentMonthTotalSales(0.0)
+                        .previousMonthTotalSales(0.0)
+                        .growthPercentage(0.0)
+                        .performanceChange("SAME")
+                        .generatedDate(LocalDate.now().format(DATE_FORMAT))
+                        .build())
+                .period(baseDate)
+                .build();
+    }
+
 }

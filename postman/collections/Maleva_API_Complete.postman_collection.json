@@ -1500,6 +1500,24 @@
 					}
 				},
 				{
+					"name": "Get Top Performers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/top-performers/6?baseDate=2026-04-20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "top-performers", "6"],
+							"query": [
+								{
+									"key": "baseDate",
+									"value": "2026-04-20"
+								}
+							]
+						}
+					}
+				},
+				{
 					"name": "Get Admin Dashboard",
 					"request": {
 						"method": "GET",
