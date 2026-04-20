@@ -723,25 +723,25 @@ public class DashboardRepository {
         String sql = """
             DECLARE @BaseDate DATE = ?;
             
-            SELECT 
-                em.EmployeeName,
-                SUM(sm.ActualNetAmount) AS CurrentMonthSales,
-                COUNT(DISTINCT sm.Id) AS SalesCount
-            FROM SaleOrderMaster sm WITH (NOLOCK)
-            INNER JOIN SaleMaster SI WITH (NOLOCK) 
-                ON sm.Id = SI.SaleOrderMasterNo     
-            INNER JOIN EmployeeMaster em WITH (NOLOCK) 
-                ON sm.EmployeeRefId = em.Id  
-            WHERE 
-                sm.Active = 1 
-                AND sm.CompanyRefId = ?
-                AND SI.SaleDate >= DATEFROMPARTS(YEAR(@BaseDate), MONTH(@BaseDate), 1)
-                AND SI.SaleDate < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(@BaseDate), MONTH(@BaseDate), 1))
-            GROUP BY 
-                em.EmployeeName
-            ORDER BY 
-                CurrentMonthSales DESC
-            """;
+               SELECT 
+            em.EmployeeName,
+            SUM(SI.ActualNetAmount) AS CurrentMonthSales,
+            COUNT(DISTINCT SI.Id) AS SalesCount
+        FROM SaleMaster SI WITH (NOLOCK)
+        INNER JOIN SaleOrderMaster sm WITH (NOLOCK)
+            ON sm.Id = SI.SaleOrderMasterNo
+        INNER JOIN EmployeeMaster em WITH (NOLOCK)
+            ON sm.EmployeeRefId = em.Id
+        WHERE 
+            sm.Active = 1
+            AND sm.CompanyRefId = ?
+            AND SI.SaleDate >= DATEFROMPARTS(YEAR(@BaseDate), MONTH(@BaseDate), 1)
+            AND SI.SaleDate < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(@BaseDate), MONTH(@BaseDate), 1))
+        GROUP BY 
+            em.EmployeeName
+        ORDER BY 
+            CurrentMonthSales DESC
+        """;
 
         try {
             List<EmployeeWiseSalesRow> results = jdbcTemplate.query(sql,
