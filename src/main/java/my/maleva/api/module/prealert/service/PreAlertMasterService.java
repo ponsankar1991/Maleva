@@ -1,6 +1,7 @@
 package my.maleva.api.module.prealert.service;
 
 import my.maleva.api.module.prealert.dto.PreAlertMasterDto;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -21,16 +22,6 @@ public interface PreAlertMasterService {
      * Get PreAlertMaster by ID
      */
     Optional<PreAlertMasterDto> getById(Integer id);
-
-    /**
-     * Create new PreAlertMaster record
-     */
-    PreAlertMasterDto create(PreAlertMasterDto dto);
-
-    /**
-     * Update existing PreAlertMaster record
-     */
-    PreAlertMasterDto update(Integer id, PreAlertMasterDto dto);
 
     /**
      * Delete PreAlertMaster record
@@ -92,4 +83,3 @@ public interface PreAlertMasterService {
      */
     void executePreAlertStoredProcedure(String masterJson, Integer companyId);
 }
-
