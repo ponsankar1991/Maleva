@@ -2,13 +2,13 @@ package my.maleva.api.module.accounting.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.UuidGenerator;
+import lombok.experimental.SuperBuilder;
+import my.maleva.api.common.entity.BaseAuditEntity;
 
 import java.util.UUID;
 
@@ -18,15 +18,11 @@ import java.util.UUID;
 @Entity
 @Table(name = "GLAccounts")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class GLAccounts {
-
-    @Id
-    @UuidGenerator
-    @Column(name = "Id", columnDefinition = "uniqueidentifier")
-    private UUID id;
+@SuperBuilder
+public class GLAccounts extends BaseAuditEntity {
 
     @Column(name = "CompanyRefId", nullable = false)
     private Integer companyRefId;

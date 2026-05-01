@@ -1,8 +1,10 @@
 package my.maleva.api.common.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @Configuration
+@EnableJpaAuditing
 public class JpaConfig {
-    // Intentionally left minimal: Hibernate physical naming strategy is configured via application.yaml
+    // Hibernate physical naming strategy is configured via application.yaml
 }
