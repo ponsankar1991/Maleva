@@ -51,5 +51,8 @@ public interface SaleMasterRepository extends JpaRepository<SaleMaster, Integer>
     List<SaleMaster> findByJobMasterRefId(Integer jobMasterRefId);
     List<SaleMaster> findByAgentMasterRefId(Integer agentMasterRefId);
     List<SaleMaster> findByDriverRefid(Integer driverRefid);
+
+    @Query("SELECT MAX(sm.cNumber) FROM SaleMaster sm WHERE sm.companyRefId = :companyRefId")
+    Optional<Integer> findMaxCNumberByCompanyId(@Param("companyRefId") Integer companyRefId);
 }
 
