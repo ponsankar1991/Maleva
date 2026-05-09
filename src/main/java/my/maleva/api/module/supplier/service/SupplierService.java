@@ -1,6 +1,9 @@
 package my.maleva.api.module.supplier.service;
 
 import my.maleva.api.module.supplier.dto.SupplierDto;
+import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
+import my.maleva.api.module.supplier.dto.SupplierComboList;
+import my.maleva.api.common.dto.ResponseViewModel;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,6 +52,27 @@ public interface SupplierService {
     boolean existsBySupplierName(String supplierName);
 
     SupplierDto processSupplierBatch(SupplierDto dto);
+
+    /**
+     * Select Supplier with pagination and search filters
+     * Equivalent to .NET SelectSupplier method
+     */
+    SupplierSearchResponse selectSupplier(Integer comid, Integer startindex, Integer pageCount, 
+                                          String keyword, String column, String type);
+
+    /**
+     * Get Supplier combo list for dropdowns/comboboxes
+     * Equivalent to .NET GetSupplier method
+     *
+     * Returns: List of SupplierComboList with Id and AccountName (SupplierName + MobileNo)
+     * Filters:
+     * - Company ID
+     * - Active = 1
+     * - Optional: SupplierType filter (if type is not null, empty, or "ALL")
+     *
+     * @param comid Company ID
+     * @param type Supplier Type filter (null/""/ALL for no type filter)
+     * @return ResponseViewModel with list of SupplierComboList
+     */
+    ResponseViewModel getSupplier(Integer comid, String type);
 }
-
-

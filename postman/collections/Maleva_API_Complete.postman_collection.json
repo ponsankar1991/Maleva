@@ -1542,6 +1542,246 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "PreAlert Reports",
+			"description": "Endpoints for Pre-Alert reporting: search, pagination, export and health checks",
+			"item": [
+				{
+					"name": "PreAlert Report (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\",\n  \"CustomerId\": 0,\n  \"Comid\": {{companyId}},\n  \"SPort\": \"\",\n  \"Search\": \"\",\n  \"DeliveryDone\": false,\n  \"Jobid\": 0,\n  \"ETA\": false,\n  \"ETAType\": 0,\n  \"Pickupdate\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/transaction/pre-alert/report",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "transaction", "pre-alert", "report"]
+						}
+					}
+				},
+				{
+					"name": "PreAlert Report (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/transaction/pre-alert/report?comId={{companyId}}&fromDate=2026-04-01&toDate=2026-04-29",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "transaction", "pre-alert", "report"],
+							"query": [
+								{ "key": "comId", "value": "{{companyId}}" },
+								{ "key": "fromDate", "value": "2026-04-01" },
+								{ "key": "toDate", "value": "2026-04-29" }
+							]
+						}
+					}
+				},
+				{
+					"name": "PreAlert Report Paginated (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "Content-Type", "value": "application/json" } ],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\",\n  \"pageNo\": 1,\n  \"pageSize\": 20\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/transaction/pre-alert/report/paginated",
+							"host": ["{{baseUrl}}"],
+							"path": ["api","transaction","pre-alert","report","paginated"]
+						}
+					}
+				},
+				{
+					"name": "PreAlert Report Count (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "Content-Type", "value": "application/json" } ],
+						"body": { "mode":"raw","raw":"{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\"\n}" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/report/count","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","report","count"] }
+					}
+				},
+				{
+					"name": "PreAlert Report Export CSV (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\"\n}" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/report/export-csv","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","report","export-csv"] }
+					}
+				},
+				{
+					"name": "PreAlert Report Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/health","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","health"] }
+					}
+				},
+				{
+					"name": "PreAlert Insert (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Comid", "value": "{{companyId}}" } ],
+						"body": { "mode":"raw","raw":"[ { \"Id\": 0, \"CompanyRefId\": {{companyId}}, \"CustomerMasterRefId\": 0, \"JobTypeMasterRefId\": 0, \"Port\": \"\", \"FromDate\": \"2026-04-01\", \"ToDate\": \"2026-04-02\", \"EntryDate\": \"2026-04-01\", \"PreAlert\": [] } ]" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/insert","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","insert"] }
+					}
+				},
+				{
+					"name": "PreAlert Select (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"Comid\": {{companyId}}, \"Employeeid\": 0, \"Search\": \"\" }" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/select","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","select"] }
+					}
+				},
+				{
+					"name": "PreAlert Edit (POST) - Query Params",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/edit?Id=1&PreAlertNo=0&Comid={{companyId}}","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","edit"],"query":[{"key":"Id","value":"1"},{"key":"PreAlertNo","value":"0"},{"key":"Comid","value":"{{companyId}}"}] }
+					}
+				},
+				{
+					"name": "PreAlert MaxNo (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"Comid\": {{companyId}} }" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/max-no","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","max-no"] }
+					}
+				},
+				{
+					"name": "PreAlert Transaction Report (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"CustomerId\": 0, \"Comid\": {{companyId}} }" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/transaction-report","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","transaction-report"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get All by Company (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get Active by Company (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/active","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}","active"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by ID (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Customer (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/customer/1","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","customer","1"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Port (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/port/JNPT","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","port","JNPT"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Vessel (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/vessel/ABC%20VESSEL","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","vessel","ABC%20VESSEL"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Date Range (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/date-range?fromDate=2026-04-01&toDate=2026-04-30","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}","date-range"],"query":[{"key":"fromDate","value":"2026-04-01"},{"key":"toDate","value":"2026-04-30"}] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get Details by Master ID (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/details","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","details"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Count Details by Master ID (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/details/count","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","details","count"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Count Active Records (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/count-active","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}","count-active"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Activate Record (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/activate","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","activate"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Deactivate Record (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/deactivate","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","deactivate"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Delete Record (DELETE)",
+					"request": {
+						"method": "DELETE",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Bulk Import (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/x-www-form-urlencoded" } ],
+						"body": { "mode":"formdata","formdata":[{"key":"masterJson","value":"[{\"id\":0,\"companyRefId\":{{companyId}},\"customerMasterRefId\":0,\"jobTypeMasterRefId\":0,\"port\":\"\",\"fromDate\":\"2026-04-01\",\"toDate\":\"2026-04-02\",\"entryDate\":\"2026-04-01\",\"preAlert\":[]}]","type":"text"},{"key":"companyId","value":"{{companyId}}","type":"text"}] },
+												"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/bulk-import","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","bulk-import"] }
+					}
+				}
+			]
 		}
 	]
 }

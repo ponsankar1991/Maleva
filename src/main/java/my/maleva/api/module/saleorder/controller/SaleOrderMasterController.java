@@ -10,6 +10,9 @@ import my.maleva.api.module.saleorder.dto.SaleOrderStatusUpdateDto;
 import my.maleva.api.common.dto.ApiResponse;
 import my.maleva.api.module.saleorder.service.SaleOrderMasterService;
 import my.maleva.api.module.saleorder.util.SaleOrderApiConstants;
+import my.maleva.api.module.saleorder.dto.UpdateJobStatusDto;
+import my.maleva.api.common.exception.InvalidRequestException;
+import my.maleva.api.common.exception.EntityNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
@@ -149,13 +152,115 @@ public class SaleOrderMasterController {
                 result.getSalemaster() != null ? result.getSalemaster().size() : 0,
                 result.getSaledetails() != null ? result.getSaledetails().size() : 0);
 
-        return ResponseEntity.ok(new ApiResponse<>(
-                true,
-                SaleOrderApiConstants.DEFAULT_STATUS_CODE,
-                SaleOrderApiConstants.MESSAGE_SELECT_SUCCESS,
+        return ResponseEntity.ok(ApiResponse.success(
                 result,
-                SaleOrderApiConstants.RESPONSE_DATA3_SALE_F5_VIEW,
-                null
+                SaleOrderApiConstants.MESSAGE_SELECT_SUCCESS
         ));
+    }
+
+    /**
+     * Update Job Status for a Sale Order
+     * PUT /api/sale-orders/{id}/job-status
+     * POST /api/sale-orders/update-job-status?id={id}
+     *
+     * Updates the JStatus field of a SaleOrderMaster record and sets Modified_Date to current timestamp.
+     * This is equivalent to the .NET UpdateJobStatus method.
+     *
+     * @param id Sale Order Master ID (path variable)
+     * @param updateDto UpdateJobStatusDto containing new jobStatusId
+     * @return ApiResponse with success status and message
+     */
+    @PutMapping("/{id}/job-status")
+    public ResponseEntity<ApiResponse<Void>> updateJobStatus(
+            @PathVariable @Positive Integer id,
+            @Valid @RequestBody UpdateJobStatusDto updateDto) {
+        logger.info("Update job status request received - Sale Order ID: {}, New Job Status ID: {}",
+                id, updateDto.getJobStatusId());
+
+        try {
+            service.updateJobStatus(id, updateDto.getJobStatusId());
+
+            logger.info("Job status updated successfully - Sale Order ID: {}, New Job Status ID: {}",
+                    id, updateDto.getJobStatusId());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    null,
+                    "Update JobStatus Successfully!"
+            ));
+
+        } catch (EntityNotFoundException ex) {
+            logger.warn("Sale Order not found - ID: {}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.NOT_FOUND.value())
+            );
+
+        } catch (InvalidRequestException ex) {
+            logger.warn("Invalid request - {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value())
+            );
+
+        } catch (Exception ex) {
+            logger.error("Error updating job status for Sale Order ID: {}", id, ex);
+            Throwable realError = ex;
+            while (realError.getCause() != null) {
+                realError = realError.getCause();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResponse.error("Error updating job status: " + realError.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value())
+            );
+        }
+    }
+
+    /**
+     * Alternative endpoint for Update Job Status (POST variant)
+     * POST /api/sale-orders/update-job-status?id={id}
+     *
+     * Same functionality as PUT variant, provided for backward compatibility.
+     *
+     * @param id Sale Order Master ID (query parameter)
+     * @param updateDto UpdateJobStatusDto containing new jobStatusId
+     * @return ApiResponse with success status and message
+     */
+    @PostMapping("/update-job-status")
+    public ResponseEntity<ApiResponse<Void>> updateJobStatusPost(
+            @RequestParam @Positive Integer id,
+            @Valid @RequestBody UpdateJobStatusDto updateDto) {
+        logger.info("Update job status request (POST) received - Sale Order ID: {}, New Job Status ID: {}",
+                id, updateDto.getJobStatusId());
+
+        try {
+            service.updateJobStatus(id, updateDto.getJobStatusId());
+
+            logger.info("Job status updated successfully - Sale Order ID: {}, New Job Status ID: {}",
+                    id, updateDto.getJobStatusId());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    null,
+                    "Update JobStatus Successfully!"
+            ));
+
+        } catch (EntityNotFoundException ex) {
+            logger.warn("Sale Order not found - ID: {}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.NOT_FOUND.value())
+            );
+
+        } catch (InvalidRequestException ex) {
+            logger.warn("Invalid request - {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value())
+            );
+
+        } catch (Exception ex) {
+            logger.error("Error updating job status for Sale Order ID: {}", id, ex);
+            Throwable realError = ex;
+            while (realError.getCause() != null) {
+                realError = realError.getCause();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResponse.error("Error updating job status: " + realError.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value())
+            );
+        }
     }
 }

@@ -1,15 +1,20 @@
 package my.maleva.api.module.transaction.service;
 
+import my.maleva.api.module.transaction.dto.PreAlertDto;
 import my.maleva.api.module.transaction.dto.PreAlertReportModel;
 import my.maleva.api.module.transaction.dto.PreAlertSearchModel;
 
 import java.util.List;
 
 /**
- * Service interface for Pre-Alert Report functionality
- * Defines contract for pre-alert report operations
+ * Service interface for Pre-Alert functionality
+ * Includes both report operations and CRUD operations for PreAlert entities
  */
 public interface PreAlertService {
+
+    /**
+     * REPORT OPERATIONS
+     */
 
     /**
      * Get pre-alert report data based on search criteria
@@ -45,5 +50,18 @@ public interface PreAlertService {
      * @return CSV formatted data
      */
     String exportPreAlertReportToCSV(PreAlertSearchModel searchModel);
-}
 
+    /**
+     * CRUD OPERATIONS FOR PREALERT ENTITIES
+     */
+
+    /**
+     * Get all PreAlert records by PreAlertMaster ID
+     */
+    List<PreAlertDto> getByPreAlertMasterId(Integer preAlertMasterRefId);
+
+    /**
+     * Get count of records by PreAlertMaster ID
+     */
+    Long countByPreAlertMasterId(Integer preAlertMasterRefId);
+}

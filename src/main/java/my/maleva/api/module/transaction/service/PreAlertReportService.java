@@ -52,10 +52,17 @@ public interface PreAlertReportService {
     // Methods migrated from C# .NET implementation
 
     /**
-     * Insert a list of PreAlert masters
-     * @param objBrand List of PreAlert masters to insert
+     * Insert a list of PreAlert masters.
+     * Creates new PreAlert master records with nested detail rows.
+     *
+     * Detail row handling for INSERT:
+     * - Set PreAlertDto.Id = 0 or null for new detail rows (will INSERT)
+     * - Set PreAlertDto.Id > 0 for existing detail rows (will UPDATE)
+     * - Old PreAlert details are NOT deleted, only new rows are INSERTED/existing rows are UPDATED
+     *
+     * @param objBrand List of PreAlert masters with nested PreAlertDto detail rows to insert/update
      * @param comId Company ID
-     * @return Object containing success status, message, name, and id
+     * @return Object containing success status (ok=true/false), message, BillNo (PreAlert number), and Id
      */
     Object insertPreAlert(List<PreAlertMasterDto> objBrand, Integer comId);
 
@@ -67,6 +74,23 @@ public interface PreAlertReportService {
      * @return Object containing success status, message, and data
      */
     Object editPreAlert(Integer id, Integer preAlertNo, Integer comId);
+
+    /**
+     * Update PreAlert record via stored procedure.
+     * Updates existing PreAlert master and handles detail row changes.
+     *
+     * Detail row handling for UPDATE:
+     * - Set PreAlertDto.Id = 0 or null for NEW detail rows (will INSERT)
+     * - Set PreAlertDto.Id > 0 for EXISTING detail rows being modified (will UPDATE)
+     * - Omit detail rows that should remain unchanged (they won't be modified)
+     * - Old PreAlert details are NOT deleted automatically. To "delete", simply don't include them
+     * - The SP does NOT support explicit DELETE of detail rows
+     *
+     * @param masterDto Updated PreAlert master (Id must be > 0) with detail rows to insert/update
+     * @param comId Company ID
+     * @return Response object with success status (ok=true/false), message, and Id
+     */
+    Object updatePreAlert(PreAlertMasterDto masterDto, Integer comId);
 
     /**
      * Select PreAlerts based on F5 view model

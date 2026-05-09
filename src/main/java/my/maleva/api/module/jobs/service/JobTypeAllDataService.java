@@ -19,5 +19,14 @@ public interface JobTypeAllDataService {
      * @return JobTypeAllDataDto containing both lists
      */
     JobTypeAllDataDto selectJobAllData(Integer companyId, Integer jobId);
-}
 
+    /**
+     * Fetch all job data with completion filter
+     * 
+     * @param companyId Company reference ID
+     * @param jobId Job Master reference ID
+     * @param complete Filter flag (0 = exclude status 8)
+     * @return JobTypeAllDataDto
+     */
+    JobTypeAllDataDto selectJobAllData(Integer companyId, Integer jobId, Integer complete);
+}

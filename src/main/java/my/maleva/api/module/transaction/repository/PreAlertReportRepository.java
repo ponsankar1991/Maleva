@@ -8,7 +8,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,14 +38,16 @@ public class PreAlertReportRepository {
             String query = buildQuery(searchModel);
             List<Object> params = buildParams(searchModel);
 
-            log.debug("Executing Pre-Alert query with {} parameters", params.size());
-            log.debug("Query: {}", query);
+            log.info("Pre-Alert Report Query - comId: {}, customerId: {}, jobId: {}, fromDate: {}, toDate: {}, eta: {}, etaType: {}, pickupDate: {}, deliveryDone: {}, sPort: {}, search: {}",
+                    searchModel.getComId(), searchModel.getCustomerId(), searchModel.getJobId(),
+                    searchModel.getFromDate(), searchModel.getToDate(),
+                    searchModel.getEta(), searchModel.getEtaType(), searchModel.getPickupDate(),
+                    searchModel.getDeliveryDone(), searchModel.getSPort(), searchModel.getSearch());
 
-            List<PreAlertReportModel> results = jdbcTemplate.query(
-                    query,
-                    params.toArray(),
-                    new BeanPropertyRowMapper<>(PreAlertReportModel.class)
-            );
+            log.info("Executing Pre-Alert query with {} parameters: {}", params.size(), params);
+            log.info("Full Query: {}", query);
+
+            List<PreAlertReportModel> results = jdbcTemplate.query(query, params.toArray(), new BeanPropertyRowMapper<>(PreAlertReportModel.class));
 
             log.info("Pre-Alert query returned {} records for comId={}", results.size(), searchModel.getComId());
             return results;
@@ -81,67 +82,74 @@ public class PreAlertReportRepository {
      * Build SELECT clause - determines which date to display based on filter type
      */
     private String buildSelectClause(PreAlertSearchModel searchModel) {
+        // Use camelCase alias for BeanPropertyRowMapper
         String dateDisplay = "ISNULL(A.ETA, '1900-01-01') as deta";
 
         if (searchModel.getEta() != null && searchModel.getEta()) {
             if (searchModel.getEtaType() != null) {
                 if (searchModel.getEtaType() == 1) {
+                    // Original ETA
                     dateDisplay = "ISNULL(A.OETA, '1900-01-01') as deta";
                 } else if (searchModel.getEtaType() == 2) {
+                    // Local ETA
                     dateDisplay = "ISNULL(A.ETA, '1900-01-01') as deta";
                 } else {
+                    // All ETAs
                     dateDisplay = "ISNULL(ISNULL(A.ETA, A.OETA), '1900-01-01') as deta";
                 }
             }
         }
 
+        // Use camelCase aliases to match Java field names
+        // Use FORMAT() to match C# implementation exactly
         return "SELECT " +
-                "A.SaleDate, " +
-                "A.Id as saleOrderMasterRefId, " +
-                "A.Offvesselname as offVesselName, " +
-                "A.Commodity as commodity, " +
-                "A.SCN as scn, " +
-                "A.LSCN as lscn, " +
-                "A.TruckSize as truckSize, " +
-                "A.BLCopy as blCopy, " +
-                "A.Loadingvesselname as loadingVesselName, " +
-                "E.EmployeeName as employeeName, " +
-                "A.Origin as origin, " +
-                "A.Destination as destination, " +
-                "FORMAT(ISNULL(A.PickupDate, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as pickupDate, " +
-                "FORMAT(ISNULL(A.DeliveryDate, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as deliveryDate, " +
-                "FORMAT(ISNULL(A.ETA, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as eta, " +
-                "FORMAT(ISNULL(A.ETB, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as etb, " +
-                "FORMAT(ISNULL(A.ETD, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as etd, " +
-                "FORMAT(ISNULL(A.OETA, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as oeta, " +
-                "FORMAT(ISNULL(A.OETB, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as oetb, " +
-                "FORMAT(ISNULL(A.OETD, '1900-01-01'), 'yyyy-MM-dd HH:mm:ss') as oetd, " +
-                "FORMAT(" + dateDisplay.split(" as ")[0] + ", 'yyyy-MM-dd HH:mm:ss') as deta, " +
-                "A.Vessel as vessel, " +
-                "A.OVessel as oVessel, " +
-                "A.CNumberDisplay as jobNo, " +
-                "A.SPort as sPort, " +
-                "A.OPort as oPort, " +
-                "J.Name as jobName, " +
-                "A.TotalWeight as totalWeight, " +
-                "A.Quantity as quantity, " +
-                "A.AWBNo as awbNo, " +
-                "PA.Remarks as remarks, " +
-                "PA.Id as paRefId, " +
-                "ISNULL(Ag.AgentName, '') as agentName, " +
-                "ISNULL(Ag.MobileNo, '') as agentPhone, " +
-                "ISNULL(OAg.AgentName, '') as oAgentName, " +
-                "ISNULL(OAg.MobileNo, '') as oAgentPhone, " +
-                "C.CustomerName as customerName, " +
-                "Js.Name as jobStatus, " +
-                "ISNULL(EB.EmployeeName, '') as boardingOfficerName, " +
-                "ISNULL(EB1.EmployeeName, '') as boardingOfficerName1, " +
-                "C.Id as customerMasterRefId, " +
-                "J.Id as jobTypeMasterRefId, " +
-                "JS.Id as jobStatusMasterRefId, " +
-                "PA.BoardingOfficerName as boardingOfficerNameFromPA, " +
-                "Ag.Id as agentRefId, " +
-                "E.Id as employeeMasterRefId ";
+                "FORMAT(A.SaleDate, 'dd/MM/yyyy HH:mm:ss') AS saleDate, " +
+                "A.Id AS saleOrderMasterRefId, " +
+                "A.Offvesselname, " +
+                "A.Commodity, " +
+                "A.SCN, " +
+                "A.LSCN, " +
+                "A.TruckSize, " +
+                "A.BLCopy, " +
+                "A.Loadingvesselname, " +
+                "E.EmployeeName, " +
+                "A.Origin, " +
+                "A.Destination, " +
+                "FORMAT(ISNULL(A.PickupDate, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS pickupDate, " +
+                "FORMAT(ISNULL(A.DeliveryDate, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS deliveryDate, " +
+                "FORMAT(ISNULL(A.ETA, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS eta, " +
+                "FORMAT(ISNULL(A.ETB, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS etb, " +
+                "FORMAT(ISNULL(A.ETD, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS etd, " +
+                "FORMAT(ISNULL(A.OETA, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS oeta, " +
+                "FORMAT(ISNULL(A.OETB, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS oetb, " +
+                "FORMAT(ISNULL(A.OETD, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS oetd, " +
+                "FORMAT(" + dateDisplay.replace(" as deta", "") + ", 'dd/MM/yyyy HH:mm:ss') AS deta, " +
+                "A.Vessel, " +
+                "A.OVessel, " +
+                "A.CNumberDisplay AS jobNo, " +
+                "A.SPort, " +
+                "A.OPort, " +
+                "J.Name AS jobName, " +
+                "A.TotalWeight AS totalWeight, " +
+                "A.Quantity AS quantity, " +
+                "A.AWBNo, " +
+                "PA.Remarks, " +
+                "PA.Id AS paRefId, " +
+                "ISNULL(Ag.AgentName, '') AS agentName, " +
+                "ISNULL(Ag.MobileNo, '') AS agentPhone, " +
+                "ISNULL(OAg.AgentName, '') AS oAgentName, " +
+                "ISNULL(OAg.MobileNo, '') AS oAgentPhone, " +
+                "C.CustomerName, " +
+                "Js.Name AS jobStatus, " +
+                "ISNULL(EB.EmployeeName, '') AS boardingOfficerName, " +
+                "ISNULL(EB1.EmployeeName, '') AS boardingOfficerName1, " +
+                "C.Id AS customerMasterRefId, " +
+                "J.Id AS jobTypeMasterRefId, " +
+                "JS.Id AS jobStatusMasterRefId, " +
+                "A.BoardingOfficerRefid AS boardingOfficerRefId, " +
+                "PA.BoardingOfficerName AS boardingOfficerNameFromPA, " +
+                "Ag.Id AS agentRefId, " +
+                "E.Id AS employeeMasterRefId ";
     }
 
     /**
@@ -237,18 +245,9 @@ public class PreAlertReportRepository {
      * Build ORDER BY clause
      */
     private String buildOrderByClause(PreAlertSearchModel searchModel) {
-        String sortBy = "SaleDate";
-        String sortOrder = "ASC";
-
-        if (searchModel.getSortBy() != null && "DETA".equalsIgnoreCase(searchModel.getSortBy())) {
-            sortBy = "deta";
-        }
-
-        if (searchModel.getSortOrder() != null && "DESC".equalsIgnoreCase(searchModel.getSortOrder())) {
-            sortOrder = "DESC";
-        }
-
-        return " ORDER BY " + sortBy + " " + sortOrder;
+        // Sorting is now handled in the controller to match C# logic
+        // Default sort by SaleDate (will be overridden in controller if ETA filter is active)
+        return " ORDER BY A.SaleDate ASC";
     }
 
     /**
@@ -277,8 +276,12 @@ public class PreAlertReportRepository {
             String fromDate = searchModel.getFromDate().format(DATE_FORMATTER);
             String toDate = searchModel.getToDate().format(DATE_FORMATTER);
 
+            Boolean pickupDateFilter = searchModel.getPickupDate();
             Boolean etaFilter = searchModel.getEta();
-            if (etaFilter != null && etaFilter) {
+            if (pickupDateFilter != null && pickupDateFilter) {
+                params.add(fromDate);
+                params.add(toDate);
+            } else if (etaFilter != null && etaFilter) {
                 Integer etaType = searchModel.getEtaType() != null ? searchModel.getEtaType() : 0;
 
                 if (etaType == 0) {
@@ -317,5 +320,3 @@ public class PreAlertReportRepository {
         return params;
     }
 }
-
-

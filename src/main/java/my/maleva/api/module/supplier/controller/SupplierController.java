@@ -1,6 +1,8 @@
 package my.maleva.api.module.supplier.controller;
 
 import my.maleva.api.module.supplier.dto.SupplierDto;
+import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
+import my.maleva.api.module.supplier.dto.SupplierComboList;
 import my.maleva.api.module.supplier.service.SupplierService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
+import my.maleva.api.common.dto.ResponseViewModel;
 import java.util.List;
 import java.util.Optional;
 
@@ -251,6 +254,97 @@ public class SupplierController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
         }
     }
+
+    /**
+     * Select Supplier with pagination and search filters
+     * POST /api/suppliers/select
+     *
+     * Query Parameters:
+     * - comid: Company ID
+     * - startindex: Starting index for pagination (use -1 for last page)
+     * - pageCount: Records per page
+     * - keyword: Search keyword (empty for all records)
+     * - column: Search column (SupplierName, MobileNo, Id, All)
+     * - type: Supplier type filter (empty/ALL/null for no filter)
+     */
+    @PostMapping("/select")
+    public ResponseEntity<?> selectSupplier(
+            @RequestParam(value = "comid", required = false) Integer comid,
+            @RequestParam(value = "startindex", required = false) Integer startindex,
+            @RequestParam(value = "pageCount", required = false) Integer pageCount,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "column", required = false) String column,
+            @RequestParam(value = "type", required = false) String type) {
+        logger.info("Select Supplier - comid: {}, startindex: {}, pageCount: {}, keyword: {}, column: {}, type: {}",
+                   comid, startindex, pageCount, keyword, column, type);
+        try {
+            SupplierSearchResponse response = service.selectSupplier(comid, startindex, pageCount, keyword, column, type);
+             return ResponseEntity.ok(response);
+         } catch (Exception ex) {
+             logger.error("Error in selectSupplier", ex);
+             return ResponseEntity.ok(SupplierSearchResponse.builder()
+                     .ok(false)
+                     .message("Error: " + ex.getMessage())
+                     .build());
+         }
+     }
+
+     /**
+      * Get Supplier combo list for dropdowns/comboboxes
+      * Equivalent to .NET GetSupplier(int Comid, string type) method
+      *
+      * GET /api/suppliers/combo?comid=1
+      * GET /api/suppliers/combo?comid=1&type=LOCAL
+      *
+      * Response:
+      * {
+      *   "isSuccess": true,
+      *   "statusCode": 200,
+      *   "message": "Success",
+      *   "data1": [
+      *     { "id": 1, "supplierName": "ABC Supplier", "accountName": "ABC Supplier-9876543210" },
+      *     { "id": 2, "supplierName": "XYZ Supplier", "accountName": "XYZ Supplier-8765432109" }
+      *   ]
+      * }
+      *
+      * @param comid Company ID (required)
+      * @param type Supplier Type filter (optional - null/""/ALL for no type filter)
+      * @return ResponseEntity with ResponseViewModel containing List<SupplierComboList>
+      */
+     @GetMapping("/combo")
+     public ResponseEntity<?> getSupplier(
+             @RequestParam(value = "comid", required = false) Integer comid,
+             @RequestParam(value = "type", required = false) String type) {
+         logger.info("Get Supplier combo list - comid: {}, type: {}", comid, type);
+
+         try {
+             // Validate required parameter
+             if (comid == null || comid <= 0) {
+                 logger.warn("Invalid request: comid is missing or invalid");
+                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                         .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
+             }
+
+             // Call service to fetch supplier combo list
+             ResponseViewModel response = service.getSupplier(comid, type);
+
+             // Return appropriate HTTP status
+             if (response.isSuccess()) {
+                 return ResponseEntity.ok(response);
+             } else {
+                 int statusCode = response.getStatusCode() != null ? response.getStatusCode() : 400;
+                 return ResponseEntity.status(statusCode).body(response);
+             }
+
+         } catch (Exception ex) {
+             logger.error("Error in getSupplier endpoint", ex);
+             ResponseViewModel errorResponse = ResponseViewModel.error(
+                     "Internal server error: " + ex.getMessage(),
+                     500
+             );
+             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+         }
+     }
 }
 
 

@@ -1,14 +1,15 @@
 package my.maleva.api.module.transaction.dto;
 
 import lombok.*;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import java.math.BigDecimal;
 
 /**
  * Response model for Pre-Alert Report data
  * Equivalent to PreAlertReportModel in C# implementation
  * Contains detailed sale order and pre-alert information
+ *
+ * Note: Date fields are String to match C# FORMAT() output (dd/MM/yyyy HH:mm:ss)
  */
 @Data
 @Builder
@@ -18,151 +19,153 @@ import java.math.BigDecimal;
 public class PreAlertReportModel {
 
     // Sale Order Master Information
-    @JsonProperty("saleOrderMasterRefId")
+    @JsonAlias({"SaleOrderMasterRefId", "saleOrderMasterRefId"})
     private Integer saleOrderMasterRefId;
 
-    @JsonProperty("saleDate")
-    private LocalDateTime saleDate;
+    @JsonAlias({"SaleDate", "saleDate"})
+    private String saleDate;
 
-    @JsonProperty("jobNo")
-    private String jobNo; // CNumberDisplay
+    @JsonAlias({"JobNo", "jobNo"})
+    private String jobNo;
 
     // Vessel Information
-    @JsonProperty("loadingVesselName")
+    @JsonAlias({"Loadingvesselname", "LoadingVesselName", "loadingVesselName"})
     private String loadingVesselName;
 
-    @JsonProperty("offVesselName")
+    @JsonAlias({"Offvesselname", "OffVesselName", "offVesselName"})
     private String offVesselName;
 
-    @JsonProperty("vessel")
+    @JsonAlias({"Vessel", "vessel"})
     private String vessel;
 
-    @JsonProperty("oVessel")
+    @JsonAlias({"OVessel", "oVessel"})
     private String oVessel;
 
     // Cargo Information
-    @JsonProperty("commodity")
+    @JsonAlias({"Commodity", "commodity"})
     private String commodity;
 
-    @JsonProperty("scn")
-    private String scn; // Shipping Control Number
+    @JsonAlias({"SCN", "scn"})
+    private String scn;
 
-    @JsonProperty("lscn")
-    private String lscn; // Loading SCN
+    @JsonAlias({"LSCN", "lscn"})
+    private String lscn;
 
-    @JsonProperty("awbNo")
+    @JsonAlias({"AWBNo", "awbNo"})
     private String awbNo;
 
-    @JsonProperty("truckSize")
+    @JsonAlias({"TruckSize", "truckSize"})
     private String truckSize;
 
-    @JsonProperty("totalWeight")
-    private BigDecimal totalWeight;
+    @JsonAlias({"TotalWeight", "totalWeight"})
+    private String totalWeight;
 
-    @JsonProperty("quantity")
-    private BigDecimal quantity;
+    @JsonAlias({"Quantity", "quantity"})
+    private String quantity;
 
-    @JsonProperty("blCopy")
+    @JsonAlias({"BLCopy", "blCopy"})
     private String blCopy;
 
     // Location Information
-    @JsonProperty("origin")
+    @JsonAlias({"Origin", "origin"})
     private String origin;
 
-    @JsonProperty("destination")
+    @JsonAlias({"Destination", "destination"})
     private String destination;
 
-    @JsonProperty("sPort")
-    private String sPort; // Source Port
+    @JsonAlias({"SPort", "sPort", "Port"})
+    private String sPort;
 
-    @JsonProperty("oPort")
-    private String oPort; // Origin Port
+    @JsonAlias({"OPort", "oPort"})
+    private String oPort;
 
-    // Dates
-    @JsonProperty("pickupDate")
-    private LocalDateTime pickupDate;
+    // Dates - String to match C# FORMAT() output
+    @JsonAlias({"PickupDate", "pickupDate"})
+    private String pickupDate;
 
-    @JsonProperty("deliveryDate")
-    private LocalDateTime deliveryDate;
+    @JsonAlias({"DeliveryDate", "deliveryDate"})
+    private String deliveryDate;
 
-    @JsonProperty("eta")
-    private LocalDateTime eta; // Estimated Time of Arrival
+    @JsonAlias({"ETA", "eta"})
+    private String eta;
 
-    @JsonProperty("etb")
-    private LocalDateTime etb; // Estimated Time of Berth
+    @JsonAlias({"ETB", "etb"})
+    private String etb;
 
-    @JsonProperty("etd")
-    private LocalDateTime etd; // Estimated Time of Departure
+    @JsonAlias({"ETD", "etd"})
+    private String etd;
 
-    @JsonProperty("oeta")
-    private LocalDateTime oeta; // Original ETA
+    @JsonAlias({"OETA", "oeta"})
+    private String oeta;
 
-    @JsonProperty("oetb")
-    private LocalDateTime oetb; // Original ETB
+    @JsonAlias({"OETB", "oetb"})
+    private String oetb;
 
-    @JsonProperty("oetd")
-    private LocalDateTime oetd; // Original ETD
+    @JsonAlias({"OETD", "oetd"})
+    private String oetd;
 
-    @JsonProperty("deta")
-    private LocalDateTime deta; // Display ETA (used for sorting)
+    @JsonAlias({"DETA", "deta"})
+    private String deta;
 
     // Job Information
-    @JsonProperty("jobTypeMasterRefId")
+    @JsonAlias({"JobTypeMasterRefId", "jobTypeMasterRefId"})
     private Integer jobTypeMasterRefId;
 
-    @JsonProperty("jobName")
+    @JsonAlias({"JobName", "jobName"})
     private String jobName;
 
-    @JsonProperty("jobStatusMasterRefId")
+    @JsonAlias({"JobStatusMasterRefId", "jobStatusMasterRefId"})
     private Integer jobStatusMasterRefId;
 
-    @JsonProperty("jobStatus")
+    @JsonAlias({"JobStatus", "jobStatus", "Jobstatus"})
     private String jobStatus;
 
     // Employee/Boarding Officer Information
-    @JsonProperty("employeeMasterRefId")
+    @JsonAlias({"EmployeeMasterRefId", "employeeMasterRefId"})
     private Integer employeeMasterRefId;
 
-    @JsonProperty("employeeName")
+    @JsonAlias({"EmployeeName", "employeeName"})
     private String employeeName;
 
-    @JsonProperty("boardingOfficerName")
+    @JsonAlias({"BoardingOfficerName", "boardingOfficerName"})
     private String boardingOfficerName;
 
-    @JsonProperty("boardingOfficerName1")
+    @JsonAlias({"BoardingOfficerRefid", "boardingOfficerRefId"})
+    private Integer boardingOfficerRefId;
+
+    @JsonAlias({"BoardingOfficerName1", "boardingOfficerName1"})
     private String boardingOfficerName1;
 
     // Agent Information
-    @JsonProperty("agentRefId")
+    @JsonAlias({"AgentRefId", "agentRefId"})
     private Integer agentRefId;
 
-    @JsonProperty("agentName")
+    @JsonAlias({"AgentName", "agentName"})
     private String agentName;
 
-    @JsonProperty("agentPhone")
+    @JsonAlias({"AgentPhone", "agentPhone"})
     private String agentPhone;
 
-    @JsonProperty("oAgentName")
-    private String oAgentName; // Origin Agent
+    @JsonAlias({"OAgentName", "oAgentName"})
+    private String oAgentName;
 
-    @JsonProperty("oAgentPhone")
-    private String oAgentPhone; // Origin Agent Phone
+    @JsonAlias({"OAgentPhone", "oAgentPhone"})
+    private String oAgentPhone;
 
     // Customer Information
-    @JsonProperty("customerMasterRefId")
+    @JsonAlias({"CustomerMasterRefId", "customerMasterRefId"})
     private Integer customerMasterRefId;
 
-    @JsonProperty("customerName")
+    @JsonAlias({"CustomerName", "customerName"})
     private String customerName;
 
     // Pre-Alert Information
-    @JsonProperty("paRefId")
+    @JsonAlias({"PARefId", "paRefId", "PARefId"})
     private Integer paRefId;
 
-    @JsonProperty("remarks")
+    @JsonAlias({"Remarks", "remarks"})
     private String remarks;
 
-    @JsonProperty("boardingOfficerNameFromPA")
+    @JsonAlias({"BoardingOfficerName", "boardingOfficerNameFromPA"})
     private String boardingOfficerNameFromPA;
 }
-
