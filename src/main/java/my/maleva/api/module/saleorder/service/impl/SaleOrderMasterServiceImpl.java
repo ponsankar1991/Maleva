@@ -558,6 +558,71 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     }
 
     /**
+     * Update Job Status for Sale Order
+     *
+     * Equivalent C# Method: public ResponseViewModel UpdateJobStatus(Int32 Id, Int32 JobStatusId)
+     *
+     * SQL equivalent: UPDATE SaleOrderMaster SET JStatus = :jobStatusId, Modified_Date = GETDATE() WHERE Id = :id
+     *
+     * Business Logic:
+     * 1. Validate ID is provided and positive
+     * 2. Find SaleOrderMaster record by ID
+     * 3. Update JStatus field with new jobStatusId
+     * 4. Set Modified_Date to current timestamp
+     * 5. Save to database and return updated status
+     *
+     * @param id Sale Order ID (primary key)
+     * @param jobStatusId New job status ID to set on JStatus field
+     * @return SaleOrderStatusUpdateDto with updated status and audit info
+     * @throws InvalidRequestException if id or jobStatusId is invalid
+     * @throws EntityNotFoundException if record not found
+     */
+    @Override
+    @Transactional
+    public SaleOrderStatusUpdateDto updateJobStatus(Integer id, Integer jobStatusId) {
+        logger.info("Updating Job Status - id: {}, jobStatusId: {}", id, jobStatusId);
+
+        // Validate input parameters
+        if (id == null || id <= 0) {
+            throw new InvalidRequestException("Sale Order ID is required and must be greater than 0");
+        }
+
+        if (jobStatusId == null || jobStatusId <= 0) {
+            throw new InvalidRequestException("Job Status ID is required and must be greater than 0");
+        }
+
+        // Find the sale order (must be active)
+        SaleOrderMaster entity = findActiveSaleOrder(id);
+
+        // Validate and get job status
+        JobStatusMaster statusEntity = jobStatusMasterRepository.findById(jobStatusId)
+                .filter(status -> !Objects.equals(status.getActive(), SaleOrderApiConstants.INACTIVE_STATUS))
+                .orElseThrow(() -> new InvalidRequestException("Invalid Job Status ID"));
+
+        // Update JStatus and modified date
+        entity.setJStatus(statusEntity.getId());
+        entity.setModifiedDate(LocalDateTime.now());
+        entity.setModifiedBy(resolveAuditUser(entity.getModifiedBy()));
+
+        // Save the updated entity
+        SaleOrderMaster updatedEntity = repository.save(entity);
+
+        logger.info("Job Status updated successfully - Sale Order ID: {}, New JStatus: {}, Modified Date: {}",
+                updatedEntity.getId(), updatedEntity.getJStatus(), updatedEntity.getModifiedDate());
+
+        // Return response DTO
+        return SaleOrderStatusUpdateDto.builder()
+                .id(updatedEntity.getId())
+                .companyRefId(updatedEntity.getCompanyRefId())
+                .jStatus(updatedEntity.getJStatus())
+                .statusName(normalizeOptionalValue(statusEntity.getName()))
+                .cNumberDisplay(resolveDisplayNumber(updatedEntity))
+                .modifiedDate(updatedEntity.getModifiedDate())
+                .message("Update JobStatus Successfully!")
+                .build();
+    }
+
+    /**
      * Executes the existing SelectSaleOrder contract because the current page
      * already depends on this response shape.
      */

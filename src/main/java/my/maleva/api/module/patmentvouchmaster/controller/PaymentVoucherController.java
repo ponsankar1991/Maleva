@@ -1,7 +1,11 @@
 package my.maleva.api.module.patmentvouchmaster.controller;
 
+import my.maleva.api.common.dto.ResponseViewModel;
 import my.maleva.api.module.patmentvouchmaster.dto.PaymentVoucherDto;
 import my.maleva.api.module.patmentvouchmaster.service.PaymentVoucherService;
+import my.maleva.api.module.accounting.dto.COAExpenseResponseDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -16,6 +20,8 @@ import java.util.List;
 @Validated
 @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
 public class PaymentVoucherController {
+
+    private static final Logger logger = LoggerFactory.getLogger(PaymentVoucherController.class);
 
     private final PaymentVoucherService service;
 
@@ -48,5 +54,60 @@ public class PaymentVoucherController {
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+
+    @GetMapping("/select-coa-expense")
+    public ResponseEntity<?> selectCOAExpense(
+            @RequestParam(value = "comid", required = false) Integer comid,
+            @RequestParam(value = "expenseId", required = false) Integer expenseId,
+            @RequestParam(value = "keyword", required = false) String keyword) {
+
+        logger.info("API Call: selectCOAExpense - comid: {}, expenseId: {}, keyword: {}", comid, expenseId, keyword);
+        try {
+            // Validate required parameters
+            if (comid == null || comid <= 0) {
+                logger.warn("Invalid request: comid is missing or invalid");
+                return ResponseEntity.badRequest()
+                        .body(new Object() {
+                            public final boolean ok = false;
+                            public final String message = "Company ID (comid) is required and must be greater than 0";
+                        });
+            }
+
+            // Set default value for expenseId
+            if (expenseId == null) {
+                expenseId = 0;
+            }
+
+            // Call service to fetch COA Expense details
+            List<COAExpenseResponseDto> resultList = service.selectCOAExpense(comid, expenseId, keyword);
+
+            logger.info("Successfully retrieved {} COA Expense records", resultList.size());
+
+            // Return success response with data
+            return ResponseEntity.ok(new Object() {
+                public final boolean ok = true;
+                public final List<COAExpenseResponseDto> data = resultList;
+            });
+
+        } catch (IllegalArgumentException ex) {
+            logger.warn("Invalid request: {}", ex.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(new Object() {
+                        public final boolean ok = false;
+                        public final String message = ex.getMessage();
+                    });
+
+        } catch (Exception ex) {
+            logger.error("Error in selectCOAExpense endpoint", ex);
+            return ResponseEntity.internalServerError()
+                    .body(new Object() {
+                        public final boolean ok = false;
+                        public final String message = "Error retrieving COA Expense details: " +
+                                                      (ex.getCause() != null ?
+                                                       ex.getCause().getMessage() : ex.getMessage());
+                    });
+        }
     }
 }

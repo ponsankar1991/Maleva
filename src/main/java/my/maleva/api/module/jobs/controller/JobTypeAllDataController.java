@@ -34,12 +34,14 @@ public class JobTypeAllDataController {
      *
      * @param companyId Company reference ID
      * @param jobId Job Master reference ID
+     * @param complete Filter flag (0 = exclude status 8)
      * @return ApiResponse containing JobTypeAllDataDto with both job details and job status details lists
      */
     @PostMapping("/select")
     public ResponseEntity<ApiResponse<JobTypeAllDataDto>> selectJobAllData(
             @RequestParam @NotNull Integer companyId,
-            @RequestParam @NotNull Integer jobId) {
+            @RequestParam @NotNull Integer jobId,
+            @RequestParam(required = false, defaultValue = "1") Integer complete) {
         try {
             // Validate inputs
             if (companyId <= 0 || jobId <= 0) {
@@ -48,7 +50,7 @@ public class JobTypeAllDataController {
             }
 
             // Fetch combined job data
-            JobTypeAllDataDto data = service.selectJobAllData(companyId, jobId);
+            JobTypeAllDataDto data = service.selectJobAllData(companyId, jobId, complete);
 
             // Check if data is empty
             if ((data.getJobTypeDetails() == null || data.getJobTypeDetails().isEmpty()) &&
@@ -69,4 +71,3 @@ public class JobTypeAllDataController {
         }
     }
 }
-

@@ -38,8 +38,8 @@ public class JobTypeAllDataServiceImpl implements JobTypeAllDataService {
     }
 
     @Override
-    public JobTypeAllDataDto selectJobAllData(Integer comid, Integer jobid) {
-        logger.info("Selecting Job All Data for Company: {} Job: {}", comid, jobid);
+    public JobTypeAllDataDto selectJobAllData(Integer comid, Integer jobid, Integer complete) {
+        logger.info("Selecting Job All Data for Company: {} Job: {} Complete: {}", comid, jobid, complete);
 
         // Validate inputs
         if (comid == null || comid <= 0) {
@@ -47,6 +47,9 @@ public class JobTypeAllDataServiceImpl implements JobTypeAllDataService {
         }
         if (jobid == null || jobid <= 0) {
             throw new IllegalArgumentException("Invalid job ID");
+        }
+        if (complete == null) {
+            complete = 1; // Default logic
         }
 
         JobTypeAllDataDto result = new JobTypeAllDataDto();
@@ -58,9 +61,9 @@ public class JobTypeAllDataServiceImpl implements JobTypeAllDataService {
             result.setJobTypeDetails(jobDetailsList);
             logger.info("Retrieved {} Job Details records", jobDetailsList.size());
 
-            // Fetch JobStatusDetails with joined information
+            // Fetch JobStatusDetails with joined information and filter
             // Returns JobStatusDetailsWithNameDto which already includes statusName and minStatusName from joins
-            List<JobStatusDetailsWithNameDto> jobStatusDetailsList = jobStatusDetailsRepository.findJobStatusDetailsWithNames(comid, jobid);
+            List<JobStatusDetailsWithNameDto> jobStatusDetailsList = jobStatusDetailsRepository.findJobStatusDetailsWithNames(comid, jobid, complete);
             result.setJobStatusDetails(jobStatusDetailsList);
             logger.info("Retrieved {} Job Status Details records", jobStatusDetailsList.size());
 
@@ -74,5 +77,10 @@ public class JobTypeAllDataServiceImpl implements JobTypeAllDataService {
 
         return result;
     }
-}
 
+    // Retained for backward compatibility
+    @Override
+    public JobTypeAllDataDto selectJobAllData(Integer comid, Integer jobid) {
+        return selectJobAllData(comid, jobid, 1); 
+    }
+}

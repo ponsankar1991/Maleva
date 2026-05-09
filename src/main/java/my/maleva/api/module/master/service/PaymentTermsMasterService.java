@@ -4,7 +4,7 @@ import my.maleva.api.module.master.dto.PaymentTermsMasterDto;
 import my.maleva.api.common.exception.EntityNotFoundException;
 import my.maleva.api.module.master.mapper.PaymentTermsMasterMapper;
 import my.maleva.api.module.master.entity.PaymentTermsMaster;
-import my.maleva.api.module.master.repository.PaymentTermsMasterRepository;
+import my.maleva.api.module.payment.repository.PaymentTermsMasterRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

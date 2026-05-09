@@ -1,0 +1,285 @@
+{
+  "examples": {
+    "create_prealert_minimal": {
+      "description": "Minimal PreAlert creation with one master and one detail row",
+      "endpoint": "POST /api/transaction/pre-alert/insert",
+      "headers": {
+        "Content-Type": "application/json",
+        "Comid": "1"
+      },
+      "body": [
+        {
+          "id": 0,
+          "companyRefId": 1,
+          "customerMasterRefId": 10,
+          "jobTypeMasterRefId": 5,
+          "employeeRefId": 3,
+          "cNumber": 0,
+          "port": "Singapore",
+          "boardingOfficerName": "John Smith",
+          "date": "2026-05-05",
+          "vessel": "MV Example Vessel",
+          "oeta": "2026-05-15",
+          "leta": "2026-05-20",
+          "alleta": "All ETA Value",
+          "none": "None Value",
+          "chkPort": "SGP",
+          "chkVessel": "EXP",
+          "chkPickupDate": "2026-05-10",
+          "cNumberDisplay": "",
+          "chkConsolidated": "Y",
+          "chkDeliveryDone": "N",
+          "fromDate": "2026-05-01",
+          "entryDate": "2026-05-05",
+          "toDate": "2026-05-31",
+          "active": 1,
+          "preAlertRows": [
+            {
+              "id": 0,
+              "customerMasterRefId": 10,
+              "employeeMasterRefId": 3,
+              "jobTypeMasterRefId": 5,
+              "saleOrderMasterRefId": 1,
+              "jobStatusMasterRefId": 1,
+              "boardingOfficerRefId": 2,
+              "boardingOfficerName": "Officer Name",
+              "shipName": "Ship Name",
+              "vessel": "Vessel Name",
+              "commodity": "Electronics",
+              "eta": "2026-05-15",
+              "etb": "2026-05-16",
+              "etd": "2026-05-17",
+              "jobNo": "JOB001",
+              "port": "SGP",
+              "weight": "100 KG",
+              "packageInfo": "Pallet",
+              "awbNo": "AWB001",
+              "agentName": "Agent Name",
+              "agentPhone": "123456789",
+              "remarks": "Sample Remarks",
+              "scn": "SCN001",
+              "active": 1
+            }
+          ]
+        }
+      ]
+    },
+    "create_prealert_multiple_details": {
+      "description": "PreAlert with multiple detail rows",
+      "endpoint": "POST /api/transaction/pre-alert/insert",
+      "headers": {
+        "Content-Type": "application/json",
+        "Comid": "1"
+      },
+      "body": [
+        {
+          "id": 0,
+          "companyRefId": 1,
+          "customerMasterRefId": 10,
+          "jobTypeMasterRefId": 5,
+          "employeeRefId": 3,
+          "cNumber": 0,
+          "port": "Singapore",
+          "vessel": "MV Example",
+          "oeta": "2026-05-15",
+          "leta": "2026-05-20",
+          "fromDate": "2026-05-01",
+          "entryDate": "2026-05-05",
+          "toDate": "2026-05-31",
+          "active": 1,
+          "preAlertRows": [
+            {
+              "id": 0,
+              "customerMasterRefId": 10,
+              "employeeMasterRefId": 3,
+              "jobTypeMasterRefId": 5,
+              "saleOrderMasterRefId": 1,
+              "jobStatusMasterRefId": 1,
+              "boardingOfficerRefId": 2,
+              "boardingOfficerName": "Officer 1",
+              "shipName": "Ship 1",
+              "vessel": "Vessel 1",
+              "commodity": "Electronics",
+              "eta": "2026-05-15",
+              "etb": "2026-05-16",
+              "etd": "2026-05-17",
+              "jobNo": "JOB001",
+              "port": "SGP",
+              "weight": "50 KG",
+              "packageInfo": "Pallet",
+              "awbNo": "AWB001",
+              "agentName": "Agent 1",
+              "agentPhone": "123456789",
+              "remarks": "Detail 1",
+              "scn": "SCN001",
+              "active": 1
+            },
+            {
+              "id": 0,
+              "customerMasterRefId": 10,
+              "employeeMasterRefId": 3,
+              "jobTypeMasterRefId": 5,
+              "saleOrderMasterRefId": 2,
+              "jobStatusMasterRefId": 1,
+              "boardingOfficerRefId": 2,
+              "boardingOfficerName": "Officer 2",
+              "shipName": "Ship 2",
+              "vessel": "Vessel 2",
+              "commodity": "Machinery",
+              "eta": "2026-05-15",
+              "etb": "2026-05-16",
+              "etd": "2026-05-17",
+              "jobNo": "JOB002",
+              "port": "SGP",
+              "weight": "50 KG",
+              "packageInfo": "Box",
+              "awbNo": "AWB002",
+              "agentName": "Agent 2",
+              "agentPhone": "987654321",
+              "remarks": "Detail 2",
+              "scn": "SCN002",
+              "active": 1
+            }
+          ]
+        }
+      ]
+    },
+    "update_prealert_master_only": {
+      "description": "Update only master fields (no detail changes)",
+      "endpoint": "PUT /api/transaction/pre-alert/123",
+      "headers": {
+        "Content-Type": "application/json",
+        "Comid": "1"
+      },
+      "queryParams": {
+        "comId": "1"
+      },
+      "body": {
+        "id": 123,
+        "companyRefId": 1,
+        "customerMasterRefId": 10,
+        "jobTypeMasterRefId": 5,
+        "employeeRefId": 3,
+        "cNumber": 1,
+        "port": "Updated Port Name",
+        "boardingOfficerName": "Updated Officer Name",
+        "date": "2026-05-05",
+        "vessel": "Updated Vessel Name",
+        "oeta": "2026-05-18",
+        "leta": "2026-05-21",
+        "alleta": "Updated All ETA",
+        "chkPort": "UPD",
+        "chkVessel": "UPD",
+        "fromDate": "2026-05-01",
+        "entryDate": "2026-05-05",
+        "toDate": "2026-05-31",
+        "active": 1,
+        "preAlertRows": []
+      }
+    },
+    "update_prealert_with_detail_changes": {
+      "description": "Update master and detail rows (modify existing and add new)",
+      "endpoint": "PUT /api/transaction/pre-alert/123",
+      "headers": {
+        "Content-Type": "application/json",
+        "Comid": "1"
+      },
+      "queryParams": {
+        "comId": "1"
+      },
+      "body": {
+        "id": 123,
+        "companyRefId": 1,
+        "customerMasterRefId": 10,
+        "jobTypeMasterRefId": 5,
+        "employeeRefId": 3,
+        "cNumber": 1,
+        "port": "Updated Port",
+        "vessel": "Updated Vessel",
+        "oeta": "2026-05-18",
+        "leta": "2026-05-21",
+        "fromDate": "2026-05-01",
+        "entryDate": "2026-05-05",
+        "toDate": "2026-05-31",
+        "active": 1,
+        "preAlertRows": [
+          {
+            "id": 456,
+            "customerMasterRefId": 10,
+            "employeeMasterRefId": 3,
+            "jobTypeMasterRefId": 5,
+            "saleOrderMasterRefId": 1,
+            "jobStatusMasterRefId": 1,
+            "boardingOfficerRefId": 2,
+            "boardingOfficerName": "Updated Officer 1",
+            "shipName": "Updated Ship 1",
+            "vessel": "Updated Vessel 1",
+            "commodity": "Updated Electronics",
+            "eta": "2026-05-16",
+            "etb": "2026-05-17",
+            "etd": "2026-05-18",
+            "jobNo": "JOB001",
+            "port": "SGP",
+            "weight": "75 KG",
+            "packageInfo": "Updated Pallet",
+            "awbNo": "AWB001",
+            "agentName": "Updated Agent 1",
+            "agentPhone": "111222333",
+            "remarks": "Updated Detail 1",
+            "scn": "SCN001",
+            "active": 1
+          },
+          {
+            "id": 0,
+            "customerMasterRefId": 10,
+            "employeeMasterRefId": 3,
+            "jobTypeMasterRefId": 5,
+            "saleOrderMasterRefId": 3,
+            "jobStatusMasterRefId": 1,
+            "boardingOfficerRefId": 2,
+            "boardingOfficerName": "New Officer",
+            "shipName": "New Ship",
+            "vessel": "New Vessel",
+            "commodity": "New Commodity",
+            "eta": "2026-05-20",
+            "etb": "2026-05-21",
+            "etd": "2026-05-22",
+            "jobNo": "JOB003",
+            "port": "SGP",
+            "weight": "25 KG",
+            "packageInfo": "New Package",
+            "awbNo": "AWB003",
+            "agentName": "New Agent",
+            "agentPhone": "555666777",
+            "remarks": "New Detail Added",
+            "scn": "SCN003",
+            "active": 1
+          }
+        ]
+      }
+    },
+    "expected_success_response": {
+      "description": "Successful response from insert/update operation",
+      "example": {
+        "ok": true,
+        "message": "InsertPreAlert CreateSuccess",
+        "Name": "PA0001/2026",
+        "Id": 123,
+        "Data1": "PA0001/2026",
+        "Data2": 123
+      }
+    },
+    "expected_error_response": {
+      "description": "Error response when operation fails",
+      "example": {
+        "ok": false,
+        "message": "Error inserting pre-alert: Invalid company ID",
+        "Name": "",
+        "Id": 0,
+        "Data1": "",
+        "Data2": 0
+      }
+    }
+  }
+}
+

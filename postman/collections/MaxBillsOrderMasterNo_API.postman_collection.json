@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "MaxBillsOrderMasterNo - Bills Order Master",
+    "description": "API endpoint to get the maximum/next bills order number for a company",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Max Bills Order Number",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "description": "JWT token for authentication"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/bills-order/max-bills-order-no/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "bills-order",
+            "max-bills-order-no",
+            "1"
+          ]
+        },
+        "description": "Retrieves the next available bills order number for a company in format 'PO' + padded sequence"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bills-order/max-bills-order-no/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "bills-order",
+                "max-bills-order-no",
+                "1"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"isSuccess\": true,\n  \"statusCode\": 200,\n  \"message\": \"Bills order number generated successfully\",\n  \"data1\": \"PO000000015\"\n}"
+        },
+        {
+          "name": "First Order (No Sequence)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",\n                \"value\": \"Bearer {{jwt_token}}\"\n              }\n            ],\n            \"url\": {\n              \"raw\": \"{{base_url}}/api/bills-order/max-bills-order-no/2\",\n              \"host\": [\n                \"{{base_url}}\"\n              ],\n              \"path\": [\n                \"api\",\n                \"bills-order\",\n                \"max-bills-order-no\",\n                \"2\"\n              ]\n            }\n          },\n          \"status\": \"OK\",\n          \"code\": 200,\n          \"header\": [\n            {\n              \"key\": \"Content-Type\",\n              \"value\": \"application/json\"\n            }\n          ],\n          \"body\": \"{\n            \\\"isSuccess\\\": true,\n            \\\"statusCode\\\": 200,\n            \\\"message\\\": \\\"Bills order number generated successfully\\\",\n            \\\"data1\\\": \\\"PO000000001\\\"\n          }\"\n        },\n        {\n          \"name\": \"Error Response\",\n          \"originalRequest\": {\n            \"method\": \"GET\",\n            \"header\": [\n              {\n                \"key\": \"Authorization\",\n                \"value\": \"Bearer {{jwt_token}}\"\n              }\n            ],\n            \"url\": {\n              \"raw\": \"{{base_url}}/api/bills-order/max-bills-order-no/999\",\n              \"host\": [\n                \"{{base_url}}\"\n              ],\n              \"path\": [\n                \"api\",\n                \"bills-order\",\n                \"max-bills-order-no\",\n                \"999\"\n              ]\n            }\n          },\n          \"status\": \"Internal Server Error\",\n          \"code\": 500,\n          \"header\": [\n            {\n              \"key\": \"Content-Type\",\n              \"value\": \"application/json\"\n            }\n          ],\n          \"body\": \"{\n            \\\"isSuccess\\\": false,\n            \\\"statusCode\\\": 500,\n            \\\"message\\\": \\\"Error message details\\\",\n            \\\"data1\\\": \\\"Api Details: BillsOrderMaster_MaxBillsOrderMasterNo\\\"\n          }\"\n        }\n      ]\n    }\n  ],\n  \"variable\": [\n    {\n      \"key\": \"base_url\",\n      \"value\": \"http://localhost:8080\",\n      \"description\": \"Base URL of the API\"\n    },\n    {\n      \"key\": \"jwt_token\",\n      \"value\": \"\",\n      \"description\": \"JWT token for authentication\"\n    }\n  ]\n}
+

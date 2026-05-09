@@ -2,13 +2,17 @@ package my.maleva.api.module.accounting.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
-import my.maleva.api.common.entity.BaseAuditEntity;
+import org.hibernate.annotations.UuidGenerator;
+import my.maleva.api.module.master.entity.Classification;
 
 import java.util.UUID;
 
@@ -18,11 +22,15 @@ import java.util.UUID;
 @Entity
 @Table(name = "GLAccounts")
 @Data
-@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
-public class GLAccounts extends BaseAuditEntity {
+@Builder
+public class GLAccounts {
+
+    @Id
+    @UuidGenerator
+    @Column(name = "Id", columnDefinition = "uniqueidentifier")
+    private UUID id;
 
     @Column(name = "CompanyRefId", nullable = false)
     private Integer companyRefId;
@@ -104,4 +112,13 @@ public class GLAccounts extends BaseAuditEntity {
 
     @Column(name = "Classification")
     private Integer classification;
+
+    /**
+     * Relationship: Many GL Accounts → One Classification
+     * Enables LEFT JOIN with Classification table to fetch classification name
+     * Will be populated when fetching with eager loading or explicit join
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "Classification", referencedColumnName = "Id", insertable = false, updatable = false)
+    private Classification classificationEntity;
 }

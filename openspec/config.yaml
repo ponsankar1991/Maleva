@@ -1,20 +1,19 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project Name: Maleva Full-Stack
+  Domain: Business Management / ERP (Accounting, Billing, Purchase, Inventory)
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Tech Stack:
+    - Backend: Java Spring Boot (located at C:\karthickworkspace\malevanew\fulstack\Maleva)
+    - Frontend: React, TypeScript, Vite (located at C:\karthickworkspace\malevanew\fulstack\maleva-front-end)
+    - Architecture: Module-based Java backend with a corresponding React frontend.
+
+  Conventions:
+    - Spec-Driven Development: All major changes must be defined in /openspec/specs before implementation.
+    - Full-Stack Alignment: Every backend API change must have a corresponding frontend update.
+    - Git: Use clear, descriptive commit messages.
+
+  Project Goals:
+    - Maintain a strict synchronization between API specifications and actual implementation.
+    - Use the OpenSpec framework to guide AI-assisted refactoring and feature additions.
