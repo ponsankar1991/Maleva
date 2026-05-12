@@ -16,17 +16,7 @@ import my.maleva.api.module.master.entity.TaxMaster;
 import my.maleva.api.module.master.repository.SequenceNoMasterRepository;
 import my.maleva.api.module.jobs.repository.JobStatusMasterRepository;
 import my.maleva.api.module.master.repository.TaxMasterRepository;
-import my.maleva.api.module.saleorder.dto.DeliveryDetailDTO;
-import my.maleva.api.module.saleorder.dto.ForwardingDetailDTO;
-import my.maleva.api.module.saleorder.dto.PickupDetailDTO;
-import my.maleva.api.module.saleorder.dto.SaleOrderDTO;
-import my.maleva.api.module.saleorder.dto.SaleOrderEditDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderEditDetailsDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderDetailsDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO;
-import my.maleva.api.module.saleorder.dto.SaleOrderMasterDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderQuickUpdateDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderStatusUpdateDto;
+import my.maleva.api.module.saleorder.dto.*;
 import my.maleva.api.module.saleorder.entity.SaleOrderDelivery;
 import my.maleva.api.module.saleorder.entity.SaleOrderDetails;
 import my.maleva.api.module.saleorder.entity.SaleOrderForwarding;
@@ -1277,5 +1267,63 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
     private SaleF5View buildEmptySaleF5ViewResponse() {
         return saleF5ViewMapper.createSaleF5View(new ArrayList<>(), new ArrayList<>());
+    }
+
+    /**
+     * Get customer job numbers for a given company and customer
+     *
+     * Equivalent to ASP.NET GetCustJobNo endpoint
+     *
+     * Business Logic:
+     * 1. Filter by company (multi-tenancy) - required
+     * 2. Filter by customer (if customerId != 0) - optional, 0 means all customers
+     * 3. Exclude soft-deleted records (Active != 2)
+     * 4. Filter by invoice number:
+     *    - If invoiceNo = 0: returns jobs NOT YET INVOICED
+     *    - If invoiceNo > 0: returns jobs for that specific invoice
+     *
+     * @param companyId Company ID (tenant identifier)
+     * @param customerId Customer ID (0 means all customers)
+     * @param invoiceNo Invoice number (0 means not yet invoiced)
+     * @return List of job records with Id and billNoDisplay (CNumberDisplay)
+     */
+    @Override
+    public List<JobNumberDto> getCustJobNumbers(Integer companyId, Integer customerId, Integer invoiceNo) {
+        try {
+            logger.debug("Fetching customer job numbers - companyId: {}, customerId: {}, invoiceNo: {}",
+                    companyId, customerId, invoiceNo);
+
+            // Query repository with multi-tenancy and conditional filters
+            List<JobNumberDto> jobs = repository.findCustJobNumbers(companyId, customerId, invoiceNo);
+
+            logger.info("Successfully retrieved {} job numbers for companyId: {}",
+                    jobs.size(), companyId);
+
+            return jobs;
+
+        } catch (Exception ex) {
+            // Extract innermost exception (equivalent to ASP.NET pattern)
+            Exception innermost = extractInnerException(ex);
+
+            logger.error("Error retrieving customer job numbers for companyId: {}, customerId: {}",
+                    companyId, customerId, innermost);
+
+            // Re-throw to be handled by controller and global exception handler
+            throw new InvalidRequestException("Error retrieving job numbers: " + innermost.getMessage(), innermost);
+        }
+    }
+
+    /**
+     * Extract innermost exception from exception chain
+     * Equivalent to ASP.NET:
+     * while (realerror.InnerException != null)
+     *     realerror = realerror.InnerException;
+     */
+    private Exception extractInnerException(Exception ex) {
+        Exception innermost = ex;
+        while (innermost.getCause() != null && innermost.getCause() instanceof Exception) {
+            innermost = (Exception) innermost.getCause();
+        }
+        return innermost;
     }
 }

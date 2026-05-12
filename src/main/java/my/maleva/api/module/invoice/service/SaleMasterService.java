@@ -72,5 +72,14 @@ public interface SaleMasterService {
      * Validate sale data according to business rules
      */
     void validateSaleData(SaleMasterDto dto);
+
+    /**
+     * Get next invoice number for a company
+     * Generates the next sequential invoice number in format: INV000000001
+     *
+     * @param companyId The company ID
+     * @return Next invoice number string
+     */
+    String getNextInvoiceNumber(Integer companyId);
 }
 

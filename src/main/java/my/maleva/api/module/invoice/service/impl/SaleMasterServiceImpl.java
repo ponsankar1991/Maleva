@@ -333,5 +333,24 @@ public class SaleMasterServiceImpl implements SaleMasterService {
         if (dto.getSaleType() == null || dto.getSaleType().isEmpty()) throw new RuntimeException("Sale Type is required");
         if (dto.getCNumber() == null) throw new RuntimeException("C Number is required");
     }
+
+    @Override
+    public String getNextInvoiceNumber(Integer companyId) {
+        logger.info("Generating next invoice number for company: {}", companyId);
+        try {
+            // Get the maximum C Number for this company
+            Integer maxCNumber = saleMasterRepository.findMaxCNumberByCompanyId(companyId).orElse(0);
+            Integer nextNumber = maxCNumber + 1;
+
+            // Format as INV000000001 (9 digits padded with zeros)
+            String invoiceNumber = "INV" + String.format("%09d", nextNumber);
+
+            logger.info("Generated invoice number: {} for company: {}", invoiceNumber, companyId);
+            return invoiceNumber;
+        } catch (Exception e) {
+            logger.error("Error generating next invoice number for company: {}", companyId, e);
+            throw new RuntimeException("Unable to generate next invoice number: " + e.getMessage());
+        }
+    }
 }
 

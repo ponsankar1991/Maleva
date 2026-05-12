@@ -2,18 +2,13 @@ package my.maleva.api.module.accounting.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-import org.hibernate.annotations.UuidGenerator;
+import lombok.experimental.SuperBuilder;
+import my.maleva.api.common.entity.BaseAuditEntity;
 
 /**
  * JPA entity for Accounts table
@@ -21,16 +16,11 @@ import org.hibernate.annotations.UuidGenerator;
 @Entity
 @Table(name = "Accounts")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Account {
-
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    @Column(name = "Id", nullable = false, updatable = false, columnDefinition = "uniqueidentifier")
-    private UUID id;
+@SuperBuilder
+public class Account extends BaseAuditEntity {
 
     @Column(name = "CompanyRefId", nullable = false)
     private Integer companyRefId;
@@ -58,16 +48,6 @@ public class Account {
 
     @Column(name = "RowIndex", nullable = false)
     private Integer rowIndex;
-
-    // audit fields
-    @Column(name = "Created_Date")
-    private LocalDateTime createdDate;
-
-    @Column(name = "Modified_Date")
-    private LocalDateTime modifiedDate;
-
-    @Column(name = "Modified_By", length = 50)
-    private String modifiedBy;
 
     @Column(name = "Active")
     private Integer active;

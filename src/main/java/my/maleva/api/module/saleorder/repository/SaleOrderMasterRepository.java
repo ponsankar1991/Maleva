@@ -1,6 +1,7 @@
 package my.maleva.api.module.saleorder.repository;
 
 import my.maleva.api.module.rti.dto.RTIJobLookupDto;
+import my.maleva.api.module.saleorder.dto.JobNumberDto;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -50,6 +51,36 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
     Optional<SaleOrderMaster> findByIdAndActive(Integer id, Integer active);
 
     Optional<SaleOrderMaster> findByCompanyRefIdAndCNumberAndActive(Integer companyRefId, Integer cNumber, Integer active);
+
+    /**
+     * Get customer job numbers for a given company and customer
+     * 
+     * Business Logic (from GetCustJobNo endpoint):
+     * 1. Filter by company (multi-tenancy) - required
+     * 2. Filter by customer (if custId != 0) - optional
+     * 3. Exclude soft-deleted records (Active != 2)
+     * 4. Filter by invoice number (if invoiceNo > 0, exact match; if = 0, not yet invoiced)
+     * 
+     * @param companyRefId Company ID (tenant identifier)
+     * @param customerRefId Customer ID (0 means all customers)
+     * @param invoiceNo Invoice number (0 means not yet invoiced, >0 means specific invoice)
+     * @return List of job records with Id and billNoDisplay (CNumberDisplay)
+     */
+    @Query(value = 
+        "SELECT new my.maleva.api.module.saleorder.dto.JobNumberDto(" +
+        "  s.id, " +
+        "  s.cNumberDisplay" +
+        ") " +
+        "FROM SaleOrderMaster s " +
+        "WHERE s.companyRefId = :companyRefId " +
+        "  AND s.active != 2 " +
+        "  AND (s.customerRefId = :customerRefId) " +
+        "  AND ( s.invoiceNo = :invoiceNo) " +
+        "ORDER BY s.cNumberDisplay ASC")
+    List<JobNumberDto> findCustJobNumbers(
+        @Param("companyRefId") Integer companyRefId,
+        @Param("customerRefId") Integer customerRefId,
+        @Param("invoiceNo") Integer invoiceNo);
 
     /**
      * OPTIMIZED: Fetch SaleMaster data filtered by specific order IDs
@@ -172,8 +203,3 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             @Param("companyId") Integer companyId,
             @Param("orderIds") List<Integer> orderIds);
 }
-
-
-
-
-
