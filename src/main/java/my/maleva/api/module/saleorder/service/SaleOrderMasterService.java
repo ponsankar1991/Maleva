@@ -6,8 +6,11 @@ import my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO;
 import my.maleva.api.module.saleorder.dto.SaleOrderMasterDto;
 import my.maleva.api.module.saleorder.dto.SaleOrderQuickUpdateDto;
 import my.maleva.api.module.saleorder.dto.SaleOrderStatusUpdateDto;
+import my.maleva.api.module.saleorder.dto.JobNumberDto;
 import my.maleva.api.module.invoice.dto.SaleF5View;
 import my.maleva.api.module.saleorder.dto.UpdateJobStatusDto;
+
+import java.util.List;
 
 
 public interface SaleOrderMasterService {
@@ -41,4 +44,24 @@ public interface SaleOrderMasterService {
 
 
     SaleOrderStatusUpdateDto updateJobStatus(Integer id, Integer jobStatusId);
+
+    /**
+     * Get customer job numbers for a given company and customer
+     *
+     * Equivalent to ASP.NET GetCustJobNo endpoint
+     *
+     * Business Logic:
+     * 1. Filter by company (multi-tenancy) - required
+     * 2. Filter by customer (if custId != 0) - optional, 0 means all customers
+     * 3. Exclude soft-deleted records (Active != 2)
+     * 4. Filter by invoice number:
+     *    - If invoiceNo = 0: returns jobs NOT YET INVOICED
+     *    - If invoiceNo > 0: returns jobs for that specific invoice
+     *
+     * @param companyId Company ID (tenant identifier)
+     * @param customerId Customer ID (0 means all customers)
+     * @param invoiceNo Invoice number (0 means not yet invoiced)
+     * @return List of job records with Id and billNoDisplay (CNumberDisplay)
+     */
+    List<JobNumberDto> getCustJobNumbers(Integer companyId, Integer customerId, Integer invoiceNo);
 }

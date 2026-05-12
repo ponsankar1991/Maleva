@@ -1645,19 +1645,10 @@
           "name": "GetCustJobNo",
           "id": "6723f701-d430-429b-b47a-9742f5a52fb6",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/sale-invoices/company/{{companyId}}/customer/479",
+              "raw": "{{baseUrl}}/api/v1/sale-invoices/jobs?companyId={{companyId}}&customerId=998&invoiceNo=0",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1665,10 +1656,24 @@
                 "api",
                 "v1",
                 "sale-invoices",
-                "company",
-                "{{companyId}}",
-                "customer",
-                "479"
+                "jobs"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "{{companyId}}",
+                  "uuid": "c04c944f-c1ce-491f-bb7b-cd413f2682b5"
+                },
+                {
+                  "key": "customerId",
+                  "value": "998",
+                  "uuid": "481db6fd-a7ed-4f67-8c81-83cd18ef6adf"
+                },
+                {
+                  "key": "invoiceNo",
+                  "value": "0",
+                  "uuid": "0aa4f9bf-0f81-4da1-8461-c6b72c40148b"
+                }
               ]
             }
           },
@@ -3220,25 +3225,25 @@
   ],
   "variable": [
     {
-      "id": "0cb34a59-9d79-47c8-a71a-868460c4253c",
+      "id": "da2b13f1-a701-4a79-ab71-cb3badb39623",
       "key": "baseUrl",
       "value": "http://localhost:8082",
       "type": "string"
     },
     {
-      "id": "2744f023-f851-4388-9c29-20a895905923",
+      "id": "a48d1980-f67a-4f8a-82b5-72ad3388d54c",
       "key": "token",
       "value": "",
       "type": "string"
     },
     {
-      "id": "52ef04a2-15d7-4179-b249-09652ee2af98",
+      "id": "def845ea-9673-4bf8-af6a-430ad17f882b",
       "key": "companyId",
       "value": "1",
       "type": "string"
     },
     {
-      "id": "57a4788e-30f8-461e-8a30-3dbe5b9767a2",
+      "id": "add3a554-9fb2-4717-954e-fb6bb4025c86",
       "key": "saleOrderEditId",
       "value": "16201",
       "type": "string"

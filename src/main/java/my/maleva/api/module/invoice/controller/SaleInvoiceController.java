@@ -4,6 +4,8 @@ import my.maleva.api.module.invoice.dto.SaleMasterDto;
 import my.maleva.api.module.invoice.dto.SaleDetailsDto;
 import my.maleva.api.module.invoice.service.SaleMasterService;
 import my.maleva.api.module.invoice.service.SaleDetailsService;
+import my.maleva.api.module.saleorder.service.SaleOrderMasterService;
+import my.maleva.api.module.saleorder.dto.JobNumberDto;
 import my.maleva.api.common.dto.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +49,9 @@ public class SaleInvoiceController {
 
     @Autowired
     private SaleDetailsService saleDetailsService;
+
+    @Autowired
+    private SaleOrderMasterService saleOrderMasterService;
 
     /**
      * Get next invoice number
@@ -491,6 +496,99 @@ public class SaleInvoiceController {
     }
 
     /**
+     * Get customer job numbers for invoice creation
+     * Equivalent to ASP.NET GetCustJobNo endpoint
+     *
+     * POST /api/v1/sale-invoices/jobs
+     *
+     * Request Body:
+     * {
+     *   "companyId": 1,
+     *   "customerId": 5,
+     *   "invoiceNo": 0
+     * }
+     *
+     * Response (Success):
+     * {
+     *   "IsSuccess": true,
+     *   "StatusCode": 200,
+     *   "Message": "Success",
+     *   "Data1": [
+     *     { "id": 1, "billNoDisplay": "JOB-001" },
+     *     { "id": 2, "billNoDisplay": "JOB-002" }
+     *   ]
+     * }
+     *
+     * Business Logic:
+     * 1. Filter by company (multi-tenancy) - required
+     * 2. Filter by customer (if customerId != 0) - optional, 0 means all customers
+     * 3. Exclude soft-deleted records (Active != 2)
+     * 4. Filter by invoice number:
+     *    - If invoiceNo = 0: returns jobs NOT YET INVOICED
+     *    - If invoiceNo > 0: returns jobs for that specific invoice
+     */
+    @PostMapping("/jobs")
+    public ResponseEntity<ApiResponse<List<JobNumberDto>>> getCustJobNumbers(
+            @RequestParam Integer companyId,
+            @RequestParam Integer customerId,
+            @RequestParam Integer invoiceNo) {
+
+        logger.info("GetCustJobNo Request: companyId={}, customerId={}, invoiceNo={}",
+                companyId, customerId, invoiceNo);
+
+        try {
+            // Validate required parameters
+            if (companyId == null || companyId <= 0) {
+                logger.warn("Invalid company ID provided");
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Company ID is required and must be greater than 0", 400));
+            }
+
+            if (customerId == null) {
+                logger.warn("Customer ID is null, using default 0 (all customers)");
+                customerId = 0;
+            }
+
+            if (invoiceNo == null) {
+                logger.warn("Invoice No is null, using default 0 (not yet invoiced)");
+                invoiceNo = 0;
+            }
+
+            // Call service to get customer job numbers
+            List<JobNumberDto> jobs = saleOrderMasterService.getCustJobNumbers(companyId, customerId, invoiceNo);
+
+            // Return success response
+            logger.info("GetCustJobNo completed successfully. Retrieved {} jobs for companyId: {}",
+                    jobs.size(), companyId);
+
+            return ResponseEntity.ok(ApiResponse.<List<JobNumberDto>>builder()
+                    .isSuccess(true)
+                    .statusCode(200)
+                    .message("Success")
+                    .data1(jobs)
+                    .build());
+
+        } catch (Exception ex) {
+            // Extract innermost exception
+            Exception innermost = ex;
+            while (innermost.getCause() != null && innermost.getCause() instanceof Exception) {
+                innermost = (Exception) innermost.getCause();
+            }
+
+            logger.error("Error in GetCustJobNo for companyId: {}, customerId: {}. Error: {}",
+                    companyId, customerId, innermost.getMessage(), innermost);
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<List<JobNumberDto>>builder()
+                            .isSuccess(false)
+                            .statusCode(500)
+                            .message("Error retrieving job numbers")
+                            .errorDetails(innermost.getMessage())
+                            .build());
+        }
+    }
+
+    /**
      * Get invoices by company and customer
      * GET /api/v1/sale-invoices/company/{companyId}/customer/{customerId}
      */
@@ -576,9 +674,4 @@ public class SaleInvoiceController {
         }
     }
 }
-
-
-
-
-
 

@@ -36,7 +36,7 @@ spring:
       auto-commit: true              # Ensure autocommit is enabled
   jpa:
     open-in-view: false              # Critical - prevent connection exhaustion in APIs
-    show-sql: false                  # Disable SQL logging in production
+    show-sql: true                  # Disable SQL logging in production
     hibernate:
       ddl-auto: none
     # Explicit Spring Boot alias for the physical naming strategy to use annotated names verbatim
