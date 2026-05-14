@@ -1,6 +1,7 @@
 package my.maleva.api.module.purchase.service;
 
 import my.maleva.api.module.purchase.dto.PurchaseOrderMasterDto;
+import my.maleva.api.module.purchase.dto.EditPurchaseOrderMasterRequestDto;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -100,5 +101,14 @@ public interface PurchaseOrderMasterService {
      * Generate CNumberDisplay
      */
     String generateCNumberDisplay(Integer cNumber);
+
+    /**
+     * Edit/Fetch PurchaseOrderMaster with all details
+     * If purchaseOrderMasterNo is provided and not 0, uses it to find the ID
+     * Fetches the complete PurchaseOrderMaster with all associated details
+     * @param request Contains companyId, id, and purchaseOrderMasterNo
+     * @return PurchaseOrderMaster DTO with all details
+     */
+    PurchaseOrderMasterDto editPurchaseOrderMaster(EditPurchaseOrderMasterRequestDto request);
 }
 

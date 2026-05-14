@@ -1,10 +1,13 @@
 package my.maleva.api.module.purchase.service.impl;
 
 import my.maleva.api.module.purchase.dto.PurchaseOrderMasterDto;
+import my.maleva.api.module.purchase.dto.EditPurchaseOrderMasterRequestDto;
 import my.maleva.api.module.purchase.mapper.PurchaseOrderMasterMapper;
 import my.maleva.api.module.purchase.entity.PurchaseOrderMaster;
 import my.maleva.api.module.purchase.repository.PurchaseOrderMasterRepository;
 import my.maleva.api.module.purchase.service.PurchaseOrderMasterService;
+import my.maleva.api.common.exception.EntityNotFoundException;
+import my.maleva.api.common.exception.InvalidRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -201,5 +204,56 @@ public class PurchaseOrderMasterServiceImpl implements PurchaseOrderMasterServic
         // Format: PO + 9 digit zero-padded number (e.g., PO000000001)
         return String.format("PO%09d", cNumber);
     }
-}
 
+    @Override
+    @Transactional(readOnly = true)
+    public PurchaseOrderMasterDto editPurchaseOrderMaster(EditPurchaseOrderMasterRequestDto request) {
+        logger.info("EditPurchaseOrderMaster request - Company: {}, ID: {}, CNumber: {}", 
+                request.getCompanyId(), request.getId(), request.getPurchaseOrderMasterNo());
+
+        // Validate input
+        if (request.getCompanyId() == null || request.getCompanyId() <= 0) {
+            throw new InvalidRequestException("Company ID must be positive");
+        }
+
+        // Determine the actual ID
+        Integer actualId = request.getId();
+
+        // If purchaseOrderMasterNo is provided and not 0, use it to find the ID
+        if (request.getPurchaseOrderMasterNo() != null && request.getPurchaseOrderMasterNo() != 0) {
+            logger.info("Looking up PurchaseOrderMaster ID using CNumber: {}", request.getPurchaseOrderMasterNo());
+            Optional<PurchaseOrderMaster> found = purchaseOrderMasterRepository
+                    .findByCompanyRefIdAndCNumber(request.getCompanyId(), request.getPurchaseOrderMasterNo());
+            
+            if (found.isEmpty()) {
+                throw new EntityNotFoundException(
+                        "PurchaseOrderMaster not found with CNumber: " + request.getPurchaseOrderMasterNo() + 
+                        " for company: " + request.getCompanyId());
+            }
+            actualId = found.get().getId();
+            logger.info("Resolved CNumber {} to ID: {}", request.getPurchaseOrderMasterNo(), actualId);
+        }
+
+        // Validate actualId
+        if (actualId == null || actualId <= 0) {
+            throw new InvalidRequestException("Valid Purchase Order ID or Master No must be provided");
+        }
+
+        // Use a final variable for the lambda expression
+        final Integer finalActualId = actualId;
+
+        // Fetch the PurchaseOrderMaster with details where pStatus = 0
+        PurchaseOrderMaster entity = purchaseOrderMasterRepository
+                .findByIdWithDetailsAndCompanyAndPStatus(finalActualId, request.getCompanyId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "PurchaseOrderMaster not found with ID: " + finalActualId +
+                        " for company: " + request.getCompanyId() +
+                        " or it has been processed (pStatus != 0)"));
+
+        logger.info("Successfully fetched PurchaseOrderMaster with ID: {} and {} details", 
+                entity.getId(), 
+                entity.getPurchaseOrderDetails() != null ? entity.getPurchaseOrderDetails().size() : 0);
+
+        return mapper.toDto(entity);
+    }
+}

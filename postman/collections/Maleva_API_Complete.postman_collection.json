@@ -1,3252 +1,1787 @@
 {
-  "info": {
-    "_postman_id": "maleva-api-complete-2026",
-    "name": "Maleva API Complete",
-    "description": "Complete API Collection for Maleva Application\n\n## Setup Instructions:\n1. Import this collection into Postman\n2. Import the 'Maleva_Environment.postman_environment.json' file\n3. Select 'Maleva Local' environment\n4. Run the 'Login' request first to get authentication token\n5. The token will be automatically saved and used for all subsequent requests\n\n## Environment Variables:\n- `baseUrl`: API base URL (e.g., http://localhost:8080)\n- `token`: JWT authentication token (auto-set after login)\n- `companyId`: Default company ID for testing",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Authentication",
-      "item": [
-        {
-          "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "id": "f2c08fa1-5dd6-4241-9b45-c751eaa0eb6c",
-                "exec": [
-                  "// Parse response and save token",
-                  "if (pm.response.code === 200) {",
-                  "    var jsonData = pm.response.json();",
-                  "    if (jsonData.token) {",
-                  "        pm.collectionVariables.set('token', jsonData.token);",
-                  "        pm.environment.set('token', jsonData.token);",
-                  "        console.log('Token saved successfully!');",
-                  "        console.log('User:', jsonData.userName);",
-                  "        console.log('Role:', jsonData.rolename);",
-                  "        console.log('Company ID:', jsonData.companyId);",
-                  "        ",
-                  "        // Save companyId for convenience",
-                  "        if (jsonData.companyId) {",
-                  "            pm.collectionVariables.set('companyId', jsonData.companyId);",
-                  "            pm.environment.set('companyId', jsonData.companyId);",
-                  "        }",
-                  "    }",
-                  "}",
-                  "",
-                  "pm.test('Login successful', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Token received', function () {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('token');",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "id": "9256e2bd-db37-4646-a001-7d30eae3f0ce",
-                "exec": [
-                  ""
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "id": "65664803-5090-4fdd-b09c-e7811a21fe91",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"userName\": \"MAGES\",\n    \"password\": \"5591\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "login"
-              ]
-            },
-            "description": "Login to get JWT token. Token is automatically saved for subsequent requests.\n\n**Request Body:**\n```json\n{\n    \"userName\": \"your_username\",\n    \"password\": \"your_password\"\n}\n```\n\n**Response:**\n```json\n{\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"roleId\": 1,\n    \"userName\": \"Admin User\",\n    \"UserId\": 1,\n    \"rolename\": \"ADMIN\",\n    \"companyId\": 1\n}\n```"
-          },
-          "response": []
-        },
-        {
-          "name": "Register",
-          "id": "4543d414-276a-4bab-a95a-05fabf710212",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"userName\": \"newuser\",\n    \"password\": \"password123\",\n    \"email\": \"newuser@example.com\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register"
-              ]
-            },
-            "description": "Register a new user"
-          },
-          "response": []
-        },
-        {
-          "name": "Logout",
-          "id": "d975821a-395f-4429-9201-33ef7ca32c4b",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "logout"
-              ]
-            },
-            "description": "Logout and invalidate current token"
-          },
-          "response": []
-        }
-      ],
-      "id": "36407bce-a742-4233-8adc-1d40a2200241",
-      "description": "Authentication endpoints for login, logout, and registration"
-    },
-    {
-      "name": "Customers",
-      "item": [
-        {
-          "name": "Get All Customers",
-          "id": "3dedf00e-f693-42ce-b60e-d4fbde412556",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get All Customers (with name filter)",
-          "id": "dcc5087d-3410-48c9-9548-30502be43368",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customers?name=John",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers"
-              ],
-              "query": [
-                {
-                  "key": "name",
-                  "value": "John"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Customer by ID",
-          "id": "3f4445e3-5e5c-4909-9c01-49488714c1d0",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customers/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Customer",
-          "id": "dd0aa996-08eb-4d4d-98b3-06c5d9292d5c",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"customerName\": \"Test Customer\",\n    \"address\": \"123 Test Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"test@example.com\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/customers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Customer",
-          "id": "ee347508-dbef-4472-be77-505097006bf7",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"id\": 1,\n    \"customerName\": \"Updated Customer\",\n    \"address\": \"456 Updated Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"updated@example.com\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/customers/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Soft Delete Customer",
-          "id": "cd7aefef-d33f-431c-84a1-da027000cbd2",
-          "request": {
-            "method": "PUT",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customers/1/soft-delete",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers",
-                "1",
-                "soft-delete"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Bulk Upsert Customer Job Notifications",
-          "id": "27ddd339-3fd2-497e-9d9f-00302e0e8164",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "[\n    {\n        \"Name\": \"BEN LINE AGENCIES (M) SDN BHD\",\n        \"CustomerDetailRefId\": 1,\n        \"SaleOrderRefId\": 16201,\n        \"Whatsapp\": 1,\n        \"WhatsappDisplay\": \"+60123456789\",\n        \"Email\": 1,\n        \"EmailDisplay\": \"ops@example.com\",\n        \"Phone\": 0,\n        \"PhoneDisplay\": \"+60123456789\",\n        \"Id\": 0\n    }\n]"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/customer-job-notifications/bulk?Comid={{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customer-job-notifications",
-                "bulk"
-              ],
-              "query": [
-                {
-                  "key": "Comid",
-                  "value": "{{companyId}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "5859161e-2b3c-4121-9339-7916d2eba979",
-      "description": "Customer management endpoints"
-    },
-    {
-      "name": "Truck Masters",
-      "item": [
-        {
-          "name": "Get Trucks by Company",
-          "id": "e63966f7-2b4e-4b4a-bfac-618f17c0c1d1",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "company",
-                "{{companyId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Active Trucks by Company",
-          "id": "0667d3cc-e911-4ad2-a0a6-86304d1137fd",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/active",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "company",
-                "{{companyId}}",
-                "active"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Truck by ID",
-          "id": "02818487-c2fe-4225-9e56-337d92a9e5f9",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Truck by Name",
-          "id": "e6747f25-7fe9-4c6e-b398-f21046416ecf",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/name/TRUCK-001/company/{{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "name",
-                "TRUCK-001",
-                "company",
-                "{{companyId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Truck by Number",
-          "id": "9f47f544-f21c-4688-8fe9-305df71f6e3d",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/number/ABC123/company/{{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "number",
-                "ABC123",
-                "company",
-                "{{companyId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Trucks by Type",
-          "id": "6aab13a4-7313-49d5-bd84-89f7c476d0c6",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/type/40FT",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "type",
-                "40FT"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Trucks by Company and Type",
-          "id": "fa145f7c-1a16-4d1b-ae8a-bb5a5ed67567",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/type/40FT",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "company",
-                "{{companyId}}",
-                "type",
-                "40FT"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Truck",
-          "id": "351b3ccb-a082-40b5-befe-54dfcbfda832",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"truckName\": \"New Truck\",\n    \"truckNumber\": \"ABC123\",\n    \"truckType\": \"40FT\",\n    \"vehicleType\": \"Container\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Process Truck (SP_Truck logic)",
-          "id": "b25d6d61-f423-4a3a-9096-ea227ed0493a",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"truckName\": \"Processed Truck\",\n    \"truckNumber\": \"XYZ789\",\n    \"truckType\": \"20FT\",\n    \"vehicleType\": \"Flatbed\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/process?companyId={{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "process"
-              ],
-              "query": [
-                {
-                  "key": "companyId",
-                  "value": "{{companyId}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Truck",
-          "id": "8800811d-df0f-4eb9-9846-e9d27ddad5e7",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"id\": 1,\n    \"truckName\": \"Updated Truck\",\n    \"truckNumber\": \"ABC123\",\n    \"truckType\": \"40FT\",\n    \"vehicleType\": \"Container\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Truck",
-          "id": "2eefaa5d-538e-4594-8f64-a4b2180d5d17",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Activate Truck",
-          "id": "d6044935-7365-43e3-82a4-e4f556b95042",
-          "request": {
-            "method": "PUT",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/1/activate",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "1",
-                "activate"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Deactivate Truck",
-          "id": "091b46c0-f04a-4121-8c47-ecf429eb74c6",
-          "request": {
-            "method": "PUT",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/1/deactivate",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "1",
-                "deactivate"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Count Trucks by Company",
-          "id": "6c224f8a-697e-4e79-a297-ac6b2674f512",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/count",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "company",
-                "{{companyId}}",
-                "count"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Check Truck Exists by Number",
-          "id": "fae48c35-f197-47ad-860a-bcffd0468375",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-masters/number/ABC123/company/{{companyId}}/exists",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-masters",
-                "number",
-                "ABC123",
-                "company",
-                "{{companyId}}",
-                "exists"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "e543e805-e233-4abb-bfbe-f3a085c2db50",
-      "description": "Truck master data management"
-    },
-    {
-      "name": "Truck Combo (Dropdown)",
-      "item": [
-        {
-          "name": "Get Truck Combo (GET)",
-          "id": "58817a93-5309-4ddb-9452-ed6bdd4fc233",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-combo?companyId={{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-combo"
-              ],
-              "query": [
-                {
-                  "key": "companyId",
-                  "value": "{{companyId}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Truck Combo with Type (GET)",
-          "id": "3e7e292c-26ae-4557-8a61-4bfded7fe330",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-combo?companyId={{companyId}}&type=40FT",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-combo"
-              ],
-              "query": [
-                {
-                  "key": "companyId",
-                  "value": "{{companyId}}"
-                },
-                {
-                  "key": "type",
-                  "value": "40FT"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Truck Combo (POST)",
-          "id": "dc57193d-8c0a-4601-8be0-87edf28ea9bd",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"companyId\": {{companyId}},\n    \"type\": \"40FT\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/truck-combo",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "truck-combo"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "1f1dcbf4-4e34-411f-971d-9203bbf2d0eb",
-      "description": "Truck combo/dropdown endpoints for UI"
-    },
-    {
-      "name": "Sale Orders",
-      "item": [
-        {
-          "name": "Get All Sale Orders by Company",
-          "id": "2adf3861-7a76-4b32-b13c-a58330acff95",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "company",
-                "{{companyId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale Orders by Company and Status",
-          "id": "1e479398-7947-464d-a805-ee277d4cd15f",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/status/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "company",
-                "{{companyId}}",
-                "status",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale Order by ID",
-          "id": "36a149e0-831f-4096-a1fb-654e57bc0dd4",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Edit Sale Order",
-          "id": "825320f4-27fc-4876-9399-324cd40f5823",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/edit?id={{saleOrderEditId}}&companyId={{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "edit"
-              ],
-              "query": [
-                {
-                  "key": "id",
-                  "value": "{{saleOrderEditId}}"
-                },
-                {
-                  "key": "companyId",
-                  "value": "{{companyId}}"
-                }
-              ]
-            },
-            "description": "Use this request for the sale-order edit page flow. Example frontend route: `http://localhost:5173/sale-order/edit/16201` maps to `id=16201` here. This returns the edit payload with master data, detail rows, pickup, delivery, forwarding, and the flat compatibility fields like `cNumberDisplay`, `CNumberDisplay`, `jobMasterRefId`, and `JobMasterRefId`."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale Orders by Customer",
-          "id": "12eefcd9-d21f-49d3-b415-b0be087e02b4",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/customer/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "customer",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale Orders by C-Number",
-          "id": "1f37f587-d007-4dc6-ac88-c313721aaf38",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/c-number/1001",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "company",
-                "{{companyId}}",
-                "c-number",
-                "1001"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale Orders by Date Range",
-          "id": "f4d6102e-79db-4a42-b1ed-8420d6a4f789",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/date-range?startDate=2026-01-01T00:00:00&endDate=2026-12-31T23:59:59",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "company",
-                "{{companyId}}",
-                "date-range"
-              ],
-              "query": [
-                {
-                  "key": "startDate",
-                  "value": "2026-01-01T00:00:00"
-                },
-                {
-                  "key": "endDate",
-                  "value": "2026-12-31T23:59:59"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale Orders by Employee",
-          "id": "5ee006af-c610-4350-89b0-0d1a27b721d8",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/employee/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "employee",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Search Sale Orders (Correct Filter Payload)",
-          "id": "ebc23dec-d458-45b2-a4d2-8a2fdf39a33f",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"Comid\": {{companyId}},\n    \"Fromdate\": \"2026/02/10\",\n    \"Todate\": \"2026/03/30\",\n    \"Id\": 0,\n    \"Employeeid\": 0,\n    \"Statusid\": 1,\n    \"completestatusnotshow\": false,\n    \"Search\": \"\",\n    \"Remarks\": 3,\n    \"ETA\": false,\n    \"ETAType\": 0,\n    \"Pickup\": false,\n    \"Offvesselname\": \"\",\n    \"Loadingvesselname\": \"\",\n    \"JId\": 0,\n    \"Invoice\": false,\n    \"statusList\": null,\n    \"DashboardStatus\": 0,\n    \"Invoicecheck\": false\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/search",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "search"
-              ]
-            },
-            "description": "Use this request for the Spring `POST /api/sale-orders/search` endpoint.\n\nThis payload is the transformed API shape expected by `SaleOrderFilterDTO`, not the raw React filter state.\n\nImportant mappings:\n- `Statusid` must be an integer, e.g. `1`\n- `Remarks` must be numeric: `3` means ALL\n- `ETAType` must be numeric: `0` means NONE\n- `Fromdate` and `Todate` must use `yyyy/MM/dd`\n- Do not send raw frontend keys like `statusId`, `remarksFilter`, `etaFilter`"
-          },
-          "response": []
-        },
-        {
-          "name": "Create Sale Order",
-          "id": "7e0c7954-b667-40ae-ad1b-fc155c65047c",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Save Sale Order (Create/Update)",
-          "id": "e4e31804-f0b5-4ec1-ab37-a3d59c4629cd",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"id\": null,\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"cNumber\": 1001,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/save",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "save"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Sale Order",
-          "id": "34964fba-cc64-4f7c-b522-43ad9a4cd41d",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"id\": 1,\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Sale Order",
-          "id": "b46836ec-97ef-49b2-9636-18ba22aa85ba",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-orders/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-orders",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "ecde4240-a27d-41c7-9758-e825a13f680c",
-      "description": "Sale order management endpoints"
-    },
-    {
-      "name": "Accounts",
-      "item": [
-        {
-          "name": "Get All Accounts",
-          "id": "95096a3e-0a75-4858-ab84-3a2d4049ec72",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/accounts",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "accounts"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Account by ID",
-          "id": "3ebc08f0-1399-4dfb-bd61-0797fc976980",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/accounts/{{accountId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "accounts",
-                "{{accountId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Account",
-          "id": "1bdfe7d8-5fc7-4215-8e06-43c8862b4f32",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"accountName\": \"Test Account\",\n    \"accountType\": \"Asset\",\n    \"balance\": 0,\n    \"active\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/accounts",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "accounts"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Account",
-          "id": "a6214b79-e2b8-40ba-8ee3-8b2fdb4d4a77",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"accountName\": \"Updated Account\",\n    \"accountType\": \"Asset\",\n    \"balance\": 1000,\n    \"active\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/accounts/{{accountId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "accounts",
-                "{{accountId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Account",
-          "id": "929732ce-92d6-44ae-ae3b-f8b22b896e0c",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/accounts/{{accountId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "accounts",
-                "{{accountId}}"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "a62228b5-8a79-42c0-8ad1-440a2dd3d9f7",
-      "description": "Account management endpoints"
-    },
-    {
-      "name": "Companies",
-      "item": [
-        {
-          "name": "Get All Companies",
-          "id": "fd2d8b3a-e069-448a-8045-10bc662c2c18",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/companies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "companies"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Company by ID",
-          "id": "d31bb2a2-4f7e-4352-89e2-1f34cf064f63",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/companies/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "companies",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Company",
-          "id": "cdf5be26-3b30-4fe8-b020-93a1198260d1",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"companyName\": \"New Company\",\n    \"address\": \"123 Business Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"company@example.com\",\n    \"active\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/companies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "companies"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "6bd5ec66-6bc6-46bf-808f-2d6821833be2",
-      "description": "Company management endpoints"
-    },
-    {
-      "name": "Addresses",
-      "item": [
-        {
-          "name": "Get All Addresses",
-          "id": "8575812b-9e27-4d00-8627-459045574a2e",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/addresses",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "addresses"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Address by ID",
-          "id": "dec602a6-baa8-4dba-9cd7-0c2ca727761e",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/addresses/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "addresses",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Address",
-          "id": "a5bf9ef7-d07b-4c1a-99f1-5c28af040764",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Kuala Lumpur\",\n    \"state\": \"WP\",\n    \"postalCode\": \"50000\",\n    \"country\": \"Malaysia\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/addresses",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "addresses"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "64274dc9-a071-4182-a873-f0fe4f4257e3",
-      "description": "Address management endpoints"
-    },
-    {
-      "name": "Sales (Invoices)",
-      "item": [
-        {
-          "name": "Get All Sales",
-          "id": "51671862-da02-4232-ac11-124a77ba6264",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sales",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sales"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale by ID",
-          "id": "ef9a9fb3-1b21-4f6b-bbde-99f2df75ccc7",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sales/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sales",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sale Details",
-          "id": "a8f64304-86d6-400b-9d91-e95724127a6f",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/sale-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "sale-details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Max Sale No",
-          "id": "dfb7acde-0cec-4bb4-a68f-a99a15ffacaf",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/sale-invoices/next-number?companyId={{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "sale-invoices",
-                "next-number"
-              ],
-              "query": [
-                {
-                  "key": "companyId",
-                  "value": "{{companyId}}",
-                  "uuid": "ac245c39-8a42-4b3e-9f55-9e24a32a4051"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "SelectJobType",
-          "id": "c535414c-1da3-45ff-99aa-b78c1244e0a3",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/job-type-master/jobtypes/{{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "job-type-master",
-                "jobtypes",
-                "{{companyId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "SelectAgentCompany",
-          "id": "3e46c2e8-03ac-4499-834a-79d70e43561c",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/agent-companies/company/{{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "agent-companies",
-                "company",
-                "{{companyId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "SelectDistinctAddress",
-          "id": "bf6ea397-9b36-4747-a9cc-65299ced27b4",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/addresses/company/{{companyId}}/active",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "addresses",
-                "company",
-                "{{companyId}}",
-                "active"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "GetProductList",
-          "id": "5fb8e3e4-58a2-4f36-801c-ed064019dff1",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/item-masters/company/{{companyId}}/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "item-masters",
-                "company",
-                "{{companyId}}",
-                "products"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "SelectTax",
-          "id": "c350b139-786a-4ceb-8343-39b0a6e97b68",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/tax-masters/company/{{companyId}}/active",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "tax-masters",
-                "company",
-                "{{companyId}}",
-                "active"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "GetCustJobNo",
-          "id": "6723f701-d430-429b-b47a-9742f5a52fb6",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/sale-invoices/jobs?companyId={{companyId}}&customerId=998&invoiceNo=0",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "sale-invoices",
-                "jobs"
-              ],
-              "query": [
-                {
-                  "key": "companyId",
-                  "value": "{{companyId}}",
-                  "uuid": "c04c944f-c1ce-491f-bb7b-cd413f2682b5"
-                },
-                {
-                  "key": "customerId",
-                  "value": "998",
-                  "uuid": "481db6fd-a7ed-4f67-8c81-83cd18ef6adf"
-                },
-                {
-                  "key": "invoiceNo",
-                  "value": "0",
-                  "uuid": "0aa4f9bf-0f81-4da1-8461-c6b72c40148b"
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "1319009c-266f-4406-8613-f0660b8a45ae",
-      "description": "Sales/Invoice management endpoints"
-    },
-    {
-      "name": "Customer Quotations",
-      "item": [
-        {
-          "name": "Get All Quotations",
-          "id": "5e7c83bb-5029-4d3f-8bd8-a8b7e37df261",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customer-quotations",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customer-quotations"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Quotation by ID",
-          "id": "c211b96c-33d7-4659-9502-d48ac62cb8ba",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customer-quotations/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customer-quotations",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Quotation Details",
-          "id": "519327ed-150c-4a1c-a393-1c716f9aa1a5",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customer-quotation-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customer-quotation-details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Quotation Masters",
-          "id": "42ab54d3-f31e-42ab-bbaf-5c86668051b0",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customer-quotation-masters",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customer-quotation-masters"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "78dc349b-f50e-4405-a65d-f44413c0a358",
-      "description": "Customer quotation management endpoints"
-    },
-    {
-      "name": "Bills",
-      "item": [
-        {
-          "name": "Get Bills Order Details",
-          "id": "b5c6c3dc-50cb-4a14-a9fa-9ff8de2b05a3",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/bills-order-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "bills-order-details"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "6d0ff9fb-cabc-4ef8-9647-0c7c1c73a762",
-      "description": "Bill management endpoints"
-    },
-    {
-      "name": "Dashboard",
-      "item": [
-        {
-          "name": "Get Sales Data",
-          "id": "ee83672e-52c3-4ee5-8a9b-6cb5b896b14f",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/sales/6?type=0",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "sales",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "type",
-                  "value": "0"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Employee Sales Data",
-          "id": "7e37b356-8e69-4846-9aa2-8e1aad9c0a19",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/employee-sales/6?type=0",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "employee-sales",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "type",
-                  "value": "0"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Employee Invoice Data",
-          "id": "641e8f39-a7ac-4dbc-913d-7d5acb591e94",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/employee-invoice/6?type=0",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "employee-invoice",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "type",
-                  "value": "0"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Expense Data",
-          "id": "d321c16c-5bd1-43a0-b312-62c94ce7e69b",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/expense/6?fromDate=2023-01-01&toDate=2023-12-31",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "expense",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "fromDate",
-                  "value": "2023-01-01"
-                },
-                {
-                  "key": "toDate",
-                  "value": "2023-12-31"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Expense by Name",
-          "id": "b5421b0e-52be-4b15-9f2d-8c544ac2a8ef",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/expense-name/6?fromDate=2023-01-01&toDate=2023-12-31&expenseName=%",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "expense-name",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "fromDate",
-                  "value": "2023-01-01"
-                },
-                {
-                  "key": "toDate",
-                  "value": "2023-12-31"
-                },
-                {
-                  "key": "expenseName",
-                  "value": "%"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Supplier Expense",
-          "id": "57324d6b-3c25-40f7-91a0-f2e8ed55a4a2",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/supplier-expense/6",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "supplier-expense",
-                "6"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Forwarding Data",
-          "id": "a21a3cc4-a997-4bcd-a4e7-97578ee2bdf5",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/forwarding/6?fromDate=2023-01-01&toDate=2023-12-31",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "forwarding",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "fromDate",
-                  "value": "2023-01-01"
-                },
-                {
-                  "key": "toDate",
-                  "value": "2023-12-31"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Sales Order Status",
-          "id": "72a3a231-b21f-4dd8-990e-320659f118c7",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/sales-order-status/6?employeeId=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "sales-order-status",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "employeeId",
-                  "value": "1"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Employee Rules",
-          "id": "763050df-43b4-41e2-a828-d0c6a83bacfb",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/employee-rules/6?employeeId=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "employee-rules",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "employeeId",
-                  "value": "1"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Employee Performance",
-          "id": "8f9dbb16-f3c6-41d9-87bd-27ff0c940974",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/employee-performance/6?employeeId=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "employee-performance",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "employeeId",
-                  "value": "1"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Weekly Report",
-          "id": "6bb28391-b9f8-4355-9301-8f43aa8b9d11",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/weekly-report/6?employeeId=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "weekly-report",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "employeeId",
-                  "value": "1"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Monthly Sale",
-          "id": "0a7fdbf0-02a5-4eb0-b5f6-95506880c45b",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/monthly-sale/6?employeeId=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "monthly-sale",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "employeeId",
-                  "value": "1"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Pending Payments",
-          "id": "7f62143e-c600-411c-9828-26f81158ee74",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/pending-payment/6?dueDate=",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "pending-payment",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "dueDate",
-                  "value": ""
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Completed Payments",
-          "id": "90ba5dac-a83c-40a2-b174-acd4e6172422",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/completed-payment/6?fromDate=2023-01-01&toDate=2023-12-31",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "completed-payment",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "fromDate",
-                  "value": "2023-01-01"
-                },
-                {
-                  "key": "toDate",
-                  "value": "2023-12-31"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Unreleased Numbers",
-          "id": "00889318-aef5-4fa6-9e7b-26453d3cef00",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/unreleased/6",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "unreleased",
-                "6"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get K8 Unreleased Numbers",
-          "id": "854c8bb6-3f3e-4fc5-a6f2-b365c09e8af0",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/k8-unreleased/6",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "k8-unreleased",
-                "6"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Check Sale Invoices",
-          "id": "3e42df6c-e15e-473b-b038-2fb1397c270c",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/invoice-check/6?invoiceType=0&fromDate=2023-01-01&toDate=2023-12-31&employeeId=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "invoice-check",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "invoiceType",
-                  "value": "0"
-                },
-                {
-                  "key": "fromDate",
-                  "value": "2023-01-01"
-                },
-                {
-                  "key": "toDate",
-                  "value": "2023-12-31"
-                },
-                {
-                  "key": "employeeId",
-                  "value": "1"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Vessel Planning Data",
-          "id": "b49b21bf-09ff-49be-b7a2-6a6073ce370c",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"Comid\": 6,\n    \"Employeeid\": 0,\n    \"ETAType\": 1,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Search\": \"\",\n    \"StatusId\": 0\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/vessel-planning/6",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "vessel-planning",
-                "6"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Air Freight Data",
-          "id": "d3a895ad-e14f-46a1-8ec5-c1ff1644fced",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"Comid\": 6,\n    \"Employeeid\": 0,\n    \"ETAType\": 5,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Search\": \"\",\n    \"StatusId\": 0\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/air-freight/6",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "air-freight",
-                "6"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Check Sale Invoice Count",
-          "id": "0c37e144-6711-45b2-9b5b-d9fe3b28a40b",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"Comid\": 6,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Employeeid\": 0,\n    \"Invoice\": false,\n    \"Remarks\": 0,\n    \"Statusid\": 0,\n    \"completestatusnotshow\": false\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/check-invoice-count/6",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "check-invoice-count",
-                "6"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Top Performers",
-          "id": "bff3fd71-ee03-41f4-8bd3-cc129eb73741",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/top-performers/6?baseDate=2026-04-20",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "top-performers",
-                "6"
-              ],
-              "query": [
-                {
-                  "key": "baseDate",
-                  "value": "2026-04-20"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Admin Dashboard",
-          "id": "4f2375f9-18f7-47ae-bfe0-3297a8f6cc2e",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/admin",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "admin"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Super Admin Dashboard",
-          "id": "2babd72e-dcfb-4fe8-9563-2f7f33279ff5",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/dashboard/super-admin",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "dashboard",
-                "super-admin"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "e30cece5-269b-4d54-b2ae-6cf6a5ab03b7",
-      "description": "Dashboard APIs for sales, expenses, forwarding, and vessel planning data"
-    },
-    {
-      "name": "PreAlert Reports",
-      "item": [
-        {
-          "name": "PreAlert Report (POST)",
-          "id": "72fdc521-befe-4565-afa5-a550ba3c3fcc",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\",\n  \"CustomerId\": 0,\n  \"Comid\": {{companyId}},\n  \"SPort\": \"\",\n  \"Search\": \"\",\n  \"DeliveryDone\": false,\n  \"Jobid\": 0,\n  \"ETA\": false,\n  \"ETAType\": 0,\n  \"Pickupdate\": false\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/report",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "report"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Report (GET)",
-          "id": "0410eed6-bb43-4bd7-855b-b93318115bcb",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/report?comId={{companyId}}&fromDate=2026-04-01&toDate=2026-04-29",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "report"
-              ],
-              "query": [
-                {
-                  "key": "comId",
-                  "value": "{{companyId}}"
-                },
-                {
-                  "key": "fromDate",
-                  "value": "2026-04-01"
-                },
-                {
-                  "key": "toDate",
-                  "value": "2026-04-29"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Report Paginated (POST)",
-          "id": "b29575ac-7ea4-4c33-ab78-838d69059fef",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\",\n  \"pageNo\": 1,\n  \"pageSize\": 20\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/report/paginated",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "report",
-                "paginated"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Report Count (POST)",
-          "id": "ba704eef-d9e2-41f1-920d-d342d20fb607",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/report/count",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "report",
-                "count"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Report Export CSV (POST)",
-          "id": "eb42b918-22c9-4601-8e36-f56dd04e93a2",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/report/export-csv",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "report",
-                "export-csv"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Report Health",
-          "id": "6cca3170-ec41-4125-86d1-c5156cf56ebf",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/health",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "health"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Insert (POST)",
-          "id": "6c934fda-c33c-409f-afae-82d2f3da053e",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Comid",
-                "value": "{{companyId}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "[ { \"Id\": 0, \"CompanyRefId\": {{companyId}}, \"CustomerMasterRefId\": 0, \"JobTypeMasterRefId\": 0, \"Port\": \"\", \"FromDate\": \"2026-04-01\", \"ToDate\": \"2026-04-02\", \"EntryDate\": \"2026-04-01\", \"PreAlert\": [] } ]"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/insert",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "insert"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Select (POST)",
-          "id": "5300a29d-76a3-456d-8274-ed725570bda4",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"Comid\": {{companyId}}, \"Employeeid\": 0, \"Search\": \"\" }"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/select",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "select"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Edit (POST) - Query Params",
-          "id": "e0511909-2cb3-4158-9e5e-377d2a4828b3",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/edit?Id=1&PreAlertNo=0&Comid={{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "edit"
-              ],
-              "query": [
-                {
-                  "key": "Id",
-                  "value": "1"
-                },
-                {
-                  "key": "PreAlertNo",
-                  "value": "0"
-                },
-                {
-                  "key": "Comid",
-                  "value": "{{companyId}}"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert MaxNo (POST)",
-          "id": "ef9e20b4-4bf4-41fa-82f2-262df8f30e78",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"Comid\": {{companyId}} }"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/max-no",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "max-no"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Transaction Report (POST)",
-          "id": "4207ea1a-b79f-4b49-a929-1fa7d6fec4ed",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"CustomerId\": 0, \"Comid\": {{companyId}} }"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/transaction/pre-alert/transaction-report",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "transaction",
-                "pre-alert",
-                "transaction-report"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get All by Company (GET)",
-          "id": "9872be71-134d-407c-83e7-c3b9fcd9e729",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "company",
-                "{{companyId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get Active by Company (GET)",
-          "id": "32e213dc-e849-4881-84bc-2d18964c44a1",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/active",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "company",
-                "{{companyId}}",
-                "active"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get by ID (GET)",
-          "id": "f04876c3-670a-4ebf-84d2-6e522b0697c1",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get by Customer (GET)",
-          "id": "520e71b3-6366-41fb-91c1-68ea0ebf8f05",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/customer/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "customer",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get by Port (GET)",
-          "id": "53bfb561-d112-466f-bff9-388a22906717",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/port/JNPT",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "port",
-                "JNPT"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get by Vessel (GET)",
-          "id": "9bea1c38-a12f-4c88-ad7d-2b501e571153",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/vessel/ABC%20VESSEL",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "vessel",
-                "ABC%20VESSEL"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get by Date Range (GET)",
-          "id": "39433b4e-48e4-4fc8-9cdd-77e2dec9696e",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/date-range?fromDate=2026-04-01&toDate=2026-04-30",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "company",
-                "{{companyId}}",
-                "date-range"
-              ],
-              "query": [
-                {
-                  "key": "fromDate",
-                  "value": "2026-04-01"
-                },
-                {
-                  "key": "toDate",
-                  "value": "2026-04-30"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Get Details by Master ID (GET)",
-          "id": "342925b9-f581-4d0b-a996-416320cbd7c4",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/1/details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "1",
-                "details"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Count Details by Master ID (GET)",
-          "id": "9fd74d4f-0353-470d-bf08-391b05127d6f",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/1/details/count",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "1",
-                "details",
-                "count"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Count Active Records (GET)",
-          "id": "32b08fa3-df88-4b00-89df-240d22989ea0",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/count-active",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "company",
-                "{{companyId}}",
-                "count-active"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Activate Record (POST)",
-          "id": "4a6822f7-5ac3-4709-af54-1d5bfc67cbcd",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/1/activate",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "1",
-                "activate"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Deactivate Record (POST)",
-          "id": "07132b10-8659-4026-959a-615e71a88b1c",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/1/deactivate",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "1",
-                "deactivate"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Delete Record (DELETE)",
-          "id": "9cc72a07-206e-424e-a6b9-4c15ea7b167b",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "1"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "PreAlert Masters - Bulk Import (POST)",
-          "id": "7dd4f540-1281-46d6-b578-eb4442a25a42",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "masterJson",
-                  "value": "[{\"id\":0,\"companyRefId\":{{companyId}},\"customerMasterRefId\":0,\"jobTypeMasterRefId\":0,\"port\":\"\",\"fromDate\":\"2026-04-01\",\"toDate\":\"2026-04-02\",\"entryDate\":\"2026-04-01\",\"preAlert\":[]}]",
-                  "type": "text"
-                },
-                {
-                  "key": "companyId",
-                  "value": "{{companyId}}",
-                  "type": "text"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/pre-alert/masters/bulk-import",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pre-alert",
-                "masters",
-                "bulk-import"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "df01a32a-e257-4e90-ad70-76d03321349d",
-      "description": "Endpoints for Pre-Alert reporting: search, pagination, export and health checks"
-    }
-  ],
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{token}}",
-        "type": "string"
-      }
-    ]
-  },
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "// Global Pre-request Script",
-          "// Ensures all requests use the current token"
-        ]
-      }
-    },
-    {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "// Global Test Script",
-          "if (pm.response.code === 401) {",
-          "    console.log('Token expired or invalid. Please login again.');",
-          "}"
-        ]
-      }
-    }
-  ],
-  "variable": [
-    {
-      "id": "da2b13f1-a701-4a79-ab71-cb3badb39623",
-      "key": "baseUrl",
-      "value": "http://localhost:8082",
-      "type": "string"
-    },
-    {
-      "id": "a48d1980-f67a-4f8a-82b5-72ad3388d54c",
-      "key": "token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "id": "def845ea-9673-4bf8-af6a-430ad17f882b",
-      "key": "companyId",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "id": "add3a554-9fb2-4717-954e-fb6bb4025c86",
-      "key": "saleOrderEditId",
-      "value": "16201",
-      "type": "string"
-    }
-  ]
+	"info": {
+		"_postman_id": "maleva-api-complete-2026",
+		"name": "Maleva API Complete",
+		"description": "Complete API Collection for Maleva Application\n\n## Setup Instructions:\n1. Import this collection into Postman\n2. Import the 'Maleva_Environment.postman_environment.json' file\n3. Select 'Maleva Local' environment\n4. Run the 'Login' request first to get authentication token\n5. The token will be automatically saved and used for all subsequent requests\n\n## Environment Variables:\n- `baseUrl`: API base URL (e.g., http://localhost:8080)\n- `token`: JWT authentication token (auto-set after login)\n- `companyId`: Default company ID for testing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8082",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "companyId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "saleOrderEditId",
+			"value": "16201",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global Pre-request Script",
+					"// Ensures all requests use the current token"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global Test Script",
+					"if (pm.response.code === 401) {",
+					"    console.log('Token expired or invalid. Please login again.');",
+					"}"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"description": "Authentication endpoints for login, logout, and registration",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Parse response and save token",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set('token', jsonData.token);",
+									"        pm.environment.set('token', jsonData.token);",
+									"        console.log('Token saved successfully!');",
+									"        console.log('User:', jsonData.userName);",
+									"        console.log('Role:', jsonData.rolename);",
+									"        console.log('Company ID:', jsonData.companyId);",
+									"        ",
+									"        // Save companyId for convenience",
+									"        if (jsonData.companyId) {",
+									"            pm.collectionVariables.set('companyId', jsonData.companyId);",
+									"            pm.environment.set('companyId', jsonData.companyId);",
+									"        }",
+									"    }",
+									"}",
+									"",
+									"pm.test('Login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Token received', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('token');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userName\": \"admin\",\n    \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login to get JWT token. Token is automatically saved for subsequent requests.\n\n**Request Body:**\n```json\n{\n    \"userName\": \"your_username\",\n    \"password\": \"your_password\"\n}\n```\n\n**Response:**\n```json\n{\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"roleId\": 1,\n    \"userName\": \"Admin User\",\n    \"UserId\": 1,\n    \"rolename\": \"ADMIN\",\n    \"companyId\": 1\n}\n```"
+					}
+				},
+				{
+					"name": "Register",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userName\": \"newuser\",\n    \"password\": \"password123\",\n    \"email\": \"newuser@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "Register a new user"
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "logout"]
+						},
+						"description": "Logout and invalidate current token"
+					}
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"description": "Customer management endpoints",
+			"item": [
+				{
+					"name": "Get All Customers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Get All Customers (with name filter)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers?name=John",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"],
+							"query": [
+								{
+									"key": "name",
+									"value": "John"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Customer by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerName\": \"Test Customer\",\n    \"address\": \"123 Test Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"test@example.com\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Update Customer",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"customerName\": \"Updated Customer\",\n    \"address\": \"456 Updated Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"updated@example.com\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Soft Delete Customer",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/1/soft-delete",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", "1", "soft-delete"]
+						}
+					}
+				},
+				{
+					"name": "Bulk Upsert Customer Job Notifications",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"Name\": \"BEN LINE AGENCIES (M) SDN BHD\",\n        \"CustomerDetailRefId\": 1,\n        \"SaleOrderRefId\": 16201,\n        \"Whatsapp\": 1,\n        \"WhatsappDisplay\": \"+60123456789\",\n        \"Email\": 1,\n        \"EmailDisplay\": \"ops@example.com\",\n        \"Phone\": 0,\n        \"PhoneDisplay\": \"+60123456789\",\n        \"Id\": 0\n    }\n]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-job-notifications/bulk?Comid={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-job-notifications", "bulk"],
+							"query": [
+								{
+									"key": "Comid",
+									"value": "{{companyId}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Truck Masters",
+			"description": "Truck master data management",
+			"item": [
+				{
+					"name": "Get Trucks by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Active Trucks by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/active",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}", "active"]
+						}
+					}
+				},
+				{
+					"name": "Get Truck by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Truck by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/name/TRUCK-001/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "name", "TRUCK-001", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Truck by Number",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/number/ABC123/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "number", "ABC123", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Trucks by Type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/type/40FT",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "type", "40FT"]
+						}
+					}
+				},
+				{
+					"name": "Get Trucks by Company and Type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/type/40FT",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}", "type", "40FT"]
+						}
+					}
+				},
+				{
+					"name": "Create Truck",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"truckName\": \"New Truck\",\n    \"truckNumber\": \"ABC123\",\n    \"truckType\": \"40FT\",\n    \"vehicleType\": \"Container\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters"]
+						}
+					}
+				},
+				{
+					"name": "Process Truck (SP_Truck logic)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"truckName\": \"Processed Truck\",\n    \"truckNumber\": \"XYZ789\",\n    \"truckType\": \"20FT\",\n    \"vehicleType\": \"Flatbed\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/process?companyId={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "process"],
+							"query": [
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Truck",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"truckName\": \"Updated Truck\",\n    \"truckNumber\": \"ABC123\",\n    \"truckType\": \"40FT\",\n    \"vehicleType\": \"Container\",\n    \"companyRefId\": {{companyId}},\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Truck",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1"]
+						}
+					}
+				},
+				{
+					"name": "Activate Truck",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1/activate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1", "activate"]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Truck",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/1/deactivate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "1", "deactivate"]
+						}
+					}
+				},
+				{
+					"name": "Count Trucks by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/company/{{companyId}}/count",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "company", "{{companyId}}", "count"]
+						}
+					}
+				},
+				{
+					"name": "Check Truck Exists by Number",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-masters/number/ABC123/company/{{companyId}}/exists",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-masters", "number", "ABC123", "company", "{{companyId}}", "exists"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Truck Combo (Dropdown)",
+			"description": "Truck combo/dropdown endpoints for UI",
+			"item": [
+				{
+					"name": "Get Truck Combo (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-combo?companyId={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-combo"],
+							"query": [
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Truck Combo with Type (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-combo?companyId={{companyId}}&type=40FT",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-combo"],
+							"query": [
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								},
+								{
+									"key": "type",
+									"value": "40FT"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Truck Combo (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"companyId\": {{companyId}},\n    \"type\": \"40FT\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/truck-combo",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "truck-combo"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Sale Orders",
+			"description": "Sale order management endpoints",
+			"item": [
+				{
+					"name": "Get All Sale Orders by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by Company and Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/status/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}", "status", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Order by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Edit Sale Order",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/edit?id={{saleOrderEditId}}&companyId={{companyId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "edit"],
+							"query": [
+								{
+									"key": "id",
+									"value": "{{saleOrderEditId}}"
+								},
+								{
+									"key": "companyId",
+									"value": "{{companyId}}"
+								}
+							]
+						},
+						"description": "Use this request for the sale-order edit page flow. Example frontend route: `http://localhost:5173/sale-order/edit/16201` maps to `id=16201` here. This returns the edit payload with master data, detail rows, pickup, delivery, forwarding, and the flat compatibility fields like `cNumberDisplay`, `CNumberDisplay`, `jobMasterRefId`, and `JobMasterRefId`."
+					}
+				},
+				{
+					"name": "Get Sale Orders by Customer",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/customer/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "customer", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by C-Number",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/c-number/1001",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}", "c-number", "1001"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by Date Range",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/company/{{companyId}}/date-range?startDate=2026-01-01T00:00:00&endDate=2026-12-31T23:59:59",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "company", "{{companyId}}", "date-range"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2026-01-01T00:00:00"
+								},
+								{
+									"key": "endDate",
+									"value": "2026-12-31T23:59:59"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Orders by Employee",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/employee/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "employee", "1"]
+						}
+					}
+				},
+				{
+					"name": "Search Sale Orders (Correct Filter Payload)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": {{companyId}},\n    \"Fromdate\": \"2026/02/10\",\n    \"Todate\": \"2026/03/30\",\n    \"Id\": 0,\n    \"Employeeid\": 0,\n    \"Statusid\": 1,\n    \"completestatusnotshow\": false,\n    \"Search\": \"\",\n    \"Remarks\": 3,\n    \"ETA\": false,\n    \"ETAType\": 0,\n    \"Pickup\": false,\n    \"Offvesselname\": \"\",\n    \"Loadingvesselname\": \"\",\n    \"JId\": 0,\n    \"Invoice\": false,\n    \"statusList\": null,\n    \"DashboardStatus\": 0,\n    \"Invoicecheck\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/search",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "search"]
+						},
+						"description": "Use this request for the Spring `POST /api/sale-orders/search` endpoint.\n\nThis payload is the transformed API shape expected by `SaleOrderFilterDTO`, not the raw React filter state.\n\nImportant mappings:\n- `Statusid` must be an integer, e.g. `1`\n- `Remarks` must be numeric: `3` means ALL\n- `ETAType` must be numeric: `0` means NONE\n- `Fromdate` and `Todate` must use `yyyy/MM/dd`\n- Do not send raw frontend keys like `statusId`, `remarksFilter`, `etaFilter`"
+					}
+				},
+				{
+					"name": "Create Sale Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders"]
+						}
+					}
+				},
+				{
+					"name": "Save Sale Order (Create/Update)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": null,\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"cNumber\": 1001,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/save",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "save"]
+						}
+					}
+				},
+				{
+					"name": "Update Sale Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"companyRefId\": {{companyId}},\n    \"customerRefId\": 1,\n    \"orderDate\": \"2026-03-27T10:00:00\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Sale Order",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-orders/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-orders", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Accounts",
+			"description": "Account management endpoints",
+			"item": [
+				{
+					"name": "Get All Accounts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts"]
+						}
+					}
+				},
+				{
+					"name": "Get Account by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts/{{accountId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts", "{{accountId}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accountName\": \"Test Account\",\n    \"accountType\": \"Asset\",\n    \"balance\": 0,\n    \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts"]
+						}
+					}
+				},
+				{
+					"name": "Update Account",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accountName\": \"Updated Account\",\n    \"accountType\": \"Asset\",\n    \"balance\": 1000,\n    \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts/{{accountId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts", "{{accountId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts/{{accountId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts", "{{accountId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Companies",
+			"description": "Company management endpoints",
+			"item": [
+				{
+					"name": "Get All Companies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "companies"]
+						}
+					}
+				},
+				{
+					"name": "Get Company by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "companies", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Company",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"companyName\": \"New Company\",\n    \"address\": \"123 Business Street\",\n    \"phone\": \"123-456-7890\",\n    \"email\": \"company@example.com\",\n    \"active\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/companies",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "companies"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Addresses",
+			"description": "Address management endpoints",
+			"item": [
+				{
+					"name": "Get All Addresses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/addresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "addresses"]
+						}
+					}
+				},
+				{
+					"name": "Get Address by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/addresses/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "addresses", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Address",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"addressLine1\": \"123 Main Street\",\n    \"addressLine2\": \"Suite 100\",\n    \"city\": \"Kuala Lumpur\",\n    \"state\": \"WP\",\n    \"postalCode\": \"50000\",\n    \"country\": \"Malaysia\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/addresses",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "addresses"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Sales (Invoices)",
+			"description": "Sales/Invoice management endpoints",
+			"item": [
+				{
+					"name": "Get All Sales",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sales",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sales"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sales/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sales", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Sale Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sale-details",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sale-details"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customer Quotations",
+			"description": "Customer quotation management endpoints",
+			"item": [
+				{
+					"name": "Get All Quotations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotations",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotations"]
+						}
+					}
+				},
+				{
+					"name": "Get Quotation by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotations/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotations", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Quotation Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotation-details",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotation-details"]
+						}
+					}
+				},
+				{
+					"name": "Get Quotation Masters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customer-quotation-masters",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customer-quotation-masters"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Bills",
+			"description": "Bill management endpoints",
+			"item": [
+				{
+					"name": "Get Bills Order Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/bills-order-details",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "bills-order-details"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Dashboard",
+			"description": "Dashboard APIs for sales, expenses, forwarding, and vessel planning data",
+			"item": [
+				{
+					"name": "Get Sales Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/sales/6?type=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "sales", "6"],
+							"query": [
+								{
+									"key": "type",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Sales Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-sales/6?type=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-sales", "6"],
+							"query": [
+								{
+									"key": "type",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Invoice Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-invoice/6?type=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-invoice", "6"],
+							"query": [
+								{
+									"key": "type",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Expense Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/expense/6?fromDate=2023-01-01&toDate=2023-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "expense", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Expense by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/expense-name/6?fromDate=2023-01-01&toDate=2023-12-31&expenseName=%",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "expense-name", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								},
+								{
+									"key": "expenseName",
+									"value": "%"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Supplier Expense",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/supplier-expense/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "supplier-expense", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get Forwarding Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/forwarding/6?fromDate=2023-01-01&toDate=2023-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "forwarding", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Sales Order Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/sales-order-status/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "sales-order-status", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Rules",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-rules/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-rules", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Performance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/employee-performance/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "employee-performance", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Weekly Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/weekly-report/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "weekly-report", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Monthly Sale",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/monthly-sale/6?employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "monthly-sale", "6"],
+							"query": [
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Pending Payments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/pending-payment/6?dueDate=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "pending-payment", "6"],
+							"query": [
+								{
+									"key": "dueDate",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Completed Payments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/completed-payment/6?fromDate=2023-01-01&toDate=2023-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "completed-payment", "6"],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Unreleased Numbers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/unreleased/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "unreleased", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get K8 Unreleased Numbers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/k8-unreleased/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "k8-unreleased", "6"]
+						}
+					}
+				},
+				{
+					"name": "Check Sale Invoices",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/invoice-check/6?invoiceType=0&fromDate=2023-01-01&toDate=2023-12-31&employeeId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "invoice-check", "6"],
+							"query": [
+								{
+									"key": "invoiceType",
+									"value": "0"
+								},
+								{
+									"key": "fromDate",
+									"value": "2023-01-01"
+								},
+								{
+									"key": "toDate",
+									"value": "2023-12-31"
+								},
+								{
+									"key": "employeeId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Vessel Planning Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": 6,\n    \"Employeeid\": 0,\n    \"ETAType\": 1,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Search\": \"\",\n    \"StatusId\": 0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/vessel-planning/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "vessel-planning", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get Air Freight Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": 6,\n    \"Employeeid\": 0,\n    \"ETAType\": 5,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Search\": \"\",\n    \"StatusId\": 0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/air-freight/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "air-freight", "6"]
+						}
+					}
+				},
+				{
+					"name": "Check Sale Invoice Count",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Comid\": 6,\n    \"Fromdate\": \"2023-01-01\",\n    \"Todate\": \"2023-12-31\",\n    \"Employeeid\": 0,\n    \"Invoice\": false,\n    \"Remarks\": 0,\n    \"Statusid\": 0,\n    \"completestatusnotshow\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/check-invoice-count/6",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "check-invoice-count", "6"]
+						}
+					}
+				},
+				{
+					"name": "Get Top Performers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/top-performers/6?baseDate=2026-04-20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "top-performers", "6"],
+							"query": [
+								{
+									"key": "baseDate",
+									"value": "2026-04-20"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "admin"]
+						}
+					}
+				},
+				{
+					"name": "Get Super Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/dashboard/super-admin",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "dashboard", "super-admin"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "PreAlert Reports",
+			"description": "Endpoints for Pre-Alert reporting: search, pagination, export and health checks",
+			"item": [
+				{
+					"name": "PreAlert Report (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\",\n  \"CustomerId\": 0,\n  \"Comid\": {{companyId}},\n  \"SPort\": \"\",\n  \"Search\": \"\",\n  \"DeliveryDone\": false,\n  \"Jobid\": 0,\n  \"ETA\": false,\n  \"ETAType\": 0,\n  \"Pickupdate\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/transaction/pre-alert/report",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "transaction", "pre-alert", "report"]
+						}
+					}
+				},
+				{
+					"name": "PreAlert Report (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/transaction/pre-alert/report?comId={{companyId}}&fromDate=2026-04-01&toDate=2026-04-29",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "transaction", "pre-alert", "report"],
+							"query": [
+								{ "key": "comId", "value": "{{companyId}}" },
+								{ "key": "fromDate", "value": "2026-04-01" },
+								{ "key": "toDate", "value": "2026-04-29" }
+							]
+						}
+					}
+				},
+				{
+					"name": "PreAlert Report Paginated (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "Content-Type", "value": "application/json" } ],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\",\n  \"pageNo\": 1,\n  \"pageSize\": 20\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/transaction/pre-alert/report/paginated",
+							"host": ["{{baseUrl}}"],
+							"path": ["api","transaction","pre-alert","report","paginated"]
+						}
+					}
+				},
+				{
+					"name": "PreAlert Report Count (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "Content-Type", "value": "application/json" } ],
+						"body": { "mode":"raw","raw":"{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\"\n}" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/report/count","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","report","count"] }
+					}
+				},
+				{
+					"name": "PreAlert Report Export CSV (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{\n  \"Comid\": {{companyId}},\n  \"Fromdate\": \"2026-04-01\",\n  \"Todate\": \"2026-04-29\"\n}" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/report/export-csv","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","report","export-csv"] }
+					}
+				},
+				{
+					"name": "PreAlert Report Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/health","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","health"] }
+					}
+				},
+				{
+					"name": "PreAlert Insert (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Comid", "value": "{{companyId}}" } ],
+						"body": { "mode":"raw","raw":"[ { \"Id\": 0, \"CompanyRefId\": {{companyId}}, \"CustomerMasterRefId\": 0, \"JobTypeMasterRefId\": 0, \"Port\": \"\", \"FromDate\": \"2026-04-01\", \"ToDate\": \"2026-04-02\", \"EntryDate\": \"2026-04-01\", \"PreAlert\": [] } ]" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/insert","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","insert"] }
+					}
+				},
+				{
+					"name": "PreAlert Select (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"Comid\": {{companyId}}, \"Employeeid\": 0, \"Search\": \"\" }" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/select","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","select"] }
+					}
+				},
+				{
+					"name": "PreAlert Edit (POST) - Query Params",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/edit?Id=1&PreAlertNo=0&Comid={{companyId}}","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","edit"],"query":[{"key":"Id","value":"1"},{"key":"PreAlertNo","value":"0"},{"key":"Comid","value":"{{companyId}}"}] }
+					}
+				},
+				{
+					"name": "PreAlert MaxNo (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"Comid\": {{companyId}} }" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/max-no","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","max-no"] }
+					}
+				},
+				{
+					"name": "PreAlert Transaction Report (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"body": { "mode":"raw","raw":"{ \"Fromdate\": \"2026-04-01\", \"Todate\": \"2026-04-29\", \"CustomerId\": 0, \"Comid\": {{companyId}} }" },
+						"url": { "raw":"{{baseUrl}}/api/transaction/pre-alert/transaction-report","host":["{{baseUrl}}"],"path":["api","transaction","pre-alert","transaction-report"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get All by Company (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get Active by Company (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/active","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}","active"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by ID (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Customer (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/customer/1","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","customer","1"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Port (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/port/JNPT","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","port","JNPT"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Vessel (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/vessel/ABC%20VESSEL","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","vessel","ABC%20VESSEL"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get by Date Range (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/date-range?fromDate=2026-04-01&toDate=2026-04-30","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}","date-range"],"query":[{"key":"fromDate","value":"2026-04-01"},{"key":"toDate","value":"2026-04-30"}] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Get Details by Master ID (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/details","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","details"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Count Details by Master ID (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/details/count","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","details","count"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Count Active Records (GET)",
+					"request": {
+						"method": "GET",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/company/{{companyId}}/count-active","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","company","{{companyId}}","count-active"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Activate Record (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/activate","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","activate"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Deactivate Record (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1/deactivate","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1","deactivate"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Delete Record (DELETE)",
+					"request": {
+						"method": "DELETE",
+						"header": [ { "key":"Content-Type","value":"application/json" } ],
+						"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/1","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","1"] }
+					}
+				},
+				{
+					"name": "PreAlert Masters - Bulk Import (POST)",
+					"request": {
+						"method": "POST",
+						"header": [ { "key":"Content-Type","value":"application/x-www-form-urlencoded" } ],
+						"body": { "mode":"formdata","formdata":[{"key":"masterJson","value":"[{\"id\":0,\"companyRefId\":{{companyId}},\"customerMasterRefId\":0,\"jobTypeMasterRefId\":0,\"port\":\"\",\"fromDate\":\"2026-04-01\",\"toDate\":\"2026-04-02\",\"entryDate\":\"2026-04-01\",\"preAlert\":[]}]","type":"text"},{"key":"companyId","value":"{{companyId}}","type":"text"}] },
+												"url": { "raw":"{{baseUrl}}/api/pre-alert/masters/bulk-import","host":["{{baseUrl}}"],"path":["api","pre-alert","masters","bulk-import"] }
+					}
+				}
+			]
+		}
+	]
 }

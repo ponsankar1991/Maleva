@@ -99,4 +99,16 @@ public interface SequenceNoMasterRepository extends JpaRepository<SequenceNoMast
             "WHERE s.companyRefId = :companyRefId AND s.sequenceName = 'BillsOrderMaster'")
     Integer findMaxBillsOrderSequenceNo(
             @Param("companyRefId") Integer companyRefId);
+
+    /**
+     * Get the maximum sequence number for PurchaseMaster
+     * Used for generating the next purchase master number in format "PM" + padded sequence
+     *
+     * @param companyRefId the company ID
+     * @return the maximum sequence number for PurchaseMaster
+     */
+    @Query("SELECT COALESCE(MAX(s.sequenceNo), 0) FROM SequenceNoMaster s " +
+            "WHERE s.companyRefId = :companyRefId AND s.sequenceName = 'PurchaseMaster'")
+    Integer findMaxPurchaseMasterSequenceNo(
+            @Param("companyRefId") Integer companyRefId);
 }

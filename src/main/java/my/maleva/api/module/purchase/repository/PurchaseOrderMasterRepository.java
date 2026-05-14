@@ -2,6 +2,8 @@ package my.maleva.api.module.purchase.repository;
 
 import my.maleva.api.module.purchase.entity.PurchaseOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
@@ -69,5 +71,17 @@ public interface PurchaseOrderMasterRepository extends JpaRepository<PurchaseOrd
      * Count active PurchaseOrderMaster by company
      */
     long countByCompanyRefIdAndActive(Integer companyRefId, Integer active);
-}
 
+    /**
+     * Find PurchaseOrderMaster with details by ID, company, and pStatus = 0
+     * Eagerly fetches related purchase order details
+     */
+    @Query("SELECT DISTINCT p FROM PurchaseOrderMaster p " +
+           "LEFT JOIN FETCH p.purchaseOrderDetails " +
+           "WHERE p.id = :id " +
+           "AND p.companyRefId = :companyId " +
+           "AND p.pStatus = 0")
+    Optional<PurchaseOrderMaster> findByIdWithDetailsAndCompanyAndPStatus(
+            @Param("id") Integer id,
+            @Param("companyId") Integer companyId);
+}

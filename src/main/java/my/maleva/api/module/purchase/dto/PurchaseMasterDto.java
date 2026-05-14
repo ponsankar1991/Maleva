@@ -1,5 +1,6 @@
 package my.maleva.api.module.purchase.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,12 +29,14 @@ public class PurchaseMasterDto {
     private Integer supplierRefId;
 
     @NotNull(message = "Sale Date is required")
+    @JsonFormat(pattern = "yyyy-MM-dd", shape = JsonFormat.Shape.STRING)
     private LocalDate saleDate;
 
     @Size(max = 100, message = "Invoice No cannot exceed 100 characters")
     private String invoiceNo;
 
     @NotNull(message = "Invoice Date is required")
+    @JsonFormat(pattern = "yyyy-MM-dd", shape = JsonFormat.Shape.STRING)
     private LocalDate invoiceDate;
 
     @NotBlank(message = "CNumber Display is required")
@@ -89,7 +92,8 @@ public class PurchaseMasterDto {
 
     private Integer purchaseOrderMasterRefId;
 
-    @NotNull(message = "Payment Terms Reference ID is required")
+    // ✅ FIXED: PaymentTermsRefId is now nullable and will default to 0 if null
+    // Changed from @NotNull to allow null values that will be converted to 0
     private Integer paymentTermsRefId;
 
     @Size(max = 200, message = "Description cannot exceed 200 characters")
@@ -108,4 +112,3 @@ public class PurchaseMasterDto {
 
     private List<PurchaseDetailsDto> purchaseDetails;
 }
-

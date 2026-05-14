@@ -13,6 +13,9 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
+import my.maleva.api.module.purchase.dto.*;
+import jakarta.validation.constraints.Positive;
 
 /**
  * PurchaseMaster REST Controller
@@ -138,6 +141,42 @@ public class PurchaseMasterController {
             logger.error("Error deleting PurchaseMaster", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error deleting PurchaseMaster: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Delete PurchaseMaster record (Soft Delete - set Active=2)
+     * Equivalent to .NET DeletePurchaseMaster method
+     * DELETE /api/purchase-masters/delete/{id}?companyId={companyId}
+     */
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<DeletePurchaseMasterResponseDto> deletePurchaseMaster(
+            @PathVariable @Positive Integer id,
+            @RequestParam(name = "companyId") @Positive Integer companyId) {
+        logger.info("DeletePurchaseMaster request received - id: {}, companyId: {}", id, companyId);
+
+        try {
+            boolean deleted = purchaseMasterService.softDelete(id, companyId);
+            if (deleted) {
+                return ResponseEntity.ok(DeletePurchaseMasterResponseDto.builder()
+                        .ok(true)
+                        .message("PurchaseMaster DeleteSuccess")
+                        .build());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(DeletePurchaseMasterResponseDto.builder()
+                                .ok(false)
+                                .message("PurchaseMaster not found")
+                                .build());
+            }
+        } catch (Exception e) {
+            logger.error("Error in DeletePurchaseMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(DeletePurchaseMasterResponseDto.builder()
+                            .ok(false)
+                            .message(e.getMessage())
+                            .build());
         }
     }
 
@@ -327,5 +366,238 @@ public class PurchaseMasterController {
                     .body("Error deactivating PurchaseMaster: " + e.getMessage());
         }
     }
-}
 
+    /**
+     * Check Edit Amount - Calculate total payment amount for a purchase order
+     * POST /api/purchase-masters/check-edit-amount
+     */
+    @PostMapping("/check-edit-amount")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<?> checkEditAmount(@Valid @RequestBody CheckEditAmountRequestDto request) {
+        logger.info("CheckEditAmount request for purchase ID: {} in company: {}", request.getPurchaseId(), request.getCompanyId());
+
+        try {
+            BigDecimal totalAmount = purchaseMasterService.checkEditAmount(request.getCompanyId(), request.getPurchaseId());
+            CheckEditAmountResponseDto response = CheckEditAmountResponseDto.builder()
+                    .totalPaymentAmount(totalAmount)
+                    .message("Total payment amount calculated successfully")
+                    .build();
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error calculating payment amount", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error calculating payment amount: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get max PurchaseMaster No
+     * Equivalent to .NET MaxPurchaseMasterNo method
+     * GET /api/purchase-masters/max-purchase-master-no?companyId={companyId}
+     */
+    @GetMapping("/max-purchase-master-no")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<MaxPurchaseMasterNoResponseDto> getMaxPurchaseMasterNo(
+            @RequestParam @Positive Integer companyId) {
+        logger.info("MaxPurchaseMasterNo request for company: {}", companyId);
+
+        try {
+            String maxNo = purchaseMasterService.getMaxPurchaseMasterNo(companyId);
+            return ResponseEntity.ok(MaxPurchaseMasterNoResponseDto.builder()
+                    .ok(true)
+                    .no(maxNo)
+                    .build());
+        } catch (Exception e) {
+            logger.error("Error in MaxPurchaseMasterNo", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(MaxPurchaseMasterNoResponseDto.builder()
+                            .ok(false)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Get distinct descriptions from PurchaseMaster
+     * Equivalent to .NET SelectDescription method
+     * GET /api/purchase-masters/select-description?companyId={companyId}
+     */
+    @GetMapping("/select-description")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<SelectDescriptionResponseDto> selectDescription(
+            @RequestParam @Positive Integer companyId) {
+        logger.info("SelectDescription request for company: {}", companyId);
+
+        try {
+            List<String> descriptions = purchaseMasterService.getDistinctDescriptions(companyId);
+            return ResponseEntity.ok(SelectDescriptionResponseDto.builder()
+                    .ok(true)
+                    .data(descriptions)
+                    .build());
+        } catch (Exception e) {
+            logger.error("Error in SelectDescription", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SelectDescriptionResponseDto.builder()
+                            .ok(false)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Insert PurchaseMaster records using stored procedure
+     * Equivalent to .NET InsertPurchaseMaster method
+     * POST /api/purchase-masters/insert?companyId={companyId}
+     */
+    @PostMapping("/insert")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<InsertPurchaseMasterResponseDto> insertPurchaseMaster(
+            @Valid @RequestBody List<PurchaseMasterDto> purchaseMasters,
+            @RequestParam @Positive Integer companyId) {
+        logger.info("InsertPurchaseMaster request received - companyId: {}, items: {}", companyId, purchaseMasters.size());
+
+        try {
+            InsertPurchaseMasterResponseDto response = purchaseMasterService.insertPurchaseMaster(purchaseMasters, companyId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error in InsertPurchaseMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(InsertPurchaseMasterResponseDto.builder()
+                            .ok(false)
+                            .message(e.getMessage())
+                            .build());
+        }
+    }
+
+    /**
+     * Get spare parts report view with multiple filters
+     * Equivalent to .NET SelectSparePartsView method
+     * Supports filtering by supplier, employee, driver, truck, product, date range, and search
+     * POST /api/purchase-masters/select-spare-parts-view
+     */
+    @PostMapping("/select-spare-parts-view")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<SelectSparePartsViewResponseDto> selectSparePartsView(
+            @Valid @RequestBody SelectSparePartsViewRequestDto request) {
+        logger.info("SelectSparePartsView request received - companyId: {}, supplier: {}, employee: {}, driver: {}, truck: {}, product: {}, search: {}",
+                   request.getCompanyId(), request.getSupplierId(), request.getEmployeeId(),
+                   request.getDriverId(), request.getTruckId(), request.getProductId(),
+                   request.getSearch());
+
+        try {
+            SelectSparePartsViewResponseDto response = purchaseMasterService.selectSparePartsView(request);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error in SelectSparePartsView", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SelectSparePartsViewResponseDto.builder()
+                            .ok(false)
+                            .message("Error retrieving spare parts report: " + e.getMessage())
+                            .data(List.of())
+                            .build());
+        }
+    }
+
+    /**
+     * Get purchase master records with multiple filters and combined view
+     * Equivalent to .NET SelectPurchaseMaster method
+     * Retrieves both master and detail records in a single combined response
+     * 
+     * Supports flexible filtering:
+     * <ul>
+     *   <li>Supplier filter: supplierId > 0</li>
+     *   <li>Employee filter: employeeId > 0</li>
+     *   <li>Driver filter: driverId > 0</li>
+     *   <li>Truck filter: truckId > 0</li>
+     *   <li>Product filter: productId > 0</li>
+     *   <li>Search filter: By CNumberDisplay or InvoiceNo (overrides date filter)</li>
+     *   <li>Date filter: By InvoiceDate (invoiceCheck=1) or SaleDate (invoiceCheck=0)</li>
+     * </ul>
+     * 
+     * POST /api/purchase-masters/select-purchase-master
+     * Request body: {
+     *   "Comid": 1,
+     *   "Fromdate": "2024-01-01",
+     *   "Todate": "2024-12-31",
+     *   "Id": 0,
+     *   "Employeeid": 0,
+     *   "Search": null,
+     *   "invoicecheck": 0,
+     *   "DriverId": 0,
+     *   "TruckId": 0,
+     *   "ProductId": 0
+     * }
+     */
+    @PostMapping("/select-purchase-master")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<SelectPurchaseMasterResponseDto> selectPurchaseMaster(
+            @Valid @RequestBody SelectPurchaseMasterRequestDto request) {
+        logger.info("SelectPurchaseMaster request received - companyId: {}, supplier: {}, employee: {}, driver: {}, truck: {}, product: {}, search: {}",
+                   request.getCompanyId(), request.getSupplierId(), request.getEmployeeId(),
+                   request.getDriverId(), request.getTruckId(), request.getProductId(),
+                   request.getSearch());
+
+        try {
+            SelectPurchaseMasterResponseDto response = purchaseMasterService.selectPurchaseMaster(request);
+            logger.info("SelectPurchaseMaster completed successfully - ok: {}, records: {}", 
+                    response.isOk(), response.getData() != null ? response.getData().size() : 0);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error in SelectPurchaseMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SelectPurchaseMasterResponseDto.builder()
+                            .ok(false)
+                            .message("Error retrieving purchase master records: " + e.getMessage())
+                            .data(List.of())
+                            .build());
+        }
+    }
+
+    /**
+     * Get full purchase master record with all details for editing
+     * Equivalent to .NET EditPurchaseMaster method
+     *
+     * Retrieves a single PurchaseMaster record with:
+     * - All master fields (invoice, dates, amounts, etc.)
+     * - All PurchaseDetails items with product information
+     * - Product master data and UOM information
+     *
+     * When purchaseMasterNo is provided and id is 0/null, resolves ID via CNumber lookup
+     *
+     * POST /api/purchase-masters/edit-purchase-master
+     * Request body: {
+     *   "companyId": 1,
+     *   "id": 1001,
+     *   "purchaseMasterNo": null
+     * }
+     *
+     * OR (with lookup by CNumber):
+     * Request body: {
+     *   "companyId": 1,
+     *   "id": 0,
+     *   "purchaseMasterNo": 5
+     * }
+     */
+    @PostMapping("/edit-purchase-master")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<EditPurchaseMasterResponseDto> editPurchaseMaster(
+            @Valid @RequestBody EditPurchaseMasterRequestDto request) {
+        logger.info("EditPurchaseMaster request received - companyId: {}, id: {}, purchaseMasterNo: {}",
+                   request.getCompanyId(), request.getId(), request.getPurchaseMasterNo());
+
+        try {
+            EditPurchaseMasterResponseDto response = purchaseMasterService.editPurchaseMaster(request);
+            logger.info("EditPurchaseMaster completed successfully - ok: {}, records: {}",
+                    response.isOk(), response.getData() != null ? response.getData().size() : 0);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error in EditPurchaseMaster", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(EditPurchaseMasterResponseDto.builder()
+                            .ok(false)
+                            .message("Error retrieving purchase master: " + e.getMessage())
+                            .data(List.of())
+                            .build());
+        }
+    }
+}

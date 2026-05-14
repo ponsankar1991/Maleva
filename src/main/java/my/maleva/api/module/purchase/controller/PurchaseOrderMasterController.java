@@ -13,6 +13,9 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import my.maleva.api.module.purchase.dto.EditPurchaseOrderMasterRequestDto;
+import my.maleva.api.common.exception.EntityNotFoundException;
+import my.maleva.api.common.exception.InvalidRequestException;
 
 /**
  * PurchaseOrderMaster REST Controller
@@ -327,5 +330,37 @@ public class PurchaseOrderMasterController {
                     .body("Error deactivating PurchaseOrderMaster: " + e.getMessage());
         }
     }
-}
 
+    /**
+     * Edit/Fetch PurchaseOrderMaster with all details
+     * POST /api/purchase-orders/edit
+     *
+     * Fetches a PurchaseOrderMaster record along with all associated details.
+     * Can lookup by ID or by CNumber (PurchaseOrderMasterNo).
+     * Only returns records with pStatus = 0 (unprocessed).
+     */
+    @PostMapping("/edit")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    public ResponseEntity<?> editPurchaseOrderMaster(@Valid @RequestBody EditPurchaseOrderMasterRequestDto request) {
+        logger.info("EditPurchaseOrderMaster request - Company: {}, ID: {}, CNumber: {}",
+                request.getCompanyId(), request.getId(), request.getPurchaseOrderMasterNo());
+
+        try {
+            PurchaseOrderMasterDto result = purchaseOrderMasterService.editPurchaseOrderMaster(request);
+            logger.info("Successfully fetched PurchaseOrderMaster for editing");
+            return ResponseEntity.ok(result);
+        } catch (EntityNotFoundException e) {
+            logger.warn("PurchaseOrderMaster not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("PurchaseOrderMaster not found: " + e.getMessage());
+        } catch (InvalidRequestException e) {
+            logger.warn("Invalid request for EditPurchaseOrderMaster: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Invalid request: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error fetching PurchaseOrderMaster for editing", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error fetching PurchaseOrderMaster: " + e.getMessage());
+        }
+    }
+}
