@@ -2,6 +2,7 @@ package my.maleva.api.module.master.controller;
 
 import my.maleva.api.module.master.dto.SymbolMasterDto;
 import my.maleva.api.module.master.service.SymbolMasterService;
+import my.maleva.api.common.dto.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,9 +33,9 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/company/{companyRefId}
      */
     @GetMapping("/company/{companyRefId}")
-    public ResponseEntity<List<SymbolMasterDto>> getByCompanyRefId(@PathVariable Integer companyRefId) {
+    public ResponseEntity<ApiResponse<List<SymbolMasterDto>>> getByCompanyRefId(@PathVariable Integer companyRefId) {
         logger.info("Fetching SymbolMaster for company: {}", companyRefId);
-        return ResponseEntity.ok(service.getByCompanyRefId(companyRefId));
+        return ResponseEntity.ok(ApiResponse.success(service.getByCompanyRefId(companyRefId), "Symbols retrieved successfully"));
     }
 
     /**
@@ -42,9 +43,24 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/company/{companyRefId}/active
      */
     @GetMapping("/company/{companyRefId}/active")
-    public ResponseEntity<List<SymbolMasterDto>> getActiveByCompanyRefId(@PathVariable Integer companyRefId) {
+    public ResponseEntity<ApiResponse<List<SymbolMasterDto>>> getActiveByCompanyRefId(@PathVariable Integer companyRefId) {
         logger.info("Fetching active SymbolMaster for company: {}", companyRefId);
-        return ResponseEntity.ok(service.getActiveByCompanyRefId(companyRefId));
+        return ResponseEntity.ok(ApiResponse.success(service.getActiveByCompanyRefId(companyRefId), "Active symbols retrieved successfully"));
+    }
+
+    /**
+     * Select symbols for company (equivalent to .NET SelectSymbol)
+     * GET /api/symbol-masters/select/company/{companyRefId}
+     *
+     * Returns all non-deleted symbols (Active != 2)
+     * Used for dropdowns, selection lists, and UI displays
+     */
+    @GetMapping("/select/company/{companyRefId}")
+    public ResponseEntity<ApiResponse<List<SymbolMasterDto>>> selectSymbol(@PathVariable Integer companyRefId) {
+        logger.info("Selecting SymbolMaster for company: {}", companyRefId);
+        List<SymbolMasterDto> result = service.selectSymbol(companyRefId);
+        logger.debug("✓ Found {} non-deleted symbols for company: {}", result.size(), companyRefId);
+        return ResponseEntity.ok(ApiResponse.success(result, "Symbols retrieved successfully"));
     }
 
     /**
@@ -52,11 +68,11 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/name/{sName}/company/{companyRefId}
      */
     @GetMapping("/name/{sName}/company/{companyRefId}")
-    public ResponseEntity<?> getBySName(@PathVariable String sName, @PathVariable Integer companyRefId) {
+    public ResponseEntity<ApiResponse<?>> getBySName(@PathVariable String sName, @PathVariable Integer companyRefId) {
         logger.info("Fetching SymbolMaster by name: {} for company: {}", sName, companyRefId);
         Optional<SymbolMasterDto> record = service.getBySName(sName, companyRefId);
-        return record.isPresent() ? ResponseEntity.ok(record.get()) :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        return record.isPresent() ? ResponseEntity.ok(ApiResponse.success(record.get(), "Symbol found")) :
+               ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("SymbolMaster not found", HttpStatus.NOT_FOUND.value()));
     }
 
     /**
@@ -64,11 +80,11 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/currency/{cName}
      */
     @GetMapping("/currency/{cName}")
-    public ResponseEntity<?> getByCName(@PathVariable String cName) {
+    public ResponseEntity<ApiResponse<?>> getByCName(@PathVariable String cName) {
         logger.info("Fetching SymbolMaster by currency name: {}", cName);
         Optional<SymbolMasterDto> record = service.getByCName(cName);
-        return record.isPresent() ? ResponseEntity.ok(record.get()) :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        return record.isPresent() ? ResponseEntity.ok(ApiResponse.success(record.get(), "Symbol found")) :
+               ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("SymbolMaster not found", HttpStatus.NOT_FOUND.value()));
     }
 
     /**
@@ -76,9 +92,9 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/flag/{dFlag}
      */
     @GetMapping("/flag/{dFlag}")
-    public ResponseEntity<List<SymbolMasterDto>> getByDFlag(@PathVariable Integer dFlag) {
+    public ResponseEntity<ApiResponse<List<SymbolMasterDto>>> getByDFlag(@PathVariable Integer dFlag) {
         logger.info("Fetching SymbolMaster for display flag: {}", dFlag);
-        return ResponseEntity.ok(service.getByDFlag(dFlag));
+        return ResponseEntity.ok(ApiResponse.success(service.getByDFlag(dFlag), "Symbols retrieved successfully"));
     }
 
     /**
@@ -86,9 +102,9 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/qne/{qneId}
      */
     @GetMapping("/qne/{qneId}")
-    public ResponseEntity<List<SymbolMasterDto>> getByQneId(@PathVariable Integer qneId) {
+    public ResponseEntity<ApiResponse<List<SymbolMasterDto>>> getByQneId(@PathVariable Integer qneId) {
         logger.info("Fetching SymbolMaster for QNE ID: {}", qneId);
-        return ResponseEntity.ok(service.getByQneId(qneId));
+        return ResponseEntity.ok(ApiResponse.success(service.getByQneId(qneId), "Symbols retrieved successfully"));
     }
 
     /**
@@ -96,11 +112,11 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<?>> getById(@PathVariable Integer id) {
         logger.info("Fetching SymbolMaster by ID: {}", id);
         Optional<SymbolMasterDto> record = service.getById(id);
-        return record.isPresent() ? ResponseEntity.ok(record.get()) :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        return record.isPresent() ? ResponseEntity.ok(ApiResponse.success(record.get(), "Symbol found")) :
+               ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("SymbolMaster not found", HttpStatus.NOT_FOUND.value()));
     }
 
     /**
@@ -108,12 +124,13 @@ public class SymbolMasterController {
      * POST /api/symbol-masters
      */
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody SymbolMasterDto dto) {
+    public ResponseEntity<ApiResponse<?>> create(@Valid @RequestBody SymbolMasterDto dto) {
         logger.info("Creating new SymbolMaster");
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
+            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(service.create(dto), "SymbolMaster created successfully"));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
+            logger.error("Error creating SymbolMaster: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage(), HttpStatus.BAD_REQUEST.value()));
         }
     }
 
@@ -122,12 +139,13 @@ public class SymbolMasterController {
      * PUT /api/symbol-masters/{id}
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody SymbolMasterDto dto) {
+    public ResponseEntity<ApiResponse<?>> update(@PathVariable Integer id, @Valid @RequestBody SymbolMasterDto dto) {
         logger.info("Updating SymbolMaster with ID: {}", id);
         try {
-            return ResponseEntity.ok(service.update(id, dto));
+            return ResponseEntity.ok(ApiResponse.success(service.update(id, dto), "SymbolMaster updated successfully"));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+            logger.error("Error updating SymbolMaster: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage(), HttpStatus.NOT_FOUND.value()));
         }
     }
 
@@ -136,10 +154,10 @@ public class SymbolMasterController {
      * DELETE /api/symbol-masters/{id}
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<?>> delete(@PathVariable Integer id) {
         logger.info("Deleting SymbolMaster with ID: {}", id);
-        return service.delete(id) ? ResponseEntity.noContent().build() :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+        return service.delete(id) ? ResponseEntity.ok(ApiResponse.success(null, "SymbolMaster deleted successfully")) :
+               ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("SymbolMaster not found", HttpStatus.NOT_FOUND.value()));
     }
 
     /**
@@ -147,12 +165,13 @@ public class SymbolMasterController {
      * PUT /api/symbol-masters/{id}/activate
      */
     @PutMapping("/{id}/activate")
-    public ResponseEntity<?> activateSymbol(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<?>> activateSymbol(@PathVariable Integer id) {
         logger.info("Activating SymbolMaster with ID: {}", id);
         try {
-            return ResponseEntity.ok(service.activateSymbol(id));
+            return ResponseEntity.ok(ApiResponse.success(service.activateSymbol(id), "SymbolMaster activated successfully"));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+            logger.error("Error activating SymbolMaster: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage(), HttpStatus.NOT_FOUND.value()));
         }
     }
 
@@ -161,12 +180,13 @@ public class SymbolMasterController {
      * PUT /api/symbol-masters/{id}/deactivate
      */
     @PutMapping("/{id}/deactivate")
-    public ResponseEntity<?> deactivateSymbol(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<?>> deactivateSymbol(@PathVariable Integer id) {
         logger.info("Deactivating SymbolMaster with ID: {}", id);
         try {
-            return ResponseEntity.ok(service.deactivateSymbol(id));
+            return ResponseEntity.ok(ApiResponse.success(service.deactivateSymbol(id), "SymbolMaster deactivated successfully"));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+            logger.error("Error deactivating SymbolMaster: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage(), HttpStatus.NOT_FOUND.value()));
         }
     }
 
@@ -175,10 +195,10 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/company/{companyRefId}/count
      */
     @GetMapping("/company/{companyRefId}/count")
-    public ResponseEntity<?> countByCompanyRefId(@PathVariable Integer companyRefId) {
+    public ResponseEntity<ApiResponse<?>> countByCompanyRefId(@PathVariable Integer companyRefId) {
         logger.info("Counting SymbolMaster for company: {}", companyRefId);
         long count = service.countByCompanyRefId(companyRefId);
-        return ResponseEntity.ok("Total: " + count);
+        return ResponseEntity.ok(ApiResponse.success(count, "Total count: " + count));
     }
 
     /**
@@ -186,10 +206,10 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/company/{companyRefId}/active/count
      */
     @GetMapping("/company/{companyRefId}/active/count")
-    public ResponseEntity<?> countActiveByCompanyRefId(@PathVariable Integer companyRefId) {
+    public ResponseEntity<ApiResponse<?>> countActiveByCompanyRefId(@PathVariable Integer companyRefId) {
         logger.info("Counting active SymbolMaster for company: {}", companyRefId);
         long count = service.countActiveByCompanyRefId(companyRefId);
-        return ResponseEntity.ok("Total: " + count);
+        return ResponseEntity.ok(ApiResponse.success(count, "Total active count: " + count));
     }
 
     /**
@@ -197,10 +217,10 @@ public class SymbolMasterController {
      * GET /api/symbol-masters/name/{sName}/company/{companyRefId}/exists
      */
     @GetMapping("/name/{sName}/company/{companyRefId}/exists")
-    public ResponseEntity<?> existsBySName(@PathVariable String sName, @PathVariable Integer companyRefId) {
+    public ResponseEntity<ApiResponse<?>> existsBySName(@PathVariable String sName, @PathVariable Integer companyRefId) {
         logger.info("Checking if SymbolMaster exists with name: {} for company: {}", sName, companyRefId);
         boolean exists = service.existsBySName(sName, companyRefId);
-        return ResponseEntity.ok("Exists: " + exists);
+        return ResponseEntity.ok(ApiResponse.success(exists, exists ? "Symbol exists" : "Symbol does not exist"));
     }
 
     /**
@@ -211,16 +231,17 @@ public class SymbolMasterController {
      * checkFlag = 1: Check if symbol already exists before insert
      */
     @PostMapping("/process")
-    public ResponseEntity<?> processSymbol(
+    public ResponseEntity<ApiResponse<?>> processSymbol(
             @Valid @RequestBody SymbolMasterDto dto,
             @RequestParam Integer companyId,
             @RequestParam(defaultValue = "0") Integer checkFlag) {
         logger.info("Processing Symbol with SP_Symbol logic for company: {} with check flag: {}", companyId, checkFlag);
         try {
             SymbolMasterDto result = service.processSymbol(dto, companyId, checkFlag);
-            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(result, "Symbol processed successfully"));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
+            logger.error("Error processing Symbol: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage(), HttpStatus.BAD_REQUEST.value()));
         }
     }
 }

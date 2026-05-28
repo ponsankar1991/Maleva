@@ -3,6 +3,7 @@ package my.maleva.api.module.supplier.controller;
 import my.maleva.api.module.supplier.dto.SupplierDto;
 import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
 import my.maleva.api.module.supplier.dto.SupplierComboList;
+import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.module.supplier.service.SupplierService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -311,40 +312,110 @@ public class SupplierController {
       * @param type Supplier Type filter (optional - null/""/ALL for no type filter)
       * @return ResponseEntity with ResponseViewModel containing List<SupplierComboList>
       */
-     @GetMapping("/combo")
-     public ResponseEntity<?> getSupplier(
-             @RequestParam(value = "comid", required = false) Integer comid,
-             @RequestParam(value = "type", required = false) String type) {
-         logger.info("Get Supplier combo list - comid: {}, type: {}", comid, type);
+      @GetMapping("/combo")
+      public ResponseEntity<?> getSupplier(
+              @RequestParam(value = "comid", required = false) Integer comid,
+              @RequestParam(value = "type", required = false) String type) {
+          logger.info("Get Supplier combo list - comid: {}, type: {}", comid, type);
 
-         try {
-             // Validate required parameter
-             if (comid == null || comid <= 0) {
-                 logger.warn("Invalid request: comid is missing or invalid");
-                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                         .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
-             }
+          try {
+              // Validate required parameter
+              if (comid == null || comid <= 0) {
+                  logger.warn("Invalid request: comid is missing or invalid");
+                  return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                          .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
+              }
 
-             // Call service to fetch supplier combo list
-             ResponseViewModel response = service.getSupplier(comid, type);
+              // Call service to fetch supplier combo list
+              ResponseViewModel response = service.getSupplier(comid, type);
 
-             // Return appropriate HTTP status
-             if (response.isSuccess()) {
-                 return ResponseEntity.ok(response);
-             } else {
-                 int statusCode = response.getStatusCode() != null ? response.getStatusCode() : 400;
-                 return ResponseEntity.status(statusCode).body(response);
-             }
+              // Return appropriate HTTP status
+              if (response.isSuccess()) {
+                  return ResponseEntity.ok(response);
+              } else {
+                  int statusCode = response.getStatusCode() != null ? response.getStatusCode() : 400;
+                  return ResponseEntity.status(statusCode).body(response);
+              }
 
-         } catch (Exception ex) {
-             logger.error("Error in getSupplier endpoint", ex);
-             ResponseViewModel errorResponse = ResponseViewModel.error(
-                     "Internal server error: " + ex.getMessage(),
-                     500
-             );
-             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-         }
-     }
+          } catch (Exception ex) {
+              logger.error("Error in getSupplier endpoint", ex);
+              ResponseViewModel errorResponse = ResponseViewModel.error(
+                      "Internal server error: " + ex.getMessage(),
+                      500
+              );
+              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+          }
+      }
+
+      /**
+       * Select All Suppliers with joined master data
+       * Equivalent to .NET SelectSupplierAll(int Comid) method
+       *
+       * GET /api/suppliers/select-all?comid=1
+       *
+       * Returns all suppliers for a company with joined master data:
+       * - SymbolMaster.SName
+       * - PaymentTermsMaster.TermsName
+       * - AccountsGroupMaster.AccountCode
+       *
+       * Filters:
+       * - CompanyRefId = comid
+       * - Active != 2
+       *
+       * Sorted by SupplierName
+       *
+       * Response Format:
+       * [
+       *   {
+       *     "id": 1,
+       *     "supplierName": "ABC Supplier",
+       *     "email": "abc@example.com",
+       *     "mobileNo": "9876543210",
+       *     "sName": "ACTIVE",
+       *     "termsName": "Net 30",
+       *     "accountCode": "SUPP001",
+       *     ... (all other supplier fields)
+       *   }
+       * ]
+       *
+       * @param comid Company Reference ID (required)
+       * @return ResponseEntity with List of SupplierExtendedResponse
+       */
+      @GetMapping("/select-all")
+      public ResponseEntity<?> selectSupplierAll(
+              @RequestParam(value = "comid", required = false) Integer comid) {
+          logger.info("Select All Suppliers - comid: {}", comid);
+
+          try {
+              // Validate required parameter
+              if (comid == null || comid <= 0) {
+                  logger.warn("Invalid request: comid is missing or invalid");
+                  return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                          .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
+              }
+
+              // Call service to fetch all suppliers with master data
+              List<SupplierExtendedResponse> suppliers = service.selectSupplierAll(comid);
+
+              logger.info("Successfully fetched {} suppliers for company: {}", suppliers.size(), comid);
+
+              // Wrap in ApiResponse for consistent API response format
+              return ResponseEntity.ok(
+                  ResponseViewModel.success(
+                      suppliers,
+                      "Successfully retrieved " + suppliers.size() + " supplier records",
+                      200
+                  )
+              );
+
+          } catch (Exception ex) {
+              logger.error("Error in selectSupplierAll endpoint", ex);
+              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                      .body(ResponseViewModel.error(
+                          "Internal server error: " + ex.getMessage(),
+                          500
+                      ));
+          }
+      }
+
 }
-
-

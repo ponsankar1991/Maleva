@@ -39,7 +39,8 @@ public class CustomerQueryRepository {
         StringBuilder jpql = new StringBuilder();
 
         // Select the entity and the few joined display values — we'll map in Java to avoid constructor projection issues
-        jpql.append("SELECT s, sm.sName, pt.termsName, ag.accountCode, cm.country ")
+        // ✅ FIXED: Changed from sm.sName to sm.SName (capital S - matches entity field name)
+        jpql.append("SELECT s, sm.SName, pt.termsName, ag.accountCode, cm.country ")
             .append("FROM Customer s ")
             .append("LEFT JOIN SymbolMaster sm ON s.symbolRefid = sm.id ")
             .append("LEFT JOIN PaymentTermsMaster pt ON s.paymentTermsRefid = pt.id ")

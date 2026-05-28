@@ -14,6 +14,16 @@ public interface SymbolMasterService {
 
     List<SymbolMasterDto> getActiveByCompanyRefId(Integer companyRefId);
 
+    /**
+     * Select symbols for company (equivalent to .NET SelectSymbol)
+     * Returns all non-deleted symbols (Active != 2)
+     * Used for dropdowns, selection lists, and UI displays
+     *
+     * @param companyRefId The company ID
+     * @return List of SymbolMasterDto records where Active != 2
+     */
+    List<SymbolMasterDto> selectSymbol(Integer companyRefId);
+
     Optional<SymbolMasterDto> getBySName(String sName, Integer companyRefId);
 
     Optional<SymbolMasterDto> getByCName(String cName);

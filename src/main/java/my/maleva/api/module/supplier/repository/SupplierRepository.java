@@ -1,6 +1,7 @@
 package my.maleva.api.module.supplier.repository;
 
 import my.maleva.api.module.supplier.dto.SupplierComboList;
+import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.module.supplier.entity.Supplier;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -172,4 +173,45 @@ public interface SupplierRepository extends JpaRepository<Supplier, Integer> {
            "WHERE s.companyRefId = :comid AND s.active = 1 AND " +
            "(s.supplierType = :type OR :type = 'ALL') ORDER BY s.id")
     List<SupplierComboList> getSupplierComboListWithType(@Param("comid") Integer comid, @Param("type") String type);
+
+    /**
+     * Fetch all suppliers with joined master data
+     * Equivalent to .NET SelectSupplierAll method
+     *
+     * Joins:
+     * - SymbolMaster (SName)
+     * - PaymentTermsMaster (TermsName)
+     * - AccountsGroupMaster (AccountCode)
+     *
+     * Filters:
+     * - CompanyRefId = comid
+     * - Active != 2
+     *
+     * Sorted by SupplierName
+     *
+     * @param comid Company Reference ID
+     * @return List of SupplierExtendedResponse with joined master data
+     */
+    @Query(value = "SELECT " +
+            "S.Id, S.CompanyRefId, S.SupplierName, S.CNumberDisplay, S.CNumber, " +
+            "S.Address1, S.Address2, S.Address3, S.City, S.State, S.Zipcode, S.Country, " +
+            "S.SupplierCity, S.SymbolRefid, S.PaymentTermsRefid, S.GSTNO, S.Email, " +
+            "S.OEmail, S.OEmail1, S.AEmail, S.AEmail1, S.MobileNo, S.OPhone, S.APhone, " +
+            "S.UserName, S.Password, S.Latitude, S.longitude, S.TokenId, S.OName, S.AName, " +
+            "S.PersonId, S.Active, S.Created_Date, S.Modified_Date, S.Modified_By, " +
+            "S.SupplierType, S.AccountRefid, S.TinNo, S.SSTNo, S.MsicCode, " +
+            "S.ServiceTaxType, S.BankName, S.AccountNo, S.QNECode, S.QNEId, " +
+            "S.SelfBilled, S.TinType, S.SupplierTin, S.MSICCodeRefId, " +
+            "S.TaxExemptionNo, S.TaxExemptionDetails, S.RegistrationNo, " +
+            "ISNULL(SM.SName, '') AS SName, " +
+            "ISNULL(PT.TermsName, '') AS TermsName, " +
+            "ISNULL(AG.AccountCode, '') AS AccountCode " +
+            "FROM Supplier S WITH (NOLOCK) " +
+            "INNER JOIN SymbolMaster SM WITH (NOLOCK) ON S.SymbolRefid = SM.Id " +
+            "INNER JOIN PaymentTermsMaster PT WITH (NOLOCK) ON S.PaymentTermsRefid = PT.Id " +
+            "INNER JOIN AccountsGroupMaster AG WITH (NOLOCK) ON AG.Id = S.AccountRefid " +
+            "WHERE S.CompanyRefId = :comid AND S.Active != 2 " +
+            "ORDER BY S.SupplierName",
+            nativeQuery = true)
+    List<SupplierExtendedResponse> findAllSupplierWithMasterData(@Param("comid") Integer comid);
 }

@@ -3,6 +3,7 @@ package my.maleva.api.module.supplier.service.impl;
 import my.maleva.api.module.supplier.dto.SupplierDto;
 import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
 import my.maleva.api.module.supplier.dto.SupplierComboList;
+import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.module.supplier.mapper.SupplierMapper;
 import my.maleva.api.module.supplier.entity.Supplier;
 import my.maleva.api.module.supplier.repository.SupplierRepository;
@@ -475,6 +476,47 @@ public class SupplierServiceImpl implements SupplierService {
             );
         }
     }
+
+    /**
+     * Select All Suppliers with joined master data
+     * Equivalent to .NET SelectSupplierAll method
+     *
+     * Fetches all suppliers for a company with joined data from:
+     * - SymbolMaster (SName)
+     * - PaymentTermsMaster (TermsName)
+     * - AccountsGroupMaster (AccountCode)
+     *
+     * Filters:
+     * - CompanyRefId = comid
+     * - Active != 2
+     *
+     * Sorted by SupplierName
+     *
+     * @param comid Company Reference ID
+     * @return List of SupplierExtendedResponse with all supplier details and joined master data
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<SupplierExtendedResponse> selectSupplierAll(Integer comid) {
+        logger.info("Fetching all suppliers with master data for company: {}", comid);
+
+        try {
+            // Validate input
+            if (comid == null || comid <= 0) {
+                logger.warn("Invalid comid: {}", comid);
+                return new ArrayList<>();
+            }
+
+            // Fetch suppliers with joined master data
+            List<SupplierExtendedResponse> result = repository.findAllSupplierWithMasterData(comid);
+
+            logger.info("Successfully retrieved {} supplier records for company: {}", result.size(), comid);
+            return result;
+
+        } catch (Exception ex) {
+            logger.error("Error fetching suppliers with master data for company: " + comid, ex);
+            return new ArrayList<>();
+        }
+    }
+
 }
-
-

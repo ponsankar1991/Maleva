@@ -1,5 +1,7 @@
 package my.maleva.api.module.master.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import my.maleva.api.module.master.dto.SymbolMasterDto;
 import my.maleva.api.module.master.mapper.SymbolMasterMapper;
 import my.maleva.api.module.master.entity.SymbolMaster;
@@ -8,11 +10,16 @@ import my.maleva.api.module.master.service.SymbolMasterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Types;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -31,6 +38,12 @@ public class SymbolMasterServiceImpl implements SymbolMasterService {
     @Autowired
     private SymbolMasterMapper mapper;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Override
     public List<SymbolMasterDto> getByCompanyRefId(Integer companyRefId) {
         logger.info("Fetching SymbolMaster for company: {}", companyRefId);
@@ -47,6 +60,29 @@ public class SymbolMasterServiceImpl implements SymbolMasterService {
                 .stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<SymbolMasterDto> selectSymbol(Integer companyRefId) {
+        logger.info("Selecting SymbolMaster for company: {} (Active != 2)", companyRefId);
+        List<SymbolMaster> entities = repository.findByCompanyRefIdAndActiveNot(companyRefId, 2);
+
+        if (logger.isDebugEnabled() && !entities.isEmpty()) {
+            SymbolMaster first = entities.get(0);
+            logger.debug("Query result - First entity: sName='{}', cName='{}', id={}",
+                    first.getSName(), first.getCName(), first.getId());
+        }
+
+        List<SymbolMasterDto> result = entities.stream()
+                .map(entity -> {
+                    SymbolMasterDto dto = mapper.toDto(entity);
+                    logger.debug("Mapped DTO - id={}, sName='{}', cName='{}'",
+                            dto.getId(), dto.getSName(), dto.getCName());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        return result;
     }
 
     @Override
@@ -229,30 +265,35 @@ public class SymbolMasterServiceImpl implements SymbolMasterService {
     public SymbolMasterDto processSymbol(SymbolMasterDto dto, Integer companyId, Integer checkFlag) {
         logger.info("Processing Symbol with SP_Symbol logic for company: {} with check flag: {}", companyId, checkFlag);
 
-        // Set company ID
-        dto.setCompanyRefId(companyId);
+        try {
+            String detailsJson = objectMapper.writeValueAsString(List.of(dto));
 
-        // SP_Symbol logic: If Check flag = 1, check if symbol exists
-        if (checkFlag != null && checkFlag == 1) {
-            logger.info("Check flag enabled - checking if symbol exists");
-            Optional<SymbolMaster> existing = repository.findBySNameAndCompanyRefId(dto.getSName(), companyId);
+            SimpleJdbcCall jdbcCall = new SimpleJdbcCall(jdbcTemplate)
+                    .withProcedureName("SP_Symbol");
 
-            if (existing.isPresent() && existing.get().getActive() == 1) {
-                logger.info("Symbol already exists with active status, updating existing record ID: {}", existing.get().getId());
-                return update(existing.get().getId(), dto);
+            Map<String, Object> inParams = new HashMap<>();
+            inParams.put("details", detailsJson);
+            inParams.put("Comid", companyId);
+            inParams.put("Check", checkFlag);
+
+            Map<String, Object> out = jdbcCall.execute(inParams);
+
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) out.get("#result-set-1");
+            if (resultList != null && !resultList.isEmpty()) {
+                Map<String, Object> row = resultList.get(0);
+                Integer resultStatus = (Integer) row.get("Result");
+                if (resultStatus != null && resultStatus == 1) {
+                    Integer newId = (Integer) row.get("Id");
+                    return getById(newId).orElseThrow(() -> new RuntimeException("Failed to retrieve symbol after SP execution"));
+                } else {
+                    String msg = (String) row.get("Msg");
+                    throw new RuntimeException("Stored procedure execution failed: " + msg);
+                }
             }
-        }
+            throw new RuntimeException("No result set returned from stored procedure");
 
-        // Standard insert/update logic
-        if (dto.getId() == null || dto.getId() == 0) {
-            // New record - INSERT
-            logger.info("Processing INSERT operation");
-            return create(dto);
-        } else {
-            // Existing record - UPDATE
-            logger.info("Processing UPDATE operation for ID: {}", dto.getId());
-            return update(dto.getId(), dto);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error serializing DTO to JSON", e);
         }
     }
 }
-

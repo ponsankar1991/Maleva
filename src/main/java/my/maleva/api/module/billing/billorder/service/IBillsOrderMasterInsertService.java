@@ -5,13 +5,20 @@ import my.maleva.api.module.billing.billorder.dto.BillsOrderMasterResponseDto;
 
 /**
  * Service interface for BillsOrderMaster insert/update operations
+ * Equivalent to .NET ISupplierServices.InsertBillsOrderMaster
+ *
+ * Provides business logic for:
+ * 1. Validation of bill order details
+ * 2. Updating related SaleOrderMaster records
+ * 3. Persisting data via stored procedure
+ * 4. Sending notifications
  */
 public interface IBillsOrderMasterInsertService {
 
     /**
      * Insert or update BillsOrderMaster with related details and validations
      *
-     * Performs the following:
+     * Process flow:
      * 1. Validates all bill order details have AccountMasterRefId set
      * 2. Updates related SaleOrderMaster records based on charge description type
      * 3. Calls stored procedure SP_BillsOrderMaster for database operations
@@ -20,7 +27,7 @@ public interface IBillsOrderMasterInsertService {
      *
      * @param billsOrderMasterDto The bills order master data to insert/update
      * @param companyId          The company ID
-     * @return Response containing operation result and generated bill number
+     * @return Response containing operation result, bill ID, and bill number
      */
     BillsOrderMasterResponseDto insertBillsOrderMaster(
             BillsOrderMasterInsertDto billsOrderMasterDto,
@@ -29,7 +36,7 @@ public interface IBillsOrderMasterInsertService {
 
     /**
      * Validate bills order details
-     * Ensures all items have AccountMasterRefId set
+     * Ensures all items have AccountMasterRefId set (non-zero)
      *
      * @param billsOrderMasterDto The bills order master data
      * @throws IllegalArgumentException if validation fails
@@ -38,11 +45,22 @@ public interface IBillsOrderMasterInsertService {
 
     /**
      * Update SaleOrderMaster flags based on charge description type
-     * Different charge types (PORT CHARGES, CUSTOM CLEARANCE, etc.) update different flags
      *
-     * @param billsOrderMasterDto The bills order master data
-     * @param recalculateFlags    Whether to recalculate existing flags
+     * Different charge types update different flags:
+     * - "PORT CHARGES" → PortCPop
+     * - "CUSTOM CLEARANCE" / "CUSTOMER CLEARANCE" → ForwardingCPop
+     * - "BOAT CHARGES" → BoatCPop
+     * - "PERMIT CHARGES" / "INWARD PERMIT CHARGES" → PermitCPop
+     * - "MMHE CHARGES" → MMHECPop
+     * - "AIR FREIGHT EXPORT CHARGES" → AFpoCPop
+     * - "STORAGE FEE" / "FREIGHT CHARGES" → SFWpoCPop
+     * - "CRANE & WHARFMARK CHARGES" → BoatCPop1
+     * - "PFP & PAC CHARGES" → PFPPCPop1
+     *
+     * @param billsOrderMasterDto The bills order master data with Description and SaleMasterRefId
      */
-    void updateSaleOrderMasterFlags(BillsOrderMasterInsertDto billsOrderMasterDto, boolean recalculateFlags);
+    void updateSaleOrderMasterFlags(BillsOrderMasterInsertDto billsOrderMasterDto);
 }
+
+
 

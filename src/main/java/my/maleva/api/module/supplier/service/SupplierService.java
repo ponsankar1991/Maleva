@@ -3,6 +3,7 @@ package my.maleva.api.module.supplier.service;
 import my.maleva.api.module.supplier.dto.SupplierDto;
 import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
 import my.maleva.api.module.supplier.dto.SupplierComboList;
+import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.common.dto.ResponseViewModel;
 import java.util.List;
 import java.util.Optional;
@@ -75,4 +76,25 @@ public interface SupplierService {
      * @return ResponseViewModel with list of SupplierComboList
      */
     ResponseViewModel getSupplier(Integer comid, String type);
+
+    /**
+     * Select All Suppliers with joined master data
+     * Equivalent to .NET SelectSupplierAll method
+     *
+     * Fetches all suppliers for a company with joined data from:
+     * - SymbolMaster (SName)
+     * - PaymentTermsMaster (TermsName)
+     * - AccountsGroupMaster (AccountCode)
+     *
+     * Filters:
+     * - CompanyRefId = comid
+     * - Active != 2
+     *
+     * Sorted by SupplierName
+     *
+     * @param comid Company Reference ID
+     * @return List of SupplierExtendedResponse with all supplier details and joined master data
+     */
+    List<SupplierExtendedResponse> selectSupplierAll(Integer comid);
+
 }

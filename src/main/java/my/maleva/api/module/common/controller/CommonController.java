@@ -94,8 +94,12 @@ public class CommonController {
                         String absolutePath = relativePath + imgName + ext;
                         String virtualPath = "/uploads/" + comId + "/" + folderName + "/" + id + "/" + sub + imgName + ext;
 
-                        try (InputStream is = pic.getInputStream()) {
-                            compressImage(is, absolutePath, fileNameOriginal);
+                        if (isImageFile(ext)) {
+                            try (InputStream is = pic.getInputStream()) {
+                                compressImage(is, absolutePath, fileNameOriginal);
+                            }
+                        } else {
+                            pic.transferTo(Paths.get(absolutePath));
                         }
                         pathList.add(virtualPath);
                     }
@@ -294,7 +298,7 @@ public class CommonController {
                         String comPath = path1 + imgname + ext;
                         imgname = imgname + ext;
 
-                        if (!ext.equals(".pdf") && !ext.equals(".xls") && !ext.equals(".docx") && !ext.equals(".doc")) {
+                        if (isImageFile(ext)) {
                             try (InputStream strm = pic.getInputStream()) {
                                 compressImage(strm, comPath, fileNameOriginal);
                             }
@@ -389,12 +393,12 @@ public class CommonController {
 
                         String comPath = path1 + imgname + ext;
                         imgname = imgname + ext;
-                        try (InputStream strm = pic.getInputStream()) {
-                            if (!ext.equals(".pdf") && !ext.equals(".xls") && !ext.equals(".docx") && !ext.equals(".doc")) {
+                        if (isImageFile(ext)) {
+                            try (InputStream strm = pic.getInputStream()) {
                                 compressImage(strm, comPath, fileNameOriginal);
-                            } else {
-                                pic.transferTo(Paths.get(comPath));
                             }
+                        } else {
+                            pic.transferTo(Paths.get(comPath));
                         }
 
                         String path2 = "/uploads/" + comid + "/" + folderName + "/" + id + "/" + sub + imgname;
@@ -501,7 +505,7 @@ public class CommonController {
                         String completePath = baseFolderPath + imgName + extension;
 
                         // IMAGE FILE
-                        if (!extension.equals(".pdf") && !extension.equals(".xls") && !extension.equals(".docx") && !extension.equals(".doc")) {
+                        if (isImageFile(extension)) {
                             try (InputStream strm = uploadedFile.getInputStream()) {
                                 compressImage(strm, completePath, uploadedFile.getOriginalFilename());
                             }
@@ -698,5 +702,15 @@ public class CommonController {
     private String getFileExtension(String filename) {
         int lastDotIndex = filename.lastIndexOf('.');
         return lastDotIndex > 0 ? filename.substring(lastDotIndex) : "";
+    }
+
+    private boolean isImageFile(String extension) {
+        String ext = extension == null ? "" : extension.toLowerCase();
+        return ext.equals(".jpg")
+                || ext.equals(".jpeg")
+                || ext.equals(".png")
+                || ext.equals(".gif")
+                || ext.equals(".bmp")
+                || ext.equals(".webp");
     }
 }

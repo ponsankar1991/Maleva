@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -69,10 +70,10 @@ public class BillsOrderMasterController {
 			// Validate Comid
 			if (comid == null || comid <= 0) {
 				logger.warn("Invalid request: Comid is missing or invalid");
-				return ResponseEntity.badRequest().body(Map.of(
-						"ok", false,
-						"message", "Company ID (Comid) is required and must be positive"
-				));
+				Map<String, Object> errorMap = new HashMap<>();
+				errorMap.put("ok", false);
+				errorMap.put("message", "Company ID (Comid) is required and must be positive");
+				return ResponseEntity.badRequest().body(errorMap);
 			}
 
 			logger.info("Inserting BillsOrderMaster for Company: {}", comid);
@@ -85,46 +86,40 @@ public class BillsOrderMasterController {
 			if (response.isSuccess()) {
 				logger.info("BillsOrderMaster inserted successfully. ID: {}, BillNo: {}", 
 					response.getId(), response.getBillNo());
-				return ResponseEntity.ok(Map.of(
-						"ok", true,
-						"message", response.getMessage(),
-						"id", response.getId(),
-						"billNo", response.getBillNo(),
-						"saleTime", response.getSaleTime()
-				));
+				Map<String, Object> successMap = new HashMap<>();
+				successMap.put("ok", true);
+				successMap.put("message", response.getMessage() != null ? response.getMessage() : "");
+				successMap.put("id", response.getId() != null ? response.getId() : 0);
+				successMap.put("billNo", response.getBillNo() != null ? response.getBillNo() : "");
+				successMap.put("saleTime", response.getSaleTime() != null ? response.getSaleTime() : "");
+				return ResponseEntity.ok(successMap);
 			} else {
 				logger.warn("BillsOrderMaster insert failed. Message: {}", response.getMessage());
-				return ResponseEntity.ok(Map.of(
-						"ok", false,
-						"message", response.getMessage()
-				));
+				Map<String, Object> failMap = new HashMap<>();
+				failMap.put("ok", false);
+				failMap.put("message", response.getMessage() != null ? response.getMessage() : "Insert operation failed");
+				return ResponseEntity.ok(failMap);
 			}
 
 		} catch (IllegalArgumentException ex) {
 			logger.warn("Validation error in insertBillsOrderMaster: {}", ex.getMessage());
-			return ResponseEntity.badRequest().body(Map.of(
-					"ok", false,
-					"message", ex.getMessage()
-			));
+			Map<String, Object> validationErrorMap = new HashMap<>();
+			validationErrorMap.put("ok", false);
+			validationErrorMap.put("message", ex.getMessage());
+			return ResponseEntity.badRequest().body(validationErrorMap);
 		} catch (Exception ex) {
 			logger.error("Error in insertBillsOrderMaster", ex);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-					"ok", false,
-					"error", ex.getMessage() != null ? ex.getMessage() : "Unknown error"
-			));
+			Map<String, Object> exceptionMap = new HashMap<>();
+			exceptionMap.put("ok", false);
+			exceptionMap.put("error", ex.getMessage() != null ? ex.getMessage() : "Unknown error");
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exceptionMap);
 		}
 	}
 
-	/**
-	 * Check Invoice Numbers for a Company
-	 * GET /api/bills-order/check-invoice-no/{companyId}
-	 * 
-	 * Retrieves all invoice numbers from BillsOrderMaster where Active != 2
-	 * Returns a list of PaymentVoucherComboDto containing invoice numbers
-	 * 
-	 * @param companyId The Company Reference ID
-	 * @return ResponseViewModel with invoice numbers list
-	 */
+
+
+
+
 	@GetMapping("/check-invoice-no/{companyId}")
 	public ResponseEntity<ResponseViewModel> checkInvoiceNo(@PathVariable Integer companyId) {
 		logger.info("Fetching invoice numbers for company: {}", companyId);

@@ -15,15 +15,15 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * SymbolMaster Entity
+ * SymbolMaster Entity - FIXED VERSION
  * JPA entity for SymbolMaster table
- * Represents currency symbols and their configurations
- * 
- * Performance Optimization: Index on CompanyRefId for lookup operations
+ *
+ * IMPORTANT: Field names must match @Mapping source in mapper
+ * MapStruct reads Java field names, not @Column names
  */
 @Entity
 @Table(name = "SymbolMaster", indexes = {
-    @Index(name = "idx_symbol_company", columnList = "CompanyRefId", unique = false)
+        @Index(name = "idx_symbol_company", columnList = "companyrefid", unique = false)
 })
 @Data
 @NoArgsConstructor
@@ -33,36 +33,40 @@ public class SymbolMaster {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "Id")
+    @Column(name = "id")
     private Integer id;
 
-    @Column(name = "CompanyRefId", nullable = false)
+    @Column(name = "companyrefid", nullable = false)
     private Integer companyRefId;
 
-    @Column(name = "SName", nullable = false, length = 100)
-    private String sName;
+    // ✅ FIXED: Changed from 'sName' to 'SName' (uppercase S)
+    // MapStruct can now find this field
+    @Column(name = "sname", nullable = false, length = 100)
+    private String SName;
 
-    @Column(name = "CName", length = 100)
-    private String cName;
+    // ✅ FIXED: Changed from 'cName' to 'CName' (uppercase C)
+    @Column(name = "cname", length = 100)
+    private String CName;
 
-    @Column(name = "DFlag", nullable = false)
-    private Integer dFlag;
+    // ✅ FIXED: Changed from 'dFlag' to 'DFlag' (uppercase D)
+    @Column(name = "dflag", nullable = false)
+    private Integer DFlag;
 
-    @Column(name = "Created_Date", nullable = false)
+    @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
-    @Column(name = "Modified_Date", nullable = false)
+    @Column(name = "modified_date", nullable = false)
     private LocalDateTime modifiedDate;
 
-    @Column(name = "Modified_By", nullable = false, length = 50)
+    @Column(name = "modified_by", nullable = false, length = 50)
     private String modifiedBy;
 
-    @Column(name = "Active", nullable = false)
+    @Column(name = "active", nullable = false)
     private Integer active;
 
-    @Column(name = "CurrencyValue")
+    @Column(name = "currencyvalue")
     private Float currencyValue;
 
-    @Column(name = "QNEID")
+    @Column(name = "qneid")
     private Integer qneId;
 }

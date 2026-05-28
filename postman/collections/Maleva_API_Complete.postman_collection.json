@@ -297,6 +297,35 @@
 				}
 			]
 		},
+
+		{
+			"name": "Banks",
+			"description": "Bank management endpoints",
+			"item": [
+				{
+					"name": "Get Banks by Company",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/banks/company/{{companyId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"banks",
+								"company",
+								"{{companyId}}"
+							]
+						},
+						"description": "Get all banks for selected company"
+					}
+				}
+			]
+		},
+
+
 		{
 			"name": "Truck Masters",
 			"description": "Truck master data management",
