@@ -43,6 +43,11 @@ public class ResponseViewModel {
 
     @JsonProperty("data3")
     private Object data3;
+    
+    // Explicitly add isSuccess() to handle Lombok edge cases with boolean/Boolean fields
+    public boolean isSuccess() {
+        return isSuccess;
+    }
 
     /**
      * Builder for success response

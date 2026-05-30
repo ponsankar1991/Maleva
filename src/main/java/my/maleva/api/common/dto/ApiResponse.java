@@ -27,12 +27,24 @@ public class ApiResponse<T> {
 
     @JsonProperty("Data1")
     private T data1;
+    @JsonProperty("Data")
+    private T data;
 
     @JsonProperty("Data3")
     private String data3;
 
     @JsonProperty("ErrorDetails")
     private String errorDetails;
+    
+    // Explicitly add isSuccess() to handle Lombok edge cases with Boolean fields
+    public Boolean isSuccess() {
+        return isSuccess;
+    }
+
+    // Explicitly add getStatusCode() for the same reason
+    public Integer getStatusCode() {
+        return statusCode;
+    }
 
     public static <T> ApiResponse<T> success(T data, String message) {
         return ApiResponse.<T>builder()
@@ -60,4 +72,3 @@ public class ApiResponse<T> {
                 .build();
     }
 }
-
