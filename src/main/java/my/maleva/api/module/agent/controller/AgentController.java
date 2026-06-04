@@ -1,5 +1,7 @@
 package my.maleva.api.module.agent.controller;
 
+import jakarta.annotation.security.PermitAll;
+import my.maleva.api.common.constant.SecurityConstants;
 import my.maleva.api.module.company.dto.AgentDto;
 import my.maleva.api.module.company.service.AgentService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/agents")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class AgentController {
 
     private final AgentService service;
@@ -63,7 +65,7 @@ public class AgentController {
      * }
      */
     @PostMapping("/select-all")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<AgentSelectionResponse> selectAgentAll(
             @RequestParam(value = "companyRefId") Integer companyRefId,
             @RequestParam(value = "jobId", defaultValue = "0") Integer jobId) {

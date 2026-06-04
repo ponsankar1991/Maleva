@@ -1,5 +1,6 @@
 package my.maleva.api.module.employee.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.employee.dto.SalaryEntryDto;
 import my.maleva.api.module.employee.service.SalaryEntryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SalaryEntryDto>> getAllByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Fetching all SalaryEntry records for company: {}", companyRefId);
         List<SalaryEntryDto> records = salaryEntryService.getAllByCompanyId(companyRefId);
@@ -45,7 +46,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}/active
      */
     @GetMapping("/company/{companyRefId}/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SalaryEntryDto>> getActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Fetching active SalaryEntry records for company: {}", companyRefId);
         List<SalaryEntryDto> records = salaryEntryService.getActiveByCompanyId(companyRefId);
@@ -57,7 +58,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching SalaryEntry by ID: {}", id);
         Optional<SalaryEntryDto> record = salaryEntryService.getById(id);
@@ -73,7 +74,7 @@ public class SalaryEntryController {
      * POST /api/salary-entries
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody SalaryEntryDto dto) {
         logger.info("Creating new SalaryEntry for company: {}", dto.getCompanyRefId());
         try {
@@ -90,7 +91,7 @@ public class SalaryEntryController {
      * PUT /api/salary-entries/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody SalaryEntryDto dto) {
         logger.info("Updating SalaryEntry with ID: {}", id);
         try {
@@ -110,7 +111,7 @@ public class SalaryEntryController {
      * DELETE /api/salary-entries/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting SalaryEntry with ID: {}", id);
         try {
@@ -131,7 +132,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/employee/{employeeRefId}
      */
     @GetMapping("/employee/{employeeRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SalaryEntryDto>> getByEmployeeId(@PathVariable Integer employeeRefId) {
         logger.info("Fetching SalaryEntry records for employee: {}", employeeRefId);
         List<SalaryEntryDto> records = salaryEntryService.getByEmployeeId(employeeRefId);
@@ -143,7 +144,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}/employee/{employeeRefId}
      */
     @GetMapping("/company/{companyRefId}/employee/{employeeRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SalaryEntryDto>> getByCompanyAndEmployee(
             @PathVariable Integer companyRefId, @PathVariable Integer employeeRefId) {
         logger.info("Fetching SalaryEntry records for company: {} and employee: {}", companyRefId, employeeRefId);
@@ -156,7 +157,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}/ref/{refNumber}
      */
     @GetMapping("/company/{companyRefId}/ref/{refNumber}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByRefNumber(@PathVariable Integer companyRefId, @PathVariable String refNumber) {
         logger.info("Fetching SalaryEntry by reference number: {}", refNumber);
         Optional<SalaryEntryDto> record = salaryEntryService.getByRefNumber(companyRefId, refNumber);
@@ -172,7 +173,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}/cnumber/{cNumber}
      */
     @GetMapping("/company/{companyRefId}/cnumber/{cNumber}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByCNumber(@PathVariable Integer companyRefId, @PathVariable Integer cNumber) {
         logger.info("Fetching SalaryEntry by C Number: {}", cNumber);
         Optional<SalaryEntryDto> record = salaryEntryService.getByCNumber(companyRefId, cNumber);
@@ -188,7 +189,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/bank/{bankRefId}
      */
     @GetMapping("/bank/{bankRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SalaryEntryDto>> getByBankId(@PathVariable Integer bankRefId) {
         logger.info("Fetching SalaryEntry records for bank: {}", bankRefId);
         List<SalaryEntryDto> records = salaryEntryService.getByBankId(bankRefId);
@@ -200,7 +201,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}/status/{pvStatus}
      */
     @GetMapping("/company/{companyRefId}/status/{pvStatus}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SalaryEntryDto>> getByPvStatus(@PathVariable Integer companyRefId, @PathVariable Integer pvStatus) {
         logger.info("Fetching SalaryEntry records with PV Status: {}", pvStatus);
         List<SalaryEntryDto> records = salaryEntryService.getByPvStatus(companyRefId, pvStatus);
@@ -212,7 +213,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}/count
      */
     @GetMapping("/company/{companyRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting SalaryEntry records for company: {}", companyRefId);
         long count = salaryEntryService.countByCompanyId(companyRefId);
@@ -224,7 +225,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/company/{companyRefId}/count/active
      */
     @GetMapping("/company/{companyRefId}/count/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting active SalaryEntry records for company: {}", companyRefId);
         long count = salaryEntryService.countActiveByCompanyId(companyRefId);
@@ -236,7 +237,7 @@ public class SalaryEntryController {
      * GET /api/salary-entries/employee/{employeeRefId}/count
      */
     @GetMapping("/employee/{employeeRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByEmployeeId(@PathVariable Integer employeeRefId) {
         logger.info("Counting SalaryEntry records for employee: {}", employeeRefId);
         long count = salaryEntryService.countByEmployeeId(employeeRefId);
@@ -248,7 +249,7 @@ public class SalaryEntryController {
      * POST /api/salary-entries/{id}/activate
      */
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> activate(@PathVariable Integer id) {
         logger.info("Activating SalaryEntry with ID: {}", id);
         try {
@@ -268,7 +269,7 @@ public class SalaryEntryController {
      * POST /api/salary-entries/{id}/deactivate
      */
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deactivate(@PathVariable Integer id) {
         logger.info("Deactivating SalaryEntry with ID: {}", id);
         try {
@@ -288,7 +289,7 @@ public class SalaryEntryController {
      * PATCH /api/salary-entries/{id}/pvstatus/{pvStatus}
      */
     @PatchMapping("/{id}/pvstatus/{pvStatus}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> updatePvStatus(@PathVariable Integer id, @PathVariable Integer pvStatus) {
         logger.info("Updating PV Status for SalaryEntry with ID: {}", id);
         try {
@@ -303,5 +304,6 @@ public class SalaryEntryController {
         }
     }
 }
+
 
 

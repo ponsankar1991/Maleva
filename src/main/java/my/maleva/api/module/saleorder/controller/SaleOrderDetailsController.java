@@ -1,5 +1,6 @@
 package my.maleva.api.module.saleorder.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.saleorder.dto.SaleOrderDetailsDto;
 import my.maleva.api.module.saleorder.service.SaleOrderDetailsService;
 import org.slf4j.Logger;
@@ -19,8 +20,8 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/sale-order-details")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
-public class SaleOrderDetailsController {
+    @PermitAll
+    public class SaleOrderDetailsController {
 
     private static final Logger logger = LoggerFactory.getLogger(SaleOrderDetailsController.class);
 

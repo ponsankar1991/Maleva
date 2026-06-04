@@ -1,5 +1,6 @@
 package my.maleva.api.module.itemmaster.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.itemmaster.dto.ItemMasterCStockDto;
 import my.maleva.api.module.itemmaster.service.ItemMasterCStockService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/item-master-cstocks")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class ItemMasterCStockController {
 
     private final ItemMasterCStockService service;

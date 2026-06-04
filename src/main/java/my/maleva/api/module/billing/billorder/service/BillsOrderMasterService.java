@@ -658,6 +658,12 @@ public class BillsOrderMasterService {
 
         try {
             // Build WHERE clause based on filter criteria
+            // FILTER PRIORITY:
+            // 1. Basic Filters (BillId, Supplier, Employee, Truck, Product, Status, OffVessel) - CUMULATIVE
+            // 2. Global Search - CLEARS basic filters, applies search conditionally
+            // 3. Date Range Filters - Only applied if NO global search is provided
+            // 4. Vessel Name Search - HIGHEST PRIORITY, CLEARS ALL (including search & dates), applies only vessel search
+            // NOTE: When VessalNameSearch is provided, dates are NOT used (matches .NET behavior)
             StringBuilder whereClause = new StringBuilder();
 
             // Filter by bill ID (has bill or no bill)
@@ -693,32 +699,24 @@ public class BillsOrderMasterService {
 
             // Filter by bill status
             if (filterModel.getStatus() != null && !filterModel.getStatus().isEmpty()) {
-                whereClause.append(" AND A.BillStatus = '").append(filterModel.getStatus()).append("'");
+                whereClause.append(" AND A.BillStatus = '").append(filterModel.getStatus().replace("'", "''")).append("'");
             }
 
             // Filter by off-vessel name
             if (filterModel.getOffvesselname() != null && !filterModel.getOffvesselname().isEmpty()) {
-                whereClause.append(" AND A.Description = '").append(filterModel.getOffvesselname()).append("'");
+                whereClause.append(" AND A.Description = '").append(filterModel.getOffvesselname().replace("'", "''")).append("'");
             }
 
-            // Filter by vessel name
-            if (filterModel.getVessalNameSearch() != null && !filterModel.getVessalNameSearch().isEmpty()) {
-                String vessel = filterModel.getVessalNameSearch();
-                whereClause.append(" AND (A.OffVessal = '").append(vessel)
-                        .append("' OR A.LodingVessal = '").append(vessel)
-                        .append("' OR A.Remarks = '").append(vessel).append("')");
-            }
-
-            // Global search or date range filter
+            // Global search filter (clears other filters if provided)
             if (filterModel.getSearch() != null && !filterModel.getSearch().isEmpty()) {
-                String search = filterModel.getSearch();
+                String search = filterModel.getSearch().replace("'", "''");
                 whereClause.setLength(0); // Clear where clause for search
                 whereClause.append(" AND (A.CNumberDisplay = '").append(search)
                         .append("' OR A.InvoiceNo = '").append(search)
                         .append("' OR SA.CNumberDisplay = '").append(search)
                         .append("' OR B.SerialNo = '").append(search).append("')");
             } else {
-                // Date range filter
+                // Date range filter (only if no global search is provided)
                 if (filterModel.getFromdate() != null && filterModel.getTodate() != null) {
                     if (filterModel.getRemarks() != null && filterModel.getRemarks() == 1) {
                         whereClause.append(" AND A.InvoiceDate BETWEEN '").append(filterModel.getFromdate())
@@ -728,6 +726,17 @@ public class BillsOrderMasterService {
                                 .append("' AND '").append(filterModel.getTodate()).append("'");
                     }
                 }
+            }
+
+            // Filter by vessel name (HIGHEST PRIORITY - clears all other filters including search and dates)
+            // NOTE: When VessalNameSearch is provided, date filters are NOT applied (matches .NET behavior)
+            // Equivalent to .NET: where = " and (A.OffVessal = '" + objlist.VessalNameSearch + "' ..."
+            if (filterModel.getVessalNameSearch() != null && !filterModel.getVessalNameSearch().isEmpty()) {
+                String vessel = filterModel.getVessalNameSearch();
+                whereClause.setLength(0); // Clear all previous filters (including dates) - vessel search takes absolute priority
+                whereClause.append(" AND (A.OffVessal = '").append(vessel.replace("'", "''"))
+                        .append("' OR A.LodingVessal = '").append(vessel.replace("'", "''"))
+                        .append("' OR A.Remarks = '").append(vessel.replace("'", "''")).append("')");
             }
 
             // Build final SQL query for master records

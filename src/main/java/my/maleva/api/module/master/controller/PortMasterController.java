@@ -1,5 +1,6 @@
 package my.maleva.api.module.master.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.master.dto.PortMasterDto;
 import my.maleva.api.module.master.service.PortMasterService;
@@ -19,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/port-masters")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class PortMasterController {
 
     private static final Logger logger = LoggerFactory.getLogger(PortMasterController.class);

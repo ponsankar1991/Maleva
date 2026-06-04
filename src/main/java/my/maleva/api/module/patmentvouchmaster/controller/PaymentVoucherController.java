@@ -1,5 +1,6 @@
 package my.maleva.api.module.patmentvouchmaster.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.common.dto.ResponseViewModel;
 import my.maleva.api.module.patmentvouchmaster.dto.PaymentVoucherDto;
 import my.maleva.api.module.patmentvouchmaster.service.PaymentVoucherService;
@@ -18,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/payment-vouchers")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class PaymentVoucherController {
 
     private static final Logger logger = LoggerFactory.getLogger(PaymentVoucherController.class);

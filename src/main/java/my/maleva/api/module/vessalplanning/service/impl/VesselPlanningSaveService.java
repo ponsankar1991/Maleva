@@ -265,7 +265,7 @@ public class VesselPlanningSaveService implements IVesselPlanningSaveService {
     }
 
     private String getCurrentUser() {
-        return "SYSTEM";
+        return "sa";
     }
 
     private String formatSequenceNumber(int value) {

@@ -1,5 +1,6 @@
 package my.maleva.api.module.company.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.company.dto.MainSettingDto;
 import my.maleva.api.module.company.service.MainSettingService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/main-settings")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class MainSettingController {
 
     private final MainSettingService service;

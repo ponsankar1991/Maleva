@@ -137,4 +137,16 @@ public class BillsOrderMaster {
 
     @Column(name = "fileupload")
     private Integer fileupload;
+
+    @Column(name = "OffVessal", length = 300)
+    private String offVessal;
+
+    @Column(name = "LodingVessal", length = 300)
+    private String lodingVessal;
+
+    @Column(name = "CheckloadingVessel")
+    private Integer checkloadingVessel;
+
+    @Column(name = "CheckoffgVessel")
+    private Integer checkoffgVessel;
 }

@@ -1,5 +1,6 @@
 package my.maleva.api.module.customer.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.common.dto.ResponseViewModel;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.customer.dto.CustomerJobNotifyDto;
@@ -18,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/customer-job-notifications")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class CustomerJobNotifyController {
 
     private final CustomerJobNotifyService service;

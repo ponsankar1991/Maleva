@@ -1,5 +1,6 @@
 package my.maleva.api.module.master.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.master.dto.SequenceNoMasterDto;
 import my.maleva.api.module.master.service.SequenceNoMasterService;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,7 @@ public class SequenceNoMasterController {
      * @return list of all sequence DTOs
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public List<SequenceNoMasterDto> list() {
         return service.listAll();
     }
@@ -47,7 +48,7 @@ public class SequenceNoMasterController {
      * @return the sequence DTO
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public SequenceNoMasterDto get(@PathVariable Integer id) {
         return service.getById(id);
     }
@@ -60,7 +61,7 @@ public class SequenceNoMasterController {
      * @return list of sequence DTOs for the company
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<List<SequenceNoMasterDto>> getByCompanyId(@PathVariable Integer companyRefId) {
         List<SequenceNoMasterDto> sequences = service.getByCompanyId(companyRefId);
         return ResponseEntity.ok(sequences);
@@ -74,7 +75,7 @@ public class SequenceNoMasterController {
      * @return created sequence DTO with Location header
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<SequenceNoMasterDto> create(@Valid @RequestBody SequenceNoMasterDto dto) {
         SequenceNoMasterDto saved = service.create(dto);
         return ResponseEntity.created(URI.create("/api/sequence-masters/" + saved.getId())).body(saved);
@@ -89,7 +90,7 @@ public class SequenceNoMasterController {
      * @return updated sequence DTO
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public SequenceNoMasterDto update(@PathVariable Integer id, @Valid @RequestBody SequenceNoMasterDto dto) {
         return service.update(id, dto);
     }
@@ -102,7 +103,7 @@ public class SequenceNoMasterController {
      * @return 204 No Content
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
@@ -122,7 +123,8 @@ public class SequenceNoMasterController {
      * @param request contains billType
      * @return formatted sequence number (e.g., "SO000000001")
      */
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+
+    @PermitAll
     public ResponseEntity<Map<String, String>> generateNextSequenceNo(
             @PathVariable Integer companyId,
             @Valid @RequestBody Map<String, String> request) {
@@ -143,7 +145,7 @@ public class SequenceNoMasterController {
      * @return list of sequence DTOs for the year
      */
     @GetMapping("/company/{companyRefId}/year/{year}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<List<SequenceNoMasterDto>> getSequencesByYear(
             @PathVariable Integer companyRefId,
             @PathVariable Integer year) {
@@ -162,7 +164,7 @@ public class SequenceNoMasterController {
      * @return formatted sequence number
      */
     @GetMapping("/company/{companyId}/max-sequence")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<Map<String, Object>> getMaxSequenceNo(
             @PathVariable Integer companyId,
             @RequestParam String billType) {
@@ -187,7 +189,7 @@ public class SequenceNoMasterController {
      * @return response containing the generated PLANNING sequence number
      */
     @PostMapping("/company/{companyId}/max-planning-no")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<Map<String, Object>> getMaxPlanningNo(@PathVariable Integer companyId) {
         try {
             String planningSequenceNo = service.getMaxPlanningNo(companyId);

@@ -1,5 +1,6 @@
 package my.maleva.api.module.umo.controller;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import my.maleva.api.module.umo.dto.UomDto;
 import my.maleva.api.module.umo.service.UomService;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/uoms")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class UomController {
 
     private final UomService uomService;

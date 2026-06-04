@@ -1,5 +1,6 @@
 package my.maleva.api.module.expense.controller;
 
+import my.maleva.api.common.constant.SecurityConstants;
 import my.maleva.api.module.expense.dto.ExpenseMasterDto;
 import my.maleva.api.module.expense.service.ExpenseMasterService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/expense-masters")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PreAuthorize(SecurityConstants.ROLE_ADMIN_SUPERADMIN_100)
 public class ExpenseMasterController {
 
     private final ExpenseMasterService service;

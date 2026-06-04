@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -20,7 +21,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/sale-credit-knock-offs")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class SaleCreditKnockOffController {
 
     private static final Logger logger = LoggerFactory.getLogger(SaleCreditKnockOffController.class);
@@ -33,7 +34,7 @@ public class SaleCreditKnockOffController {
      * GET /api/sale-credit-knock-offs/sale-credit-master/{saleCreditMasterRefId}
      */
     @GetMapping("/sale-credit-master/{saleCreditMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SaleCreditKnockOffDto>> getBySaleCreditMasterRefId(@PathVariable Integer saleCreditMasterRefId) {
         logger.info("Fetching SaleCreditKnockOff records by Sale Credit Master Reference ID: {}", saleCreditMasterRefId);
         List<SaleCreditKnockOffDto> records = saleCreditKnockOffService.getBySaleCreditMasterRefId(saleCreditMasterRefId);
@@ -45,7 +46,7 @@ public class SaleCreditKnockOffController {
      * GET /api/sale-credit-knock-offs/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching SaleCreditKnockOff by ID: {}", id);
         Optional<SaleCreditKnockOffDto> record = saleCreditKnockOffService.getById(id);
@@ -60,7 +61,7 @@ public class SaleCreditKnockOffController {
      * POST /api/sale-credit-knock-offs
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody SaleCreditKnockOffDto dto) {
         logger.info("Creating new SaleCreditKnockOff for Sale Credit Master: {}", dto.getSaleCreditMasterRefId());
         try {
@@ -77,7 +78,7 @@ public class SaleCreditKnockOffController {
      * PUT /api/sale-credit-knock-offs/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody SaleCreditKnockOffDto dto) {
         logger.info("Updating SaleCreditKnockOff with ID: {}", id);
         try {
@@ -97,7 +98,7 @@ public class SaleCreditKnockOffController {
      * DELETE /api/sale-credit-knock-offs/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting SaleCreditKnockOff with ID: {}", id);
         boolean deleted = saleCreditKnockOffService.delete(id);
@@ -112,7 +113,7 @@ public class SaleCreditKnockOffController {
      * GET /api/sale-credit-knock-offs/company/{companyRefId}
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SaleCreditKnockOffDto>> getByCompanyRefId(@PathVariable Integer companyRefId) {
         logger.info("Fetching SaleCreditKnockOff records by company ID: {}", companyRefId);
         List<SaleCreditKnockOffDto> records = saleCreditKnockOffService.getByCompanyRefId(companyRefId);
@@ -124,7 +125,7 @@ public class SaleCreditKnockOffController {
      * GET /api/sale-credit-knock-offs/sale-master/{saleMasterRefId}
      */
     @GetMapping("/sale-master/{saleMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SaleCreditKnockOffDto>> getBySaleMasterRefId(@PathVariable Integer saleMasterRefId) {
         logger.info("Fetching SaleCreditKnockOff records by Sale Master Reference ID: {}", saleMasterRefId);
         List<SaleCreditKnockOffDto> records = saleCreditKnockOffService.getBySaleMasterRefId(saleMasterRefId);
@@ -136,7 +137,7 @@ public class SaleCreditKnockOffController {
      * GET /api/sale-credit-knock-offs/customer/{customerOpenRefId}
      */
     @GetMapping("/customer/{customerOpenRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SaleCreditKnockOffDto>> getByCustomerOpenRefId(@PathVariable Integer customerOpenRefId) {
         logger.info("Fetching SaleCreditKnockOff records by customer ID: {}", customerOpenRefId);
         List<SaleCreditKnockOffDto> records = saleCreditKnockOffService.getByCustomerOpenRefId(customerOpenRefId);
@@ -148,7 +149,7 @@ public class SaleCreditKnockOffController {
      * GET /api/sale-credit-knock-offs/count/sale-credit-master/{saleCreditMasterRefId}
      */
     @GetMapping("/count/sale-credit-master/{saleCreditMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<Long> countBySaleCreditMasterRefId(@PathVariable Integer saleCreditMasterRefId) {
         logger.info("Counting SaleCreditKnockOff records for Sale Credit Master: {}", saleCreditMasterRefId);
         long count = saleCreditKnockOffService.countBySaleCreditMasterRefId(saleCreditMasterRefId);
@@ -160,7 +161,7 @@ public class SaleCreditKnockOffController {
      * GET /api/sale-credit-knock-offs/company/{companyRefId}/sale-credit-master/{saleCreditMasterRefId}
      */
     @GetMapping("/company/{companyRefId}/sale-credit-master/{saleCreditMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SaleCreditKnockOffDto>> getByCompanyAndSaleCreditMaster(
             @PathVariable Integer companyRefId, @PathVariable Integer saleCreditMasterRefId) {
         logger.info("Fetching SaleCreditKnockOff records for company: {} and Sale Credit Master: {}", companyRefId, saleCreditMasterRefId);
@@ -173,7 +174,7 @@ public class SaleCreditKnockOffController {
      * DELETE /api/sale-credit-knock-offs/sale-credit-master/{saleCreditMasterRefId}
      */
     @DeleteMapping("/sale-credit-master/{saleCreditMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deleteAllBySaleCreditMasterRefId(@PathVariable Integer saleCreditMasterRefId) {
         logger.info("Deleting all SaleCreditKnockOff records for Sale Credit Master: {}", saleCreditMasterRefId);
         try {
@@ -185,4 +186,5 @@ public class SaleCreditKnockOffController {
         }
     }
 }
+
 

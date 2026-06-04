@@ -1,5 +1,6 @@
 package my.maleva.api.module.pettycash.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.pettycash.dto.PettyCashMasterDto;
 import my.maleva.api.module.pettycash.service.PettyCashMasterService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/petty-cash-masters")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class PettyCashMasterController {
 
     private final PettyCashMasterService service;

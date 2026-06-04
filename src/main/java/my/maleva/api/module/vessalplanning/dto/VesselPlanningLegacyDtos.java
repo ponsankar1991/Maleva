@@ -62,6 +62,10 @@ public final class VesselPlanningLegacyDtos {
         private String todate;
         private Integer etaType;
         private Integer statusId;
+        
+        // Added field to handle DeliveryDone logic
+        @JsonProperty("DeliveryDone")
+        private boolean deliveryDone;
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)

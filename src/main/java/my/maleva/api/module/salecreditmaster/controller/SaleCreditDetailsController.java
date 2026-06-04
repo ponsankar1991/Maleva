@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -20,7 +21,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/sale-credit-details")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class SaleCreditDetailsController {
 
     private static final Logger logger = LoggerFactory.getLogger(SaleCreditDetailsController.class);
@@ -33,7 +34,7 @@ public class SaleCreditDetailsController {
      * GET /api/sale-credit-details/sale-credit-master/{saleCreditMasterRefId}
      */
     @GetMapping("/sale-credit-master/{saleCreditMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SaleCreditDetailsDto>> getBySaleCreditMasterRefId(@PathVariable Integer saleCreditMasterRefId) {
         logger.info("Fetching SaleCreditDetails by Sale Credit Master Reference ID: {}", saleCreditMasterRefId);
         List<SaleCreditDetailsDto> records = saleCreditDetailsService.getBySaleCreditMasterRefId(saleCreditMasterRefId);
@@ -45,7 +46,7 @@ public class SaleCreditDetailsController {
      * GET /api/sale-credit-details/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching SaleCreditDetails by ID: {}", id);
         Optional<SaleCreditDetailsDto> record = saleCreditDetailsService.getById(id);
@@ -60,7 +61,7 @@ public class SaleCreditDetailsController {
      * POST /api/sale-credit-details
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody SaleCreditDetailsDto dto) {
         logger.info("Creating new SaleCreditDetails for Sale Credit Master: {}", dto.getSaleCreditMasterRefId());
         try {
@@ -77,7 +78,7 @@ public class SaleCreditDetailsController {
      * PUT /api/sale-credit-details/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody SaleCreditDetailsDto dto) {
         logger.info("Updating SaleCreditDetails with ID: {}", id);
         try {
@@ -97,7 +98,7 @@ public class SaleCreditDetailsController {
      * DELETE /api/sale-credit-details/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting SaleCreditDetails with ID: {}", id);
         boolean deleted = saleCreditDetailsService.delete(id);
@@ -112,7 +113,7 @@ public class SaleCreditDetailsController {
      * GET /api/sale-credit-details/item/{itemMasterRefId}
      */
     @GetMapping("/item/{itemMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<SaleCreditDetailsDto>> getByItemMasterRefId(@PathVariable Integer itemMasterRefId) {
         logger.info("Fetching SaleCreditDetails by Item Master Reference ID: {}", itemMasterRefId);
         List<SaleCreditDetailsDto> records = saleCreditDetailsService.getByItemMasterRefId(itemMasterRefId);
@@ -124,7 +125,7 @@ public class SaleCreditDetailsController {
      * GET /api/sale-credit-details/count/sale-credit-master/{saleCreditMasterRefId}
      */
     @GetMapping("/count/sale-credit-master/{saleCreditMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<Long> countBySaleCreditMasterRefId(@PathVariable Integer saleCreditMasterRefId) {
         logger.info("Counting SaleCreditDetails for Sale Credit Master: {}", saleCreditMasterRefId);
         long count = saleCreditDetailsService.countBySaleCreditMasterRefId(saleCreditMasterRefId);
@@ -136,7 +137,7 @@ public class SaleCreditDetailsController {
      * DELETE /api/sale-credit-details/sale-credit-master/{saleCreditMasterRefId}
      */
     @DeleteMapping("/sale-credit-master/{saleCreditMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deleteAllBySaleCreditMasterRefId(@PathVariable Integer saleCreditMasterRefId) {
         logger.info("Deleting all SaleCreditDetails for Sale Credit Master: {}", saleCreditMasterRefId);
         try {
@@ -148,4 +149,5 @@ public class SaleCreditDetailsController {
         }
     }
 }
+
 

@@ -1,5 +1,7 @@
 package my.maleva.api.module.fleet.controller;
 
+import jakarta.annotation.security.PermitAll;
+import my.maleva.api.common.constant.SecurityConstants;
 import my.maleva.api.module.fleet.dto.AutoPassEntryDto;
 import my.maleva.api.module.fleet.service.AutoPassEntryService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/autopass-entries")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class AutoPassEntryController {
 
     private final AutoPassEntryService service;

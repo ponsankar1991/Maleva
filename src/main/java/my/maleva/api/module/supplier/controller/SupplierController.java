@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 
 import my.maleva.api.common.dto.ResponseViewModel;
@@ -23,7 +24,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/suppliers")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class SupplierController {
 
     private static final Logger logger = LoggerFactory.getLogger(SupplierController.class);
@@ -419,3 +420,4 @@ public class SupplierController {
       }
 
 }
+

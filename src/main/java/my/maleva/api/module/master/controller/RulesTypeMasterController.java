@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ public class RulesTypeMasterController {
      * GET /api/rules-type-masters/company/{companyRefId}
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RulesTypeMasterDto>> getAllByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Fetching all RulesTypeMaster records for company: {}", companyRefId);
         List<RulesTypeMasterDto> records = rulesTypeMasterService.getAllByCompanyId(companyRefId);
@@ -45,7 +46,7 @@ public class RulesTypeMasterController {
      * GET /api/rules-type-masters/company/{companyRefId}/active
      */
     @GetMapping("/company/{companyRefId}/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RulesTypeMasterDto>> getActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Fetching active RulesTypeMaster records for company: {}", companyRefId);
         List<RulesTypeMasterDto> records = rulesTypeMasterService.getActiveByCompanyId(companyRefId);
@@ -57,7 +58,7 @@ public class RulesTypeMasterController {
      * GET /api/rules-type-masters/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching RulesTypeMaster by ID: {}", id);
         Optional<RulesTypeMasterDto> record = rulesTypeMasterService.getById(id);
@@ -73,7 +74,7 @@ public class RulesTypeMasterController {
      * POST /api/rules-type-masters
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody RulesTypeMasterDto dto) {
         logger.info("Creating new RulesTypeMaster for company: {}", dto.getCompanyRefId());
         try {
@@ -90,7 +91,7 @@ public class RulesTypeMasterController {
      * PUT /api/rules-type-masters/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody RulesTypeMasterDto dto) {
         logger.info("Updating RulesTypeMaster with ID: {}", id);
         try {
@@ -110,7 +111,7 @@ public class RulesTypeMasterController {
      * DELETE /api/rules-type-masters/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting RulesTypeMaster with ID: {}", id);
         try {
@@ -131,7 +132,7 @@ public class RulesTypeMasterController {
      * GET /api/rules-type-masters/company/{companyRefId}/code/{ruleTypeCode}
      */
     @GetMapping("/company/{companyRefId}/code/{ruleTypeCode}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByRuleTypeCode(@PathVariable Integer companyRefId, @PathVariable String ruleTypeCode) {
         logger.info("Fetching RulesTypeMaster by rule type code: {}", ruleTypeCode);
         Optional<RulesTypeMasterDto> record = rulesTypeMasterService.getByRuleTypeCode(companyRefId, ruleTypeCode);
@@ -147,7 +148,7 @@ public class RulesTypeMasterController {
      * GET /api/rules-type-masters/company/{companyRefId}/name/{ruleTypeName}
      */
     @GetMapping("/company/{companyRefId}/name/{ruleTypeName}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByRuleTypeName(@PathVariable Integer companyRefId, @PathVariable String ruleTypeName) {
         logger.info("Fetching RulesTypeMaster by rule type name: {}", ruleTypeName);
         Optional<RulesTypeMasterDto> record = rulesTypeMasterService.getByRuleTypeName(companyRefId, ruleTypeName);
@@ -163,7 +164,7 @@ public class RulesTypeMasterController {
      * GET /api/rules-type-masters/company/{companyRefId}/count
      */
     @GetMapping("/company/{companyRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting RulesTypeMaster records for company: {}", companyRefId);
         long count = rulesTypeMasterService.countByCompanyId(companyRefId);
@@ -175,7 +176,7 @@ public class RulesTypeMasterController {
      * GET /api/rules-type-masters/company/{companyRefId}/count/active
      */
     @GetMapping("/company/{companyRefId}/count/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting active RulesTypeMaster records for company: {}", companyRefId);
         long count = rulesTypeMasterService.countActiveByCompanyId(companyRefId);
@@ -187,7 +188,7 @@ public class RulesTypeMasterController {
      * POST /api/rules-type-masters/{id}/activate
      */
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> activate(@PathVariable Integer id) {
         logger.info("Activating RulesTypeMaster with ID: {}", id);
         try {
@@ -207,7 +208,7 @@ public class RulesTypeMasterController {
      * POST /api/rules-type-masters/{id}/deactivate
      */
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deactivate(@PathVariable Integer id) {
         logger.info("Deactivating RulesTypeMaster with ID: {}", id);
         try {
@@ -222,4 +223,5 @@ public class RulesTypeMasterController {
         }
     }
 }
+
 

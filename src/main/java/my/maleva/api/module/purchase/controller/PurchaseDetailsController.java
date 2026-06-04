@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ public class PurchaseDetailsController {
      * GET /api/purchase-details/purchase-master/{purchaseMasterRefId}
      */
     @GetMapping("/purchase-master/{purchaseMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseDetailsDto>> getByPurchaseMaster(
             @PathVariable Integer purchaseMasterRefId) {
         logger.info("Fetching all PurchaseDetails for purchase master: {}", purchaseMasterRefId);
@@ -46,7 +47,7 @@ public class PurchaseDetailsController {
      * GET /api/purchase-details/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching PurchaseDetails by ID: {}", id);
         Optional<PurchaseDetailsDto> record = purchaseDetailsService.getById(id);
@@ -64,7 +65,7 @@ public class PurchaseDetailsController {
      * POST /api/purchase-details
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody PurchaseDetailsDto dto) {
         logger.info("Creating new PurchaseDetails for purchase master: {}", dto.getPurchaseMasterRefId());
 
@@ -83,7 +84,7 @@ public class PurchaseDetailsController {
      * POST /api/purchase-details/batch
      */
     @PostMapping("/batch")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> createBatch(@Valid @RequestBody List<PurchaseDetailsDto> dtos) {
         logger.info("Creating batch of {} PurchaseDetails records", dtos.size());
 
@@ -102,7 +103,7 @@ public class PurchaseDetailsController {
      * PUT /api/purchase-details/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(
             @PathVariable Integer id,
             @Valid @RequestBody PurchaseDetailsDto dto) {
@@ -127,7 +128,7 @@ public class PurchaseDetailsController {
      * DELETE /api/purchase-details/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting PurchaseDetails with ID: {}", id);
 
@@ -151,7 +152,7 @@ public class PurchaseDetailsController {
      * DELETE /api/purchase-details/purchase-master/{purchaseMasterRefId}
      */
     @DeleteMapping("/purchase-master/{purchaseMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deleteByPurchaseMaster(@PathVariable Integer purchaseMasterRefId) {
         logger.info("Deleting all PurchaseDetails for purchase master: {}", purchaseMasterRefId);
 
@@ -175,7 +176,7 @@ public class PurchaseDetailsController {
      * GET /api/purchase-details/product/{productMasterRefId}
      */
     @GetMapping("/product/{productMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseDetailsDto>> getByProduct(
             @PathVariable Integer productMasterRefId) {
         logger.info("Fetching PurchaseDetails for product: {}", productMasterRefId);
@@ -188,7 +189,7 @@ public class PurchaseDetailsController {
      * GET /api/purchase-details/purchase-master/{purchaseMasterRefId}/count
      */
     @GetMapping("/purchase-master/{purchaseMasterRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByPurchaseMaster(@PathVariable Integer purchaseMasterRefId) {
         logger.info("Counting PurchaseDetails for purchase master: {}", purchaseMasterRefId);
         long count = purchaseDetailsService.countByPurchaseMaster(purchaseMasterRefId);
@@ -200,7 +201,7 @@ public class PurchaseDetailsController {
      * GET /api/purchase-details/purchase-master/{purchaseMasterRefId}/total-amount
      */
     @GetMapping("/purchase-master/{purchaseMasterRefId}/total-amount")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> calculateTotalAmount(@PathVariable Integer purchaseMasterRefId) {
         logger.info("Calculating total amount for purchase master: {}", purchaseMasterRefId);
         Double totalAmount = purchaseDetailsService.calculateTotalAmount(purchaseMasterRefId);
@@ -212,7 +213,7 @@ public class PurchaseDetailsController {
      * GET /api/purchase-details/purchase-master/{purchaseMasterRefId}/total-tax
      */
     @GetMapping("/purchase-master/{purchaseMasterRefId}/total-tax")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> calculateTotalTax(@PathVariable Integer purchaseMasterRefId) {
         logger.info("Calculating total tax for purchase master: {}", purchaseMasterRefId);
         Double totalTax = purchaseDetailsService.calculateTotalTax(purchaseMasterRefId);
@@ -224,11 +225,12 @@ public class PurchaseDetailsController {
      * GET /api/purchase-details/purchase-master/{purchaseMasterRefId}/total-discount
      */
     @GetMapping("/purchase-master/{purchaseMasterRefId}/total-discount")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> calculateTotalDiscount(@PathVariable Integer purchaseMasterRefId) {
         logger.info("Calculating total discount for purchase master: {}", purchaseMasterRefId);
         Double totalDiscount = purchaseDetailsService.calculateTotalDiscount(purchaseMasterRefId);
         return ResponseEntity.ok("Total Discount: " + totalDiscount);
     }
 }
+
 

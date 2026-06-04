@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ public class RTIDetailsController {
     private RTIDetailsService rtiDetailsService;
 
     @GetMapping("/rti-master/{rtiMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIDetailsDto>> getByRtiMasterId(@PathVariable Integer rtiMasterRefId) {
         logger.info("Fetching RTIDetails for RTIMaster: {}", rtiMasterRefId);
         List<RTIDetailsDto> records = rtiDetailsService.getByRtiMasterId(rtiMasterRefId);
@@ -37,7 +38,7 @@ public class RTIDetailsController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching RTIDetails by ID: {}", id);
         Optional<RTIDetailsDto> record = rtiDetailsService.getById(id);
@@ -49,7 +50,7 @@ public class RTIDetailsController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody RTIDetailsDto dto) {
         logger.info("Creating new RTIDetails for RTIMaster: {}", dto.getRtiMasterRefId());
         try {
@@ -62,7 +63,7 @@ public class RTIDetailsController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody RTIDetailsDto dto) {
         logger.info("Updating RTIDetails with ID: {}", id);
         try {
@@ -78,7 +79,7 @@ public class RTIDetailsController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting RTIDetails with ID: {}", id);
         try {
@@ -95,7 +96,7 @@ public class RTIDetailsController {
     }
 
     @GetMapping("/sale-order/{saleOrderMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIDetailsDto>> getBySaleOrderMasterId(@PathVariable Integer saleOrderMasterRefId) {
         logger.info("Fetching RTIDetails by sale order master: {}", saleOrderMasterRefId);
         List<RTIDetailsDto> records = rtiDetailsService.getBySaleOrderMasterId(saleOrderMasterRefId);
@@ -103,7 +104,7 @@ public class RTIDetailsController {
     }
 
     @GetMapping("/rti-master/{rtiMasterRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByRtiMasterId(@PathVariable Integer rtiMasterRefId) {
         logger.info("Counting RTIDetails for RTIMaster: {}", rtiMasterRefId);
         long count = rtiDetailsService.countByRtiMasterId(rtiMasterRefId);
@@ -111,7 +112,7 @@ public class RTIDetailsController {
     }
 
     @DeleteMapping("/rti-master/{rtiMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deleteByRtiMasterId(@PathVariable Integer rtiMasterRefId) {
         logger.info("Deleting all RTIDetails for RTIMaster: {}", rtiMasterRefId);
         try {
@@ -123,4 +124,5 @@ public class RTIDetailsController {
         }
     }
 }
+
 

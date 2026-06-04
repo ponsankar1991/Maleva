@@ -1,5 +1,6 @@
 package my.maleva.api.module.master.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.master.dto.TaxMasterDto;
 import my.maleva.api.module.master.service.TaxMasterService;
@@ -20,7 +21,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/tax-masters")
-@PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN','ROLE_ADMIN','ROLE_CUSTOMERSERVICE','ROLE_OPERATIONADMIN','ROLE_BOARDINGOFFICER','ROLE_WAREHOUSE','ROLE_DRIVER','ROLE_HR','ROLE_ACCOUNTS','ROLE_PAYABLE','ROLE_RECEIVABLE','ROLE_MAINTENANCE','ROLE_USER')")
+@PermitAll
 public class TaxMasterController {
 
     private static final Logger logger = LoggerFactory.getLogger(TaxMasterController.class);

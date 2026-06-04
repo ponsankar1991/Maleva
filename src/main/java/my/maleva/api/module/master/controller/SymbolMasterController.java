@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -20,7 +21,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/symbol-masters")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class SymbolMasterController {
 
     private static final Logger logger = LoggerFactory.getLogger(SymbolMasterController.class);
@@ -245,4 +246,5 @@ public class SymbolMasterController {
         }
     }
 }
+
 

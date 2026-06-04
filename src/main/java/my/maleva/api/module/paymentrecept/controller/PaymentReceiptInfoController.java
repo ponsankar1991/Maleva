@@ -1,5 +1,6 @@
 package my.maleva.api.module.paymentrecept.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.paymentrecept.dto.PaymentReceiptInfoDto;
 import my.maleva.api.module.paymentrecept.service.PaymentReceiptInfoService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/payment-receipt-infos")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class PaymentReceiptInfoController {
 
     private final PaymentReceiptInfoService service;

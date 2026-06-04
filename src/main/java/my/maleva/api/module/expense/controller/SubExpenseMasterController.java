@@ -9,7 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
+import jakarta.annotation.security.PermitAll;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +21,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/sub-expense-masters")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class SubExpenseMasterController {
 
     private static final Logger logger = LoggerFactory.getLogger(SubExpenseMasterController.class);
@@ -218,4 +220,5 @@ public class SubExpenseMasterController {
         return ResponseEntity.ok("Total: " + count);
     }
 }
+
 

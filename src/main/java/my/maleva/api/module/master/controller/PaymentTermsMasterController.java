@@ -1,5 +1,6 @@
 package my.maleva.api.module.master.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.master.dto.PaymentTermsMasterDto;
 import my.maleva.api.module.master.service.PaymentTermsMasterService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/payment-terms-master")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class PaymentTermsMasterController {
 
     private final PaymentTermsMasterService service;

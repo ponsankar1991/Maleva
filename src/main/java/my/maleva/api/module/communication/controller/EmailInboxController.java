@@ -4,8 +4,10 @@ import my.maleva.api.module.communication.dto.EmailInboxDto;
 import my.maleva.api.module.communication.service.EmailInboxService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -14,7 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/email-inboxes")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class EmailInboxController {
 
     private final EmailInboxService service;
@@ -50,3 +52,4 @@ public class EmailInboxController {
         return ResponseEntity.noContent().build();
     }
 }
+

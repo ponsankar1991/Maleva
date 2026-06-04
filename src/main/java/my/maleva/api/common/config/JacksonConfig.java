@@ -133,6 +133,7 @@ public class JacksonConfig {
         // Configure to not fail on empty beans and format dates nicely
         mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.configure(com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
         return mapper;
     }
 

@@ -1,35 +1,33 @@
 package my.maleva.api.module.billing.billorder.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import my.maleva.api.module.billing.billorder.dto.BillsOrderMasterInsertDto;
 import my.maleva.api.module.billing.billorder.dto.BillsOrderMasterResponseDto;
 import my.maleva.api.module.billing.billorder.dto.BillsOrderDetailsInsertDto;
+import my.maleva.api.module.billing.billorder.entity.BillsOrderMaster;
+import my.maleva.api.module.billing.billorder.entity.BillsOrderDetails;
 import my.maleva.api.module.billing.billorder.repository.BillsOrderMasterRepository;
+import my.maleva.api.module.billing.billorder.repository.BillsOrderDetailsRepository;
+import my.maleva.api.module.user.repository.AppUserRepository;
+import my.maleva.api.module.employee.repository.EmployeeMasterRepository;
+import my.maleva.api.module.payment.repository.PaymentTermsMasterRepository;
+import my.maleva.api.module.fleet.repository.TruckMasterRepository;
+import my.maleva.api.module.fleet.repository.DriverMasterRepository;
+import my.maleva.api.module.master.repository.SequenceNoMasterRepository;
+import my.maleva.api.module.master.entity.SequenceNoMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.CallableStatementCreator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Service implementation for BillsOrderMaster insert/update operations
- * Equivalent to .NET ISupplierServices.InsertBillsOrderMaster method
- *
- * Responsibilities:
- * 1. Validate BillsOrderDetails (all items must have AccountMasterRefId)
- * 2. Update SaleOrderMaster flags based on charge description type
- * 3. Serialize DTO to JSON for SP consumption
- * 4. Execute stored procedure (SP_BillsOrderMaster)
- * 5. Send WhatsApp notifications on successful new inserts
+ * Re-written from Stored Procedure into pure Java/JPA to avoid JSON serialization and NULL constraints
  */
 @Service
 public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInsertService {
@@ -37,8 +35,14 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
     private static final Logger logger = LoggerFactory.getLogger(BillsOrderMasterInsertServiceImpl.class);
 
     private final BillsOrderMasterRepository billsOrderMasterRepository;
+    private final BillsOrderDetailsRepository billsOrderDetailsRepository;
+    private final AppUserRepository appUserRepository;
+    private final EmployeeMasterRepository employeeMasterRepository;
+    private final PaymentTermsMasterRepository paymentTermsMasterRepository;
+    private final TruckMasterRepository truckMasterRepository;
+    private final DriverMasterRepository driverMasterRepository;
+    private final SequenceNoMasterRepository sequenceNoMasterRepository;
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectMapper objectMapper;
     private final BillsOrderWhatsAppService whatsAppService;
 
     @Value("${app.whatsapp.enabled:true}")
@@ -46,108 +50,236 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
 
     public BillsOrderMasterInsertServiceImpl(
             BillsOrderMasterRepository billsOrderMasterRepository,
+            BillsOrderDetailsRepository billsOrderDetailsRepository,
+            AppUserRepository appUserRepository,
+            EmployeeMasterRepository employeeMasterRepository,
+            PaymentTermsMasterRepository paymentTermsMasterRepository,
+            TruckMasterRepository truckMasterRepository,
+            DriverMasterRepository driverMasterRepository,
+            SequenceNoMasterRepository sequenceNoMasterRepository,
             JdbcTemplate jdbcTemplate,
-            ObjectMapper objectMapper,
             BillsOrderWhatsAppService whatsAppService) {
         this.billsOrderMasterRepository = billsOrderMasterRepository;
+        this.billsOrderDetailsRepository = billsOrderDetailsRepository;
+        this.appUserRepository = appUserRepository;
+        this.employeeMasterRepository = employeeMasterRepository;
+        this.paymentTermsMasterRepository = paymentTermsMasterRepository;
+        this.truckMasterRepository = truckMasterRepository;
+        this.driverMasterRepository = driverMasterRepository;
+        this.sequenceNoMasterRepository = sequenceNoMasterRepository;
         this.jdbcTemplate = jdbcTemplate;
-        this.objectMapper = objectMapper;
         this.whatsAppService = whatsAppService;
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * Process flow:
-     * 1. Validate all bill order details have AccountMasterRefId set
-     * 2. Update related SaleOrderMaster records based on charge type
-     * 3. Convert DTO to properly formatted JSON
-     * 4. Call stored procedure to persist data
-     * 5. Send WhatsApp notification if new record created
-     */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BillsOrderMasterResponseDto insertBillsOrderMaster(
-            BillsOrderMasterInsertDto billsOrderMasterDto,
+            BillsOrderMasterInsertDto dto,
             Integer companyId) {
 
         logger.info("Starting BillsOrderMaster insert for Company: {}", companyId);
 
         try {
-            // Step 1: Validate all details have AccountMasterRefId
-            validateBillsOrderDetails(billsOrderMasterDto);
-            logger.debug("✓ Validation passed - all items have AccountMasterRefId");
+            validateBillsOrderDetails(dto);
 
-            // Step 2: Update SaleOrderMaster flags based on description
-            // Only for new records (id = 0) to avoid redundant updates
-            boolean isNewRecord = billsOrderMasterDto.getId() == null || billsOrderMasterDto.getId() == 0;
-            if (isNewRecord) {
-                updateSaleOrderMasterFlags(billsOrderMasterDto);
-                logger.debug("✓ SaleOrderMaster flags updated");
-            }
+            // Null checking for primitive types mimicking the SP logic
+            Integer userRefId = (dto.getUserRefId() != null && dto.getUserRefId() > 0) ? dto.getUserRefId() : null;
+            Integer employeeRefId = (dto.getEmployeeRefId() != null && dto.getEmployeeRefId() > 0) ? dto.getEmployeeRefId() : null;
+            Integer truckRefId = (dto.getTruckRefid() != null && dto.getTruckRefid() > 0) ? dto.getTruckRefid() : null;
+            Integer driverRefId = (dto.getDriverRefid() != null && dto.getDriverRefid() > 0) ? dto.getDriverRefid() : null;
+            Integer saleMasterRefId = (dto.getSaleMasterRefId() != null && dto.getSaleMasterRefId() > 0) ? dto.getSaleMasterRefId() : null;
 
-            // Step 3: Serialize to JSON with boundindex for SP row numbering
-            String jsonData = wrapDtoWithBoundIndex(billsOrderMasterDto);
-            logger.debug("✓ DTO serialized to JSON with boundindex");
-
-            // Step 3.1: Clean JSON like .NET code does
-            // .NET: details.Replace("\"null\"", "\"\"").Replace("null", "\"\"").Replace("'", "")
-            jsonData = jsonData.replace("\"null\"", "\"\"").replace("null", "\"\"").replace("'", "");
-            logger.debug("JSON after null cleanup: {}", jsonData);
-
-            // Step 4: Execute stored procedure
-            logger.debug("Executing SP_BillsOrderMaster...");
-            BillsOrderMasterResponseDto response = callStoredProcedure(jsonData, companyId);
-
-            // Step 5: Handle response and send notifications
-            // Always log the response details for debugging
-            logger.info("SP Response - result: {}, msg: {}, billNo: {}, id: {}",
-                response.getResult(), response.getMessage(), response.getBillNo(), response.getId());
-
-            if (response.isSuccess()) {
-                logger.info("✓ BillsOrderMaster inserted successfully - ID: {}, BillNo: {}",
-                    response.getId(), response.getBillNo());
-
-                // Send WhatsApp notification for new records
-                if (isNewRecord && whatsAppEnabled) {
-                    try {
-                        whatsAppService.sendBillOrderNotification(
-                            billsOrderMasterDto,
-                            response.getId(),
-                            companyId
-                        );
-                        logger.debug("✓ WhatsApp notification sent");
-                    } catch (Exception ex) {
-                        logger.error("! Failed to send WhatsApp notification", ex);
-                        // Don't fail the entire transaction for notification error
-                    }
+            // Foreign Key Validations
+            if (userRefId != null) {
+                if (!appUserRepository.existsByIdAndCompanyRefIdAndActive(userRefId, companyId, 1)) {
+                    return buildErrorResponse("Login User Not Found Issue id" + userRefId);
                 }
-
-                return response;
-            } else {
-                logger.warn("✗ BillsOrderMaster insert failed - result: {}, msg: {}",
-                    response.getResult(), response.getMessage());
-                return response;
             }
+
+            if (dto.getPaymentTermsRefid() != null && dto.getPaymentTermsRefid() > 0) {
+                if (!paymentTermsMasterRepository.existsByIdAndCompanyRefIdAndActive(dto.getPaymentTermsRefid(), companyId, 1)) {
+                    return buildErrorResponse("Payment Terms Not Found Issue id" + dto.getPaymentTermsRefid());
+                }
+            }
+
+            if (employeeRefId != null) {
+                if (!employeeMasterRepository.existsByIdAndCompanyRefIdAndActive(employeeRefId, companyId, 1)) {
+                    return buildErrorResponse("Employee Not Found Issue id" + employeeRefId);
+                }
+            }
+
+            if (truckRefId != null) {
+                if (!truckMasterRepository.existsByIdAndCompanyRefIdAndActive(truckRefId, companyId, 1)) {
+                    return buildErrorResponse("Truck Not Found Issue id" + truckRefId);
+                }
+            }
+
+            if (driverRefId != null) {
+                if (!driverMasterRepository.existsByIdAndCompanyRefIdAndActive(driverRefId, companyId, 1)) {
+                    return buildErrorResponse("Driver Not Found Issue id" + driverRefId);
+                }
+            }
+
+            boolean isNewRecord = (dto.getId() == null || dto.getId() == 0);
+            BillsOrderMaster masterEntity;
+            String billNoDisplay = "";
+
+            if (!isNewRecord) {
+                // UPDATE Process
+                billsOrderDetailsRepository.deleteByBillsOrderMasterRefId(dto.getId());
+                
+                masterEntity = billsOrderMasterRepository.findById(dto.getId())
+                        .orElseThrow(() -> new IllegalArgumentException("BillsOrderMaster not found for id: " + dto.getId()));
+                
+                masterEntity.setModifiedDate(LocalDateTime.now());
+                masterEntity.setModifiedBy("system");
+            } else {
+                // INSERT Process
+                masterEntity = new BillsOrderMaster();
+                masterEntity.setActive(1);
+                masterEntity.setCreatedDate(LocalDateTime.now());
+                masterEntity.setCreatedBy("system");
+                masterEntity.setModifiedDate(LocalDateTime.now());
+                masterEntity.setModifiedBy("system");
+                masterEntity.setCNumber(0);
+                masterEntity.setCNumberDisplay("");
+            }
+
+            // Map standard fields
+            masterEntity.setCompanyRefId(companyId);
+            masterEntity.setUserRefId(userRefId);
+            masterEntity.setEmployeeRefId(employeeRefId);
+            masterEntity.setLastEmployeeRefId(employeeRefId);
+            masterEntity.setSupplierRefId(dto.getSupplierRefId());
+            masterEntity.setSaleMasterRefId(saleMasterRefId);
+            masterEntity.setFileupload(dto.getFileupload() != null ? dto.getFileupload() : 0);
+            masterEntity.setPaymentTermsRefid(dto.getPaymentTermsRefid());
+            masterEntity.setDescription(dto.getDescription());
+            masterEntity.setSaleDate(dto.getSaleDate() != null ? dto.getSaleDate().atStartOfDay() : LocalDateTime.now());
+            masterEntity.setSaleType(dto.getSaleType() != null ? dto.getSaleType() : "");
+            masterEntity.setCoinage(dto.getCoinage() != null ? dto.getCoinage() : 0.0f);
+            masterEntity.setGrossAmount(dto.getGrossAmount() != null ? dto.getGrossAmount() : 0.0f);
+            masterEntity.setTaxAmount(dto.getTaxAmount() != null ? dto.getTaxAmount() : 0.0f);
+            masterEntity.setDiscountAmount(dto.getDiscountAmount() != null ? dto.getDiscountAmount() : 0.0f);
+            masterEntity.setRemarks(dto.getRemarks());
+            masterEntity.setPlusAmount(dto.getPlusAmount() != null ? dto.getPlusAmount() : 0.0f);
+            masterEntity.setMinusAmount(dto.getMinusAmount() != null ? dto.getMinusAmount() : 0.0f);
+            masterEntity.setAmount(dto.getAmount() != null ? dto.getAmount() : 0.0f);
+            masterEntity.setInvoiceNo(dto.getInvoiceNo());
+            masterEntity.setInvoiceDate(dto.getInvoiceDate() != null ? dto.getInvoiceDate().atStartOfDay() : LocalDateTime.now());
+            masterEntity.setTruckRefid(truckRefId);
+            masterEntity.setDriverRefid(driverRefId);
+            masterEntity.setPStatus(dto.getPStatus() != null ? dto.getPStatus() : 0);
+            masterEntity.setOffVessal(dto.getOffVessal() != null ? dto.getOffVessal() : "");
+            masterEntity.setLodingVessal(dto.getLodingVessal() != null ? dto.getLodingVessal() : "");
+            masterEntity.setCheckloadingVessel(dto.getCheckloadingVessel() != null ? dto.getCheckloadingVessel() : 0);
+            masterEntity.setCheckoffgVessel(dto.getCheckoffgVessel() != null ? dto.getCheckoffgVessel() : 0);
+            
+            masterEntity.setCurrencyValue(dto.getCurrencyValue() != null ? dto.getCurrencyValue() : 0.0f);
+            masterEntity.setActualAmount(dto.getActualAmount() != null ? dto.getActualAmount() : 0.0f);
+            masterEntity.setBillStatus(dto.getBillStatus());
+            masterEntity.setPayTo(dto.getPayTo());
+            masterEntity.setDueDate(dto.getDueDate());
+
+            // Save Master Record
+            masterEntity = billsOrderMasterRepository.save(masterEntity);
+            Integer newMasterId = masterEntity.getId();
+
+            // Insert Details
+            List<BillsOrderDetails> detailsList = new ArrayList<>();
+            for (BillsOrderDetailsInsertDto detailDto : dto.getBillsOrderDetails()) {
+                BillsOrderDetails detail = new BillsOrderDetails();
+                detail.setBillsOrderMasterRefId(newMasterId);
+                detail.setAccountMasterRefId(detailDto.getAccountMasterRefId());
+                detail.setMrp(detailDto.getMrp() != null ? detailDto.getMrp() : 0.0f);
+                detail.setPurchaseRate(detailDto.getPurchaseRate() != null ? detailDto.getPurchaseRate() : 0.0f);
+                detail.setItemQty(detailDto.getItemQty() != null ? detailDto.getItemQty() : 0.0f);
+                detail.setDiscPer(detailDto.getDiscPer() != null ? detailDto.getDiscPer() : 0.0f);
+                detail.setDiscAmount(detailDto.getDiscAmount() != null ? detailDto.getDiscAmount() : 0.0f);
+                detail.setLandingCost(detailDto.getLandingCost() != null ? detailDto.getLandingCost() : 0.0f);
+                detail.setTaxPercent(detailDto.getTaxPercent() != null ? detailDto.getTaxPercent() : 0.0f);
+                detail.setTaxAmount(detailDto.getTaxAmount() != null ? detailDto.getTaxAmount() : 0.0f);
+                detail.setSalesRate(detailDto.getSalesRate() != null ? detailDto.getSalesRate() : 0.0f);
+                detail.setNetSalesRate(detailDto.getNetSalesRate() != null ? detailDto.getNetSalesRate() : 0.0f);
+                detail.setAmount(detailDto.getAmount() != null ? detailDto.getAmount() : 0.0f);
+                detail.setCreatedDate(LocalDateTime.now());
+                detail.setModifiedDate(LocalDateTime.now());
+                detail.setRemarksD(detailDto.getRemarksD());
+                detail.setCurrencyValue(detailDto.getCurrencyValue() != null ? detailDto.getCurrencyValue() : 0.0f);
+                detail.setActualAmount(detailDto.getActualAmount() != null ? detailDto.getActualAmount() : 0.0f);
+                detail.setProductRefId(detailDto.getProductRefId() != null ? detailDto.getProductRefId() : 0);
+                detail.setQuoteValue(detailDto.getQuoteValue() != null ? detailDto.getQuoteValue() : 0.0f);
+                detail.setSerialNo(detailDto.getSerialNo() != null ? detailDto.getSerialNo() : "");
+                
+                detailsList.add(detail);
+            }
+            billsOrderDetailsRepository.saveAll(detailsList);
+
+            // Sequence Number Logic
+            if (isNewRecord) {
+                Integer maxSeq = sequenceNoMasterRepository.findMaxBillsOrderSequenceNo(companyId);
+                Integer newSeq = (maxSeq == null || maxSeq == 0) ? 1 : maxSeq + 1;
+                
+                masterEntity.setCNumber(newSeq);
+                billNoDisplay = String.format("PO%09d", newSeq);
+                masterEntity.setCNumberDisplay(billNoDisplay);
+                
+                billsOrderMasterRepository.save(masterEntity);
+
+                // Update SequenceNoMaster
+                SequenceNoMaster seqMaster = sequenceNoMasterRepository
+                    .findByCompanyRefIdAndSequenceName(companyId, "BillsOrderMaster")
+                    .orElseGet(() -> {
+                        SequenceNoMaster newS = new SequenceNoMaster();
+                        newS.setCompanyRefId(companyId);
+                        newS.setSequenceName("BillsOrderMaster");
+                        return newS;
+                    });
+                seqMaster.setSequenceNo(newSeq);
+                sequenceNoMasterRepository.save(seqMaster);
+
+                // Update SaleOrderMaster Flags
+                updateSaleOrderMasterFlags(dto);
+            } else {
+                billNoDisplay = masterEntity.getCNumberDisplay();
+            }
+
+            // WhatsApp Notification
+            if (isNewRecord && whatsAppEnabled) {
+                try {
+                    whatsAppService.sendBillOrderNotification(dto, newMasterId, companyId);
+                } catch (Exception ex) {
+                    logger.error("! Failed to send WhatsApp notification", ex);
+                }
+            }
+
+            return BillsOrderMasterResponseDto.builder()
+                    .result(1)
+                    .message(isNewRecord ? "Inserted Successfully" : "Updated Successfully")
+                    .billNo(billNoDisplay)
+                    .saleTime(LocalDateTime.now())
+                    .id(newMasterId)
+                    .build();
+
         } catch (IllegalArgumentException ex) {
             logger.error("✗ Validation error: {}", ex.getMessage());
-            return BillsOrderMasterResponseDto.builder()
-                    .result(0)
-                    .message(ex.getMessage())
-                    .build();
+            return buildErrorResponse(ex.getMessage());
         } catch (Exception ex) {
             logger.error("✗ Unexpected error in insertBillsOrderMaster", ex);
-            return BillsOrderMasterResponseDto.builder()
-                    .result(0)
-                    .message("Error: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown error"))
-                    .build();
+            return buildErrorResponse("Error: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
         }
     }
 
-    /**
-     * Validate that all BillsOrderDetails have AccountMasterRefId set
-     * Equivalent to .NET: if (BillsOrderDetails.Where(c => c.AccountMasterRefId == 0).Count() != 0)
-     */
+    private BillsOrderMasterResponseDto buildErrorResponse(String message) {
+        return BillsOrderMasterResponseDto.builder()
+                .result(0)
+                .message(message)
+                .billNo("")
+                .saleTime(LocalDateTime.now())
+                .id(0)
+                .build();
+    }
+
     @Override
     public void validateBillsOrderDetails(BillsOrderMasterInsertDto billsOrderMasterDto) {
         if (billsOrderMasterDto.getBillsOrderDetails() == null ||
@@ -166,28 +298,17 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
         }
     }
 
-    /**
-     * Update SaleOrderMaster flags based on charge description type
-     * Equivalent to .NET if-statements checking Description and SaleMasterRefId
-     *
-     * Maps Description to update SQL queries based on charge type
-     */
-    @Transactional
-    public void updateSaleOrderMasterFlags(BillsOrderMasterInsertDto billsOrderMasterDto) {
-        // Validate prerequisites
-        if (billsOrderMasterDto.getSaleMasterRefId() == null ||
-            billsOrderMasterDto.getSaleMasterRefId() == 0) {
-            logger.debug("No SaleMasterRefId - skipping SaleOrderMaster flag update");
+    public void updateSaleOrderMasterFlags(BillsOrderMasterInsertDto dto) {
+        if (dto.getSaleMasterRefId() == null || dto.getSaleMasterRefId() == 0) {
             return;
         }
 
-        String description = billsOrderMasterDto.getDescription();
+        String description = dto.getDescription();
         if (description == null || description.isEmpty()) {
-            logger.debug("No description - skipping SaleOrderMaster flag update");
             return;
         }
 
-        Integer saleMasterRefId = billsOrderMasterDto.getSaleMasterRefId();
+        Integer saleMasterRefId = dto.getSaleMasterRefId();
         String updateQuery = buildFlagUpdateQuery(description.toUpperCase().trim(), saleMasterRefId);
 
         if (updateQuery != null) {
@@ -196,246 +317,38 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 logger.info("Updated SaleOrderMaster for description '{}': {} rows affected",
                     description, rowsUpdated);
             } catch (Exception ex) {
-                logger.error("Error updating SaleOrderMaster flags for description: {}", description, ex);
-                // Don't throw - this is a secondary operation
+                logger.error("Error updating SaleOrderMaster flags", ex);
             }
         }
     }
 
-    /**
-     * Build the SQL UPDATE query based on charge description type
-     * Equivalent to .NET switch-case statements
-     */
     private String buildFlagUpdateQuery(String description, Integer saleMasterRefId) {
-        String updateQuery = null;
-
         switch (description) {
             case "PORT CHARGES":
-                // .NET code has BOTH updates - PortCPop AND LiveCPop
-                updateQuery = "UPDATE SaleOrderMaster SET PortCPop = 2, LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND (PortCPop = 1 OR LiveCPop = 1)";
-                break;
+                return "UPDATE SaleOrderMaster SET PortCPop = 2, LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND (PortCPop = 1 OR LiveCPop = 1)";
             case "LIVE CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND LiveCPop = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND LiveCPop = 1";
             case "CUSTOM CLEARANCE":
             case "CUSTOMER CLEARANCE":
-                updateQuery = "UPDATE SaleOrderMaster SET ForwardingCPop = 2 WHERE Id = " + saleMasterRefId + " AND ForwardingCPop = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET ForwardingCPop = 2 WHERE Id = " + saleMasterRefId + " AND ForwardingCPop = 1";
             case "BOAT CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET BoatCPop = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET BoatCPop = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop = 1";
             case "PERMIT CHARGES":
             case "INWARD PERMIT CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET PermitCPop = 2 WHERE Id = " + saleMasterRefId + " AND PermitCPop = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET PermitCPop = 2 WHERE Id = " + saleMasterRefId + " AND PermitCPop = 1";
             case "MMHE CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET MMHECPop = 2 WHERE Id = " + saleMasterRefId + " AND MMHECPop = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET MMHECPop = 2 WHERE Id = " + saleMasterRefId + " AND MMHECPop = 1";
             case "AIR FREIGHT EXPORT CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET AFpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND AFpoCPop = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET AFpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND AFpoCPop = 1";
             case "STORAGE FEE":
             case "FREIGHT CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET SFWpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND SFWpoCPop = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET SFWpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND SFWpoCPop = 1";
             case "CRANE & WHARFMARK CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET BoatCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop1 = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET BoatCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop1 = 1";
             case "PFP & PAC CHARGES":
-                updateQuery = "UPDATE SaleOrderMaster SET PFPPCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND PFPPCPop1 = 1";
-                break;
+                return "UPDATE SaleOrderMaster SET PFPPCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND PFPPCPop1 = 1";
             default:
-                logger.debug("No flag update for description: {}", description);
+                return null;
         }
-
-        return updateQuery;
-    }
-
-    /**
-     * Call the stored procedure SP_BillsOrderMaster
-     * Input Parameters:
-     *   @master NVARCHAR(MAX)  - JSON serialized BillsOrderMasterInsertDto with boundindex
-     *   @Comid INT             - Company ID
-     *
-     * Returns result set with columns: Result, msg, BillNo, SaleTime, id
-     */
-    private BillsOrderMasterResponseDto callStoredProcedure(String jsonData, Integer companyId) {
-        logger.info("Calling SP_BillsOrderMaster with JSON: {}", jsonData);
-        try {
-            return jdbcTemplate.execute(new CallableStatementCreator() {
-                @Override
-                public CallableStatement createCallableStatement(Connection con) throws SQLException {
-                    // SP signature: SP_BillsOrderMaster(@master, @Comid)
-                    CallableStatement cs = con.prepareCall("{call SP_BillsOrderMaster(?, ?)}");
-                    cs.setString(1, jsonData);    // @master parameter
-                    cs.setInt(2, companyId);      // @Comid parameter
-                    logger.debug("Executing SP with params - json length: {}, comid: {}", jsonData.length(), companyId);
-                    return cs;
-                }
-            }, cs -> {
-                cs.execute();
-                var resultSet = cs.getResultSet();
-
-                if (resultSet != null && resultSet.next()) {
-                    int result = resultSet.getInt("Result");
-                    String msg = resultSet.getString("msg");
-                    String billNo = resultSet.getString("BillNo");
-                    int id = resultSet.getInt("id");
-
-                    logger.debug("SP Result - result: {}, msg: {}, billNo: {}, id: {}", result, msg, billNo, id);
-
-                    return BillsOrderMasterResponseDto.builder()
-                            .result(result)
-                            .message(msg)
-                            .billNo(billNo)
-                            .saleTime(resultSet.getTimestamp("SaleTime") != null ?
-                                    resultSet.getTimestamp("SaleTime").toLocalDateTime() :
-                                    LocalDateTime.now())
-                            .id(id)
-                            .build();
-                } else {
-                    logger.warn("No result set returned from SP");
-                    return BillsOrderMasterResponseDto.builder()
-                            .result(0)
-                            .message("No result returned from stored procedure")
-                            .build();
-                }
-            });
-        } catch (Exception ex) {
-            logger.error("Error executing SP_BillsOrderMaster", ex);
-            return BillsOrderMasterResponseDto.builder()
-                    .result(0)
-                    .message("Error calling stored procedure: " + ex.getMessage())
-                    .build();
-        }
-    }
-
-    /**
-     * Wrap the DTO with boundindex field required by SP OPENJSON parser
-     * Converts to JSON array format: [{boundindex: 1, ...dto fields, BillsOrderDetails: [...]}]
-     *
-     * CRITICAL: Converts field names to PascalCase to match SQL Server OPENJSON schema
-     * Example: "cNumber" → "CNumber", "pStatus" → "PStatus", "sInvoiceDate" → "SInvoiceDate"
-     *
-     * Also normalizes values:
-     * - Empty strings "" → null for nullable fields
-     * - Empty strings "" → 0 for numeric fields
-     *
-     * The stored procedure expects an array because OPENJSON processes:
-     * SELECT ROW_NUMBER() OVER(ORDER BY SNo) AS tempid ...
-     * FROM OPENJSON(@master) WITH (SNo int '$.boundindex', CNumber int '$.CNumber', ...)
-     *
-     * @param billsOrderMasterDto The DTO to serialize
-     * @return JSON array string ready for stored procedure input
-     * @throws Exception if serialization fails
-     */
-    private String wrapDtoWithBoundIndex(BillsOrderMasterInsertDto billsOrderMasterDto) throws Exception {
-        try {
-            logger.info("Converting BillsOrderMaster DTO to JSON array for SP_BillsOrderMaster");
-
-            // Step 1: Create wrapper object with boundindex
-            com.fasterxml.jackson.databind.node.ObjectNode wrapperNode =
-                objectMapper.createObjectNode();
-
-            // Step 2: Add boundindex (always 1 for single record insert)
-            wrapperNode.put("boundindex", 1);
-
-            // Step 3: Convert DTO to JsonNode first
-            com.fasterxml.jackson.databind.JsonNode dtoNode =
-                objectMapper.convertValue(billsOrderMasterDto, com.fasterxml.jackson.databind.JsonNode.class);
-
-            // Step 4: Create new object with PascalCase fields and normalized values
-            com.fasterxml.jackson.databind.node.ObjectNode normalizedNode =
-                objectMapper.createObjectNode();
-
-            // Copy boundindex
-            normalizedNode.put("boundindex", 1);
-
-            // Step 5: Map camelCase fields to PascalCase with value normalization
-            java.util.Iterator<String> fieldNames = dtoNode.fieldNames();
-            while (fieldNames.hasNext()) {
-                String fieldName = fieldNames.next();
-                com.fasterxml.jackson.databind.JsonNode fieldValue = dtoNode.get(fieldName);
-
-                // Convert field name to PascalCase (capitalize first letter)
-                String pascalCaseField = toPascalCase(fieldName);
-
-                // Normalize value (convert empty strings to null/0)
-                com.fasterxml.jackson.databind.JsonNode normalizedValue = normalizeValue(fieldValue, fieldName);
-
-                // Add to normalized node
-                normalizedNode.set(pascalCaseField, normalizedValue);
-            }
-
-            // Step 6: Create array wrapper
-            com.fasterxml.jackson.databind.node.ArrayNode arrayNode =
-                objectMapper.createArrayNode();
-            arrayNode.add(normalizedNode);
-
-            // Step 7: Serialize and log
-            String jsonArray = objectMapper.writeValueAsString(arrayNode);
-            logger.info("✓ Successfully converted to JSON array ({} characters)", jsonArray.length());
-            logger.debug("✓ Field names converted to PascalCase");
-            logger.debug("✓ Empty strings normalized to null/0");
-            logger.trace("JSON Array for SP: {}", jsonArray);
-
-            return jsonArray;
-
-        } catch (Exception ex) {
-            logger.error("✗ Error wrapping DTO with boundindex: {}", ex.getMessage(), ex);
-            throw new Exception("Failed to serialize BillsOrderMaster DTO to JSON array: " + ex.getMessage(), ex);
-        }
-    }
-
-    /**
-     * Convert camelCase field name to PascalCase
-     * Examples:
-     * - "cNumber" → "CNumber"
-     * - "pStatus" → "PStatus"
-     * - "sInvoiceDate" → "SInvoiceDate"
-     * - "id" → "Id"
-     * - "billsOrderDetails" → "BillsOrderDetails"
-     */
-    private String toPascalCase(String camelCase) {
-        if (camelCase == null || camelCase.isEmpty()) {
-            return camelCase;
-        }
-        // Capitalize first letter
-        return Character.toUpperCase(camelCase.charAt(0)) + camelCase.substring(1);
-    }
-
-    /**
-     * Normalize field values for SQL Server compatibility
-     * - Empty strings → null for string fields
-     * - Empty strings → 0 for numeric fields
-     * - Keep proper values as-is
-     */
-    private com.fasterxml.jackson.databind.JsonNode normalizeValue(
-            com.fasterxml.jackson.databind.JsonNode value, String fieldName) {
-
-        // List of numeric fields that should be 0 if empty
-        String[] numericFields = {
-            "id", "sdId", "companyRefId", "fileupload", "userRefId", "employeeRefId",
-            "supplierRefId", "cNumber", "coinage", "grossAmount", "taxAmount", "discountAmount",
-            "plusAmount", "minusAmount", "amount", "active", "truckRefid", "driverRefid",
-            "saleMasterRefId", "pStatus", "currencyValue", "actualAmount", "paymentTermsRefid",
-            "checkloadingVessel", "checkoffgVessel"
-        };
-
-        // Check if value is empty string
-        if (value != null && value.isTextual() && value.asText().isEmpty()) {
-            // For numeric fields, return 0
-            for (String numField : numericFields) {
-                if (fieldName.equalsIgnoreCase(numField)) {
-                    return objectMapper.valueToTree(0);
-                }
-            }
-            // For string fields, return null
-            return objectMapper.getNodeFactory().nullNode();
-        }
-
-        // Return value as-is if not empty
-        return value;
     }
 }
-

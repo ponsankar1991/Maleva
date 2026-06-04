@@ -1,5 +1,7 @@
 package my.maleva.api.module.expense.controller;
 
+import jakarta.annotation.security.PermitAll;
+import my.maleva.api.common.constant.SecurityConstants;
 import my.maleva.api.module.expense.dto.ExpenseEntryDto;
 import my.maleva.api.module.expense.service.ExpenseEntryService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/expense-entries")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class ExpenseEntryController {
 
     private final ExpenseEntryService service;

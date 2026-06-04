@@ -1,5 +1,7 @@
 package my.maleva.api.module.filehandling.controller;
 
+import jakarta.annotation.security.PermitAll;
+import my.maleva.api.common.constant.SecurityConstants;
 import my.maleva.api.module.filehandling.dto.FileUploadResponseDto;
 import my.maleva.api.module.filehandling.service.FileUploadService;
 import org.springframework.http.HttpStatus;
@@ -15,7 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/file-uploads")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class FileUploadController {
 
     private final FileUploadService fileUploadService;

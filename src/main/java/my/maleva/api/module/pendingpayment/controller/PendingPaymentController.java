@@ -4,8 +4,10 @@ import my.maleva.api.module.pendingpayment.dto.PendingPaymentDto;
 import my.maleva.api.module.pendingpayment.service.PendingPaymentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -14,7 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pending-payments")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll 
 public class PendingPaymentController {
 
     private final PendingPaymentService service;
@@ -50,3 +52,4 @@ public class PendingPaymentController {
         return ResponseEntity.noContent().build();
     }
 }
+

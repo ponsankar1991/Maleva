@@ -18,4 +18,5 @@ import org.springframework.stereotype.Repository;
 public interface PaymentTermsMasterRepository extends JpaRepository<PaymentTermsMaster, Integer> {
     // Standard JpaRepository methods are sufficient
     // No custom queries needed
+    boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
 }

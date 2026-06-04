@@ -1,5 +1,6 @@
 package my.maleva.api.module.paymentrecept.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.paymentrecept.dto.ReceiptDetailsDto;
 import my.maleva.api.module.paymentrecept.service.ReceiptDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ public class ReceiptDetailsController {
      * GET /api/receipt-details/receipt/{receiptRefId}
      */
     @GetMapping("/receipt/{receiptRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDetailsDto>> getByReceiptId(
             @PathVariable Integer receiptRefId) {
         logger.info("Fetching ReceiptDetails for Receipt: {}", receiptRefId);
@@ -46,7 +47,7 @@ public class ReceiptDetailsController {
      * GET /api/receipt-details/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching ReceiptDetails by ID: {}", id);
         Optional<ReceiptDetailsDto> record = receiptDetailsService.getById(id);
@@ -64,7 +65,7 @@ public class ReceiptDetailsController {
      * POST /api/receipt-details
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody ReceiptDetailsDto dto) {
         logger.info("Creating new ReceiptDetails for Receipt: {}", dto.getReceiptRefId());
 
@@ -83,7 +84,7 @@ public class ReceiptDetailsController {
      * PUT /api/receipt-details/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(
             @PathVariable Integer id,
             @Valid @RequestBody ReceiptDetailsDto dto) {
@@ -108,7 +109,7 @@ public class ReceiptDetailsController {
      * DELETE /api/receipt-details/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting ReceiptDetails with ID: {}", id);
 
@@ -132,7 +133,7 @@ public class ReceiptDetailsController {
      * GET /api/receipt-details/sale-master/{saleMasterRefId}
      */
     @GetMapping("/sale-master/{saleMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDetailsDto>> getBySaleMasterId(
             @PathVariable Integer saleMasterRefId) {
         logger.info("Fetching ReceiptDetails by sale master: {}", saleMasterRefId);
@@ -145,7 +146,7 @@ public class ReceiptDetailsController {
      * GET /api/receipt-details/customer-open/{customerOpenRefId}
      */
     @GetMapping("/customer-open/{customerOpenRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDetailsDto>> getByCustomerOpenId(
             @PathVariable Integer customerOpenRefId) {
         logger.info("Fetching ReceiptDetails by customer open: {}", customerOpenRefId);
@@ -158,7 +159,7 @@ public class ReceiptDetailsController {
      * GET /api/receipt-details/receipt/{receiptRefId}/count
      */
     @GetMapping("/receipt/{receiptRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByReceiptId(
             @PathVariable Integer receiptRefId) {
         logger.info("Counting ReceiptDetails for Receipt: {}", receiptRefId);
@@ -171,7 +172,7 @@ public class ReceiptDetailsController {
      * DELETE /api/receipt-details/receipt/{receiptRefId}
      */
     @DeleteMapping("/receipt/{receiptRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deleteByReceiptId(
             @PathVariable Integer receiptRefId) {
         logger.info("Deleting all ReceiptDetails for Receipt: {}", receiptRefId);
@@ -186,4 +187,5 @@ public class ReceiptDetailsController {
         }
     }
 }
+
 

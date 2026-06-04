@@ -1,5 +1,6 @@
 package my.maleva.api.module.fleet.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.fleet.dto.TollEntryDto;
 import my.maleva.api.module.fleet.dto.TollEntryDetailsDto;
 import my.maleva.api.module.fleet.service.TollEntryService;
@@ -20,7 +21,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/toll-entries")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class TollEntryController {
 
     private static final Logger logger = LoggerFactory.getLogger(TollEntryController.class);

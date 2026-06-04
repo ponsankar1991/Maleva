@@ -97,4 +97,6 @@ public interface TruckMasterRepository extends JpaRepository<TruckMaster, Intege
     List<ComboListModel> getTruckComboByType(
         @Param("companyId") Integer companyId,
         @Param("truckType") String truckType);
+
+    boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
 }

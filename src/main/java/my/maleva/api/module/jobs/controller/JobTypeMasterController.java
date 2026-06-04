@@ -1,5 +1,6 @@
 package my.maleva.api.module.jobs.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.jobs.dto.JobTypeMasterDto;
 import my.maleva.api.module.jobs.dto.JobTypeAllDataDto;
@@ -7,7 +8,6 @@ import my.maleva.api.module.jobs.service.JobTypeMasterService;
 import my.maleva.api.module.jobs.service.JobTypeAllDataService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +23,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/job-type-master")
 @Validated
-@PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN')")
+
+@PermitAll
 public class JobTypeMasterController {
 
     private final JobTypeMasterService service;

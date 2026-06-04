@@ -10,4 +10,5 @@ import java.util.List;
 public interface DriverMasterRepository extends JpaRepository<DriverMaster, Integer> {
     List<DriverMaster> findByCompanyRefId(Integer companyRefId);
     List<DriverMaster> findByAccountRefid(Integer accountRefid);
+    boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
 }

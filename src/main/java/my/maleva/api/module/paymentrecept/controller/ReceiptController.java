@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDto>> getAllByCompanyId(
             @PathVariable Integer companyRefId) {
         logger.info("Fetching all Receipt records for company: {}", companyRefId);
@@ -48,7 +49,7 @@ public class ReceiptController {
      * GET /api/receipts/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching Receipt by ID: {}", id);
         Optional<ReceiptDto> record = receiptService.getById(id);
@@ -66,7 +67,7 @@ public class ReceiptController {
      * POST /api/receipts
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody ReceiptDto dto) {
         logger.info("Creating new Receipt for company: {}", dto.getCompanyRefId());
 
@@ -85,7 +86,7 @@ public class ReceiptController {
      * PUT /api/receipts/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(
             @PathVariable Integer id,
             @Valid @RequestBody ReceiptDto dto) {
@@ -110,7 +111,7 @@ public class ReceiptController {
      * DELETE /api/receipts/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting Receipt with ID: {}", id);
 
@@ -134,7 +135,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/customer/{customerRefId}
      */
     @GetMapping("/company/{companyRefId}/customer/{customerRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDto>> getByCustomer(
             @PathVariable Integer companyRefId,
             @PathVariable Integer customerRefId) {
@@ -148,7 +149,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/bank/{bankRefId}
      */
     @GetMapping("/company/{companyRefId}/bank/{bankRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDto>> getByBank(
             @PathVariable Integer companyRefId,
             @PathVariable Integer bankRefId) {
@@ -162,7 +163,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/cnumber/{cNumber}
      */
     @GetMapping("/company/{companyRefId}/cnumber/{cNumber}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByCNumber(
             @PathVariable Integer companyRefId,
             @PathVariable Integer cNumber) {
@@ -192,7 +193,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/date-range?startDate=2026-02-01T00:00:00&endDate=2026-02-28T23:59:59
      */
     @GetMapping("/company/{companyRefId}/date-range")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDto>> getByDateRange(
             @PathVariable Integer companyRefId,
             @RequestParam String startDate,
@@ -210,7 +211,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/ref-number/{refNumber}
      */
     @GetMapping("/company/{companyRefId}/ref-number/{refNumber}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByRefNumber(
             @PathVariable Integer companyRefId,
             @PathVariable String refNumber) {
@@ -229,7 +230,7 @@ public class ReceiptController {
      * GET /api/receipts/cnumber-display/{cNumberDisplay}
      */
     @GetMapping("/cnumber-display/{cNumberDisplay}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByCNumberDisplay(@PathVariable String cNumberDisplay) {
         logger.info("Fetching Receipt by CNumberDisplay: {}", cNumberDisplay);
         Optional<ReceiptDto> record = receiptService.getByCNumberDisplay(cNumberDisplay);
@@ -246,7 +247,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/pv-status/{pvStatus}
      */
     @GetMapping("/company/{companyRefId}/pv-status/{pvStatus}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ReceiptDto>> getByPvStatus(
             @PathVariable Integer companyRefId,
             @PathVariable Integer pvStatus) {
@@ -260,7 +261,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/count
      */
     @GetMapping("/company/{companyRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting Receipt records for company: {}", companyRefId);
         long count = receiptService.countByCompanyId(companyRefId);
@@ -272,7 +273,7 @@ public class ReceiptController {
      * GET /api/receipts/company/{companyRefId}/count/pv-status/{pvStatus}
      */
     @GetMapping("/company/{companyRefId}/count/pv-status/{pvStatus}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByPvStatus(
             @PathVariable Integer companyRefId,
             @PathVariable Integer pvStatus) {
@@ -286,7 +287,7 @@ public class ReceiptController {
      * POST /api/receipts/{id}/change-status
      */
     @PostMapping("/{id}/change-status")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> changeStatus(
             @PathVariable Integer id,
             @RequestParam Integer pvStatus) {
@@ -306,4 +307,5 @@ public class ReceiptController {
         }
     }
 }
+
 

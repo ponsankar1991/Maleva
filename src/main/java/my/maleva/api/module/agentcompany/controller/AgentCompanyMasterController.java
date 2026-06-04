@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 
 import java.util.List;
 
@@ -45,7 +46,7 @@ public class AgentCompanyMasterController {
      * GET /api/agent-companies
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<AgentCompanyMasterDTO>>> listAll() {
         try {
             List<AgentCompanyMasterDTO> data = service.getAllAgentCompanies();
@@ -68,7 +69,7 @@ public class AgentCompanyMasterController {
      * GET /api/agent-companies/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<AgentCompanyMasterDTO>> getById(@PathVariable Long id) {
         try {
             AgentCompanyMasterDTO data = service.getAgentCompanyById(id);
@@ -91,7 +92,7 @@ public class AgentCompanyMasterController {
      * @param companyRefId The company reference ID
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<AgentCompanyMasterDTO>>> getByCompanyRefId(
             @PathVariable Integer companyRefId) {
         try {
@@ -123,7 +124,7 @@ public class AgentCompanyMasterController {
      * @param requestDto The request DTO with agent company data
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<AgentCompanyMasterDTO>> create(
             @RequestBody AgentCompanyRequestDTO requestDto) {
         try {
@@ -156,7 +157,7 @@ public class AgentCompanyMasterController {
      * @param requestDto The request DTO with updated data
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<AgentCompanyMasterDTO>> update(
             @PathVariable Long id,
             @RequestBody AgentCompanyRequestDTO requestDto) {
@@ -192,7 +193,7 @@ public class AgentCompanyMasterController {
      * @param id The agent company ID
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         try {
             service.deleteAgentCompany(id);
@@ -218,7 +219,7 @@ public class AgentCompanyMasterController {
      * @param dtos List of agent companies to upsert
      */
     @PostMapping("/upsert")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<AgentCompanyMasterDTO>>> upsert(
             @RequestParam("companyRefId") Integer companyRefId,
             @RequestBody List<AgentCompanyRequestDTO> dtos) {
@@ -268,7 +269,7 @@ public class AgentCompanyMasterController {
      * @param companyRefId The company reference ID
      */
     @PostMapping("/search")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<AgentCompanyMasterDTO>>> search(
             @RequestParam("companyRefId") Integer companyRefId) {
         try {
@@ -294,3 +295,5 @@ public class AgentCompanyMasterController {
         }
     }
 }
+
+

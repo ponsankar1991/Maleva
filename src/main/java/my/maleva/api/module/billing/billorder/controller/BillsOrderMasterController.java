@@ -1,5 +1,7 @@
 package my.maleva.api.module.billing.billorder.controller;
 
+import jakarta.annotation.security.PermitAll;
+import my.maleva.api.common.constant.SecurityConstants;
 import my.maleva.api.module.billing.billorder.dto.BillsOrderMasterDto;
 import my.maleva.api.module.billing.billorder.dto.BillsOrderF5ViewDto;
 import my.maleva.api.module.billing.billorder.dto.PaymentVoucherComboDto;
@@ -27,7 +29,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/bills-order")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class BillsOrderMasterController {
 
 	private static final Logger logger = LoggerFactory.getLogger(BillsOrderMasterController.class);
@@ -63,9 +65,7 @@ public class BillsOrderMasterController {
 	 * @return Response with operation result and generated bill number
 	 */
 	@PostMapping("/insert")
-	public ResponseEntity<Map<String, Object>> insertBillsOrderMaster(
-			@Valid @RequestBody BillsOrderMasterInsertDto billsOrderMasterDto,
-			@RequestHeader(value = "Comid", required = false) Integer comid) {
+	public ResponseEntity<Map<String, Object>> insertBillsOrderMaster(@Valid @RequestBody BillsOrderMasterInsertDto billsOrderMasterDto, @RequestHeader(value = "Comid", required = false) Integer comid) {
 		try {
 			// Validate Comid
 			if (comid == null || comid <= 0) {
@@ -79,8 +79,7 @@ public class BillsOrderMasterController {
 			logger.info("Inserting BillsOrderMaster for Company: {}", comid);
 
 			// Call service
-			BillsOrderMasterResponseDto response = billsOrderMasterInsertService
-					.insertBillsOrderMaster(billsOrderMasterDto, comid);
+			BillsOrderMasterResponseDto response = billsOrderMasterInsertService.insertBillsOrderMaster(billsOrderMasterDto, comid);
 
 			// Build response
 			if (response.isSuccess()) {

@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderMasterDto>> getAllByCompanyId(
             @PathVariable Integer companyRefId) {
         logger.info("Fetching all PurchaseOrderMaster records for company: {}", companyRefId);
@@ -50,7 +51,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/active
      */
     @GetMapping("/company/{companyRefId}/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderMasterDto>> getActiveByCompanyId(
             @PathVariable Integer companyRefId) {
         logger.info("Fetching active PurchaseOrderMaster records for company: {}", companyRefId);
@@ -63,7 +64,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching PurchaseOrderMaster by ID: {}", id);
         Optional<PurchaseOrderMasterDto> record = purchaseOrderMasterService.getById(id);
@@ -81,7 +82,7 @@ public class PurchaseOrderMasterController {
      * POST /api/purchase-orders
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody PurchaseOrderMasterDto dto) {
         logger.info("Creating new PurchaseOrderMaster for company: {}", dto.getCompanyRefId());
 
@@ -100,7 +101,7 @@ public class PurchaseOrderMasterController {
      * PUT /api/purchase-orders/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(
             @PathVariable Integer id,
             @Valid @RequestBody PurchaseOrderMasterDto dto) {
@@ -125,7 +126,7 @@ public class PurchaseOrderMasterController {
      * DELETE /api/purchase-orders/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting PurchaseOrderMaster with ID: {}", id);
 
@@ -149,7 +150,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/invoice/{invoiceNo}
      */
     @GetMapping("/company/{companyRefId}/invoice/{invoiceNo}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByInvoiceNo(
             @PathVariable Integer companyRefId,
             @PathVariable String invoiceNo) {
@@ -179,7 +180,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/supplier/{supplierRefId}
      */
     @GetMapping("/company/{companyRefId}/supplier/{supplierRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderMasterDto>> getBySupplier(
             @PathVariable Integer companyRefId,
             @PathVariable Integer supplierRefId) {
@@ -193,7 +194,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/sale-type/{saleType}
      */
     @GetMapping("/company/{companyRefId}/sale-type/{saleType}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderMasterDto>> getBySaleType(
             @PathVariable Integer companyRefId,
             @PathVariable String saleType) {
@@ -207,7 +208,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/date-range?startDate=2026-01-01&endDate=2026-02-28
      */
     @GetMapping("/company/{companyRefId}/date-range")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderMasterDto>> getByDateRange(
             @PathVariable Integer companyRefId,
             @RequestParam LocalDate startDate,
@@ -222,7 +223,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/employee/{employeeRefId}
      */
     @GetMapping("/company/{companyRefId}/employee/{employeeRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderMasterDto>> getByEmployee(
             @PathVariable Integer companyRefId,
             @PathVariable Integer employeeRefId) {
@@ -236,7 +237,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/cnumber/{cNumber}
      */
     @GetMapping("/company/{companyRefId}/cnumber/{cNumber}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByCNumber(
             @PathVariable Integer companyRefId,
             @PathVariable Integer cNumber) {
@@ -266,7 +267,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/count
      */
     @GetMapping("/company/{companyRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting PurchaseOrderMaster records for company: {}", companyRefId);
         long count = purchaseOrderMasterService.countByCompanyId(companyRefId);
@@ -278,7 +279,7 @@ public class PurchaseOrderMasterController {
      * GET /api/purchase-orders/company/{companyRefId}/count/active
      */
     @GetMapping("/company/{companyRefId}/count/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting active PurchaseOrderMaster records for company: {}", companyRefId);
         long count = purchaseOrderMasterService.countActiveByCompanyId(companyRefId);
@@ -290,7 +291,7 @@ public class PurchaseOrderMasterController {
      * POST /api/purchase-orders/{id}/activate
      */
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> activate(@PathVariable Integer id) {
         logger.info("Activating PurchaseOrderMaster with ID: {}", id);
 
@@ -313,7 +314,7 @@ public class PurchaseOrderMasterController {
      * POST /api/purchase-orders/{id}/deactivate
      */
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deactivate(@PathVariable Integer id) {
         logger.info("Deactivating PurchaseOrderMaster with ID: {}", id);
 
@@ -340,7 +341,7 @@ public class PurchaseOrderMasterController {
      * Only returns records with pStatus = 0 (unprocessed).
      */
     @PostMapping("/edit")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> editPurchaseOrderMaster(@Valid @RequestBody EditPurchaseOrderMasterRequestDto request) {
         logger.info("EditPurchaseOrderMaster request - Company: {}, ID: {}, CNumber: {}",
                 request.getCompanyId(), request.getId(), request.getPurchaseOrderMasterNo());
@@ -364,3 +365,4 @@ public class PurchaseOrderMasterController {
         }
     }
 }
+

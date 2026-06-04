@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 
 /**
  * SaleOrderMasterController - REST Controller for SaleOrderMaster API
@@ -29,7 +30,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Validated
 @RequestMapping("/api/sale-orders")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class SaleOrderMasterController {
 
     private static final Logger logger = LoggerFactory.getLogger(SaleOrderMasterController.class);
@@ -53,9 +54,7 @@ public class SaleOrderMasterController {
             @RequestParam Integer companyId) {
         logger.info("Edit SaleOrder request received - id: {}, saleOrderNo: {}, companyId: {}",
                 id, saleOrderNo, companyId);
-        return ResponseEntity.ok(ApiResponse.success(
-                service.getEditSaleOrder(id, saleOrderNo, companyId),
-                SaleOrderApiConstants.MESSAGE_SELECT_SUCCESS
+        return ResponseEntity.ok(ApiResponse.success(service.getEditSaleOrder(id, saleOrderNo, companyId), SaleOrderApiConstants.MESSAGE_SELECT_SUCCESS
         ));
     }
 
@@ -264,3 +263,4 @@ public class SaleOrderMasterController {
         }
     }
 }
+

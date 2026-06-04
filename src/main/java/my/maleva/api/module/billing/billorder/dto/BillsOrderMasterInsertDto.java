@@ -25,18 +25,18 @@ public class BillsOrderMasterInsertDto implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private Integer id;
+    private Integer id = 0;
 
-    private Integer sdId;
+    private Integer sdId = 0;
 
     @Min(value = 0, message = "Company ID must be positive")
     private Integer companyRefId;
 
-    private Integer fileupload;
+    private Integer fileupload = 0;
 
-    private Integer userRefId;
+    private Integer userRefId = 0;
 
-    private Integer employeeRefId;
+    private Integer employeeRefId = 0;
 
     @NotBlank(message = "Invoice No is required")
     @Size(max = 100, message = "Invoice No cannot exceed 100 characters")
@@ -46,7 +46,7 @@ public class BillsOrderMasterInsertDto implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd", shape = JsonFormat.Shape.STRING)
     private LocalDate invoiceDate;
 
-    private String sInvoiceDate;
+    private String sInvoiceDate = "";
 
     @NotNull(message = "Supplier ID is required")
     @Min(value = 1, message = "Supplier ID must be positive")
@@ -56,18 +56,18 @@ public class BillsOrderMasterInsertDto implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd", shape = JsonFormat.Shape.STRING)
     private LocalDate saleDate;
 
-    private String sSaleDate;
+    private String sSaleDate = "";
 
     @NotBlank(message = "Sale Type is required")
     @Size(max = 50, message = "Sale Type cannot exceed 50 characters")
     private String saleType;
 
-    private String cNumberDisplay;
+    private String cNumberDisplay = "";
 
-    private Integer cNumber;
+    private Integer cNumber = 0;
 
     @DecimalMax(value = "999999999.99", message = "Coinage amount is too large")
-    private Float coinage;
+    private Float coinage = 0.0f;
 
     @NotNull(message = "Gross Amount is required")
     @DecimalMin(value = "0.0", message = "Gross Amount must be positive")
@@ -78,20 +78,20 @@ public class BillsOrderMasterInsertDto implements Serializable {
     private Float taxAmount;
 
     @DecimalMin(value = "0.0", message = "Discount Amount must be positive")
-    private Float discountAmount;
+    private Float discountAmount = 0.0f;
 
     @Size(max = 300, message = "Remarks cannot exceed 300 characters")
     private String remarks;
 
-    private String offVessal;
+    private String offVessal = "";
 
-    private String lodingVessal;
+    private String lodingVessal = "";
 
     @DecimalMin(value = "0.0", message = "Plus Amount must be positive")
-    private Float plusAmount;
+    private Float plusAmount = 0.0f;
 
     @DecimalMin(value = "0.0", message = "Minus Amount must be positive")
-    private Float minusAmount;
+    private Float minusAmount = 0.0f;
 
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.0", message = "Amount must be positive")
@@ -107,22 +107,22 @@ public class BillsOrderMasterInsertDto implements Serializable {
 
     private String modified_By;
 
-    private Integer truckRefid;
+    private Integer truckRefid = 0;
 
-    private Integer driverRefid;
+    private Integer driverRefid = 0;
 
-    private Integer saleMasterRefId;
+    private Integer saleMasterRefId = 0;
 
     @Size(max = 50, message = "Job No cannot exceed 50 characters")
     private String jobNo;
 
-    private Integer pStatus;
+    private Integer pStatus = 0;  // Default: 0 (pending status)
 
     @DecimalMin(value = "0.0", message = "Currency Value must be positive")
-    private Float currencyValue;
+    private Float currencyValue = 0.0f;
 
     @DecimalMin(value = "0.0", message = "Actual Amount must be positive")
-    private Float actualAmount;
+    private Float actualAmount = 0.0f;
 
     @Size(max = 50, message = "Description cannot exceed 50 characters")
     private String description;
@@ -133,11 +133,11 @@ public class BillsOrderMasterInsertDto implements Serializable {
     @Size(max = 50, message = "Pay To cannot exceed 50 characters")
     private String payTo;
 
-    private Integer paymentTermsRefid;
+    private Integer paymentTermsRefid = 0;
 
-    private Integer checkloadingVessel;
+    private Integer checkloadingVessel = 0;
 
-    private Integer checkoffgVessel;
+    private Integer checkoffgVessel = 0;
 
     @JsonFormat(pattern = "yyyy-MM-dd", shape = JsonFormat.Shape.STRING)
     private LocalDate dueDate;

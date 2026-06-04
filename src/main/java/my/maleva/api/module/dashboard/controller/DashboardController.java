@@ -8,7 +8,9 @@ import my.maleva.api.module.dashboard.service.DashboardService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,7 +36,7 @@ public class DashboardController {
      * @param type  0=Invoice, 1=SaleOrder, 2=Partial, 3=Pending
      */
     @GetMapping("/sales/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<SalesDataDto>> getSalesData(
             @PathVariable Integer comId,
             @RequestParam(defaultValue = "0") Integer type) {
@@ -66,7 +68,7 @@ public class DashboardController {
      * @param type  0-44 (date range × filter combinations)
      */
     @GetMapping("/employee-sales/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<EmployeeSalesDto.EmployeeSalesItemDto>>> getEmployeeSales(
             @PathVariable Integer comId,
             @RequestParam(defaultValue = "0") Integer type) {
@@ -80,7 +82,7 @@ public class DashboardController {
      * Get employee invoice data
      */
     @GetMapping("/employee-invoice/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+@PermitAll
     public ResponseEntity<ApiResponse<List<EmployeeSalesDto.EmployeeSalesItemDto>>> getEmployeeInvoiceData(
             @PathVariable Integer comId,
             @RequestParam(defaultValue = "0") Integer type) {
@@ -100,7 +102,7 @@ public class DashboardController {
      * @param toDate   End date (yyyy-MM-dd)
      */
     @GetMapping("/expense/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<ExpenseDataDto>> getExpenseData(
             @PathVariable Integer comId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -115,7 +117,7 @@ public class DashboardController {
      * Get expense breakdown by name
      */
     @GetMapping("/expense-name/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<ExpenseNameDto.ExpenseNameItemDto>>> getExpenseByName(
             @PathVariable Integer comId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -132,7 +134,7 @@ public class DashboardController {
      * Get supplier expenses
      */
     @GetMapping("/supplier-expense/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<SupplierExpenseDto.SupplierExpenseItemDto>>> getSupplierExpense(
             @PathVariable Integer comId) {
 
@@ -147,7 +149,7 @@ public class DashboardController {
      * Get forwarding data (K1/K2/K3/K8 counts and release status)
      */
     @GetMapping("/forwarding/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<ForwardingDataDto>> getForwardingData(
             @PathVariable Integer comId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -164,7 +166,7 @@ public class DashboardController {
      * Get sales order status breakdown
      */
     @GetMapping("/sales-order-status/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<SalesOrderStatusDto.SalesOrderStatusItemDto>>> getSalesOrderStatus(
             @PathVariable Integer comId,
             @RequestParam(required = false) Integer employeeId) {
@@ -179,7 +181,7 @@ public class DashboardController {
      * Get employee rules (subordinates)
      */
     @GetMapping("/employee-rules/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<Object>>> getEmployeeRules(
             @PathVariable Integer comId,
             @RequestParam(required = false) Integer employeeId) {
@@ -193,7 +195,7 @@ public class DashboardController {
      * Get employee performance (pivot table)
      */
     @GetMapping("/employee-performance/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<EmployeePerformanceDto.EmployeePerformanceItemDto>>> getEmployeePerformance(
             @PathVariable Integer comId,
             @RequestParam(required = false) Integer employeeId) {
@@ -208,7 +210,7 @@ public class DashboardController {
      * Get weekly report
      */
     @GetMapping("/weekly-report/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<WeeklyReportDto.WeeklyReportItemDto>>> getWeeklyReport(
             @PathVariable Integer comId,
             @RequestParam(required = false) Integer employeeId) {
@@ -222,7 +224,7 @@ public class DashboardController {
      * Get monthly sale by employee
      */
     @GetMapping("/monthly-sale/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<MonthlySaleDto.MonthlySaleItemDto>>> getMonthlySale(
             @PathVariable Integer comId,
             @RequestParam(required = false) Integer employeeId) {
@@ -237,7 +239,7 @@ public class DashboardController {
      * Shows which employees generated the most sales in the current month
      */
     @GetMapping("/employee-sales-current-month/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<EmployeeWiseSalesDto.EmployeeWiseSalesListDto>> getEmployeeWiseSalesCurrentMonth(
             @PathVariable Integer comId,
             @RequestParam(required = false) String baseDate) {
@@ -281,7 +283,7 @@ public class DashboardController {
      * Get pending payments
      */
     @GetMapping("/pending-payment/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<PendingPaymentDto.PendingPaymentItemDto>>> getPendingPayments(
             @PathVariable Integer comId,
             @RequestParam(required = false, defaultValue = "") String dueDate) {
@@ -296,7 +298,7 @@ public class DashboardController {
      * Get completed payments
      */
     @GetMapping("/completed-payment/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<PendingPaymentDto.CompletedPaymentDto>>> getCompletedPayments(
             @PathVariable Integer comId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -312,7 +314,7 @@ public class DashboardController {
      * Get unreleased forwarding numbers
      */
     @GetMapping("/unreleased/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<PendingPaymentDto.UnreleasedNumberDto>>> getUnreleasedNumbers(
             @PathVariable Integer comId) {
 
@@ -325,7 +327,7 @@ public class DashboardController {
      * Get K8 unreleased forwarding numbers
      */
     @GetMapping("/k8-unreleased/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<PendingPaymentDto.UnreleasedNumberDto>>> getK8UnreleasedNumbers(
             @PathVariable Integer comId) {
 
@@ -340,7 +342,7 @@ public class DashboardController {
      * Check sale invoices
      */
     @PostMapping("/invoice-check/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<InvoiceCheckDto.InvoiceCheckItemDto>>> checkSaleInvoices(
             @PathVariable Integer comId,
             @RequestParam(required = false, defaultValue = "0") Integer invoiceType,
@@ -360,8 +362,9 @@ public class DashboardController {
      * Get vessel planning data
      * etaType: 1=OETA, 2=ETA, 3=Both, 5=FlightTime
      */
+
     @PostMapping("/vessel-planning/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<VesselPlanningDashboardModel>>> getVesselPlanningData(
             @PathVariable Integer comId,
             @RequestBody VesselPlanningSearchModel searchModel) {
@@ -376,7 +379,7 @@ public class DashboardController {
      * Get air freight data
      */
     @PostMapping("/air-freight/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<VesselPlanningDashboardModel>>> getAirFreightData(
             @PathVariable Integer comId,
             @RequestBody VesselPlanningSearchModel searchModel) {
@@ -391,7 +394,7 @@ public class DashboardController {
      * Check sale invoice count
      */
     @PostMapping("/check-invoice-count/{comId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+    @PermitAll
     public ResponseEntity<ApiResponse<List<SaleOrderInvoiceCheckModel>>> checkSaleInvoiceCount(
             @PathVariable Integer comId,
             @RequestBody F5ViewModel searchModel) {
@@ -405,13 +408,13 @@ public class DashboardController {
     // ========== ADMIN DASHBOARD (EXISTING) ==========
 
     @GetMapping("/admin")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<DashboardDataDto> getAdminDashboard() {
         return ResponseEntity.ok(dashboardService.getAdminDashboardData());
     }
 
     @GetMapping("/super-admin")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<DashboardDataDto> getSuperAdminDashboard() {
         return ResponseEntity.ok(dashboardService.getSuperAdminDashboardData());
     }
@@ -452,7 +455,7 @@ public class DashboardController {
      * @return Top performers with monthly comparison and growth metrics
      */
     @GetMapping("/top-performers/{comId}")
-    @PreAuthorize("permitAll()")
+    @PermitAll
     public ResponseEntity<ApiResponse<TopPerformerDto.TopPerformersResponseDto>> getTopPerformers(
             @PathVariable Integer comId,
             @RequestParam(required = false) String baseDate) {
@@ -489,3 +492,4 @@ public class DashboardController {
         }
     }
 }
+

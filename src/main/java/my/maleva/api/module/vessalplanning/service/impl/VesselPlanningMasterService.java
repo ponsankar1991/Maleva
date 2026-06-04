@@ -249,6 +249,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             throw new InvalidRequestException("fromdate must be less than or equal to todate");
         }
 
+
         int etaType = filter.getEtaType() != null ? filter.getEtaType() : 0;
         String detaExpr = etaType == 1 ? "S.OETA" : etaType == 2 ? "S.ETA" : "ISNULL(S.ETA,S.OETA)";
 
@@ -343,11 +344,19 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             params.addValue("employeeId", filter.getEmployeeid());
         }
 
+        if (filter.isDeliveryDone()){
+
+            sql.append("AND J.Name NOT IN ('DELIVERY DONE','WAITING FOR POD','WAITING FOR BILLING','JOB COMPLET','Z-CANCEL')" );
+
+        }
+
         List<String> ports = splitCsv(trimToNull(filter.getSearch()));
         if (!ports.isEmpty()) {
             sql.append(" AND (S.SPort IN (:ports) OR S.OPort IN (:ports))");
             params.addValue("ports", ports);
         }
+        
+
 
         if (etaType == 1) {
             sql.append(" AND CAST(S.OETA as DATE) BETWEEN :fromDate AND :toDate");

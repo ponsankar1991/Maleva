@@ -1,5 +1,6 @@
 package my.maleva.api.module.qutation.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.qutation.dto.CustomerQuotationDetailsDto;
 import my.maleva.api.module.qutation.service.CustomerQuotationDetailsService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/customer-quotation-details")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class CustomerQuotationDetailsController {
 
     private final CustomerQuotationDetailsService service;

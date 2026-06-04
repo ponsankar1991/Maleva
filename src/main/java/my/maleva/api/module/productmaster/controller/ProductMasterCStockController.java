@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,7 @@ public class ProductMasterCStockController {
      * Get all CStock records by company ID
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterCStockDto>> getAllByCompanyId(
             @PathVariable Integer companyRefId) {
         logger.info("Fetching all CStock records for company: {}", companyRefId);
@@ -44,7 +45,7 @@ public class ProductMasterCStockController {
      * Get all CStock records by product ID
      */
     @GetMapping("/product/{productRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterCStockDto>> getAllByProductId(
             @PathVariable Integer productRefId) {
         logger.info("Fetching all CStock records for product: {}", productRefId);
@@ -56,7 +57,7 @@ public class ProductMasterCStockController {
      * Get CStock by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching CStock by ID: {}", id);
         Optional<ProductMasterCStockDto> record = cstockService.getById(id);
@@ -73,7 +74,7 @@ public class ProductMasterCStockController {
      * Get CStock by company and product
      */
     @GetMapping("/company/{companyRefId}/product/{productRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterCStockDto>> getByCompanyAndProduct(
             @PathVariable Integer companyRefId,
             @PathVariable Integer productRefId) {
@@ -86,7 +87,7 @@ public class ProductMasterCStockController {
      * Create new CStock record
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody ProductMasterCStockDto dto) {
         logger.info("Creating new CStock for product: {}", dto.getProductRefId());
 
@@ -104,7 +105,7 @@ public class ProductMasterCStockController {
      * Update CStock record
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(
             @PathVariable Integer id,
             @Valid @RequestBody ProductMasterCStockDto dto) {
@@ -124,7 +125,7 @@ public class ProductMasterCStockController {
      * Delete CStock record
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting CStock with ID: {}", id);
 
@@ -142,7 +143,7 @@ public class ProductMasterCStockController {
      * Delete all CStock records by product ID
      */
     @DeleteMapping("/product/{productRefId}/all")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deleteByProductId(@PathVariable Integer productRefId) {
         logger.info("Deleting all CStock records for product: {}", productRefId);
 
@@ -160,7 +161,7 @@ public class ProductMasterCStockController {
      * Count CStock records by product
      */
     @GetMapping("/product/{productRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<Long> countByProductId(@PathVariable Integer productRefId) {
         logger.info("Counting CStock records for product: {}", productRefId);
         Long count = cstockService.countByProductId(productRefId);
@@ -171,7 +172,7 @@ public class ProductMasterCStockController {
      * Count CStock records by company
      */
     @GetMapping("/company/{companyRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<Long> countByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting CStock records for company: {}", companyRefId);
         Long count = cstockService.countByCompanyId(companyRefId);
@@ -182,7 +183,7 @@ public class ProductMasterCStockController {
      * Update CStock value
      */
     @PutMapping("/{id}/update-stock")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> updateCStock(
             @PathVariable Integer id,
             @RequestParam Double newCStock) {
@@ -198,4 +199,5 @@ public class ProductMasterCStockController {
         }
     }
 }
+
 

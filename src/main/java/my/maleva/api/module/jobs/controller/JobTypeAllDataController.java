@@ -1,11 +1,11 @@
 package my.maleva.api.module.jobs.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.jobs.dto.JobTypeAllDataDto;
 import my.maleva.api.module.jobs.service.JobTypeAllDataService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +18,7 @@ import jakarta.validation.constraints.NotNull;
 @RestController
 @RequestMapping("/api/job-all-data")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100') or hasAuthority('ROLE_200')")
+@PermitAll
 public class JobTypeAllDataController {
 
     private final JobTypeAllDataService service;

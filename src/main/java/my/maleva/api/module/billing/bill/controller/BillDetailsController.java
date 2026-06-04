@@ -1,5 +1,6 @@
 package my.maleva.api.module.billing.bill.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.billing.bill.dto.BillDetailsDto;
 import my.maleva.api.module.billing.bill.service.BillDetailsService;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bill-details")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class BillDetailsController {
 
     private final BillDetailsService service;

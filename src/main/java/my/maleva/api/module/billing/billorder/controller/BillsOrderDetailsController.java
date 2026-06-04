@@ -8,13 +8,14 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.annotation.security.PermitAll;
 import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/bills-order-details")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class BillsOrderDetailsController {
 
     private final BillsOrderDetailsService service;

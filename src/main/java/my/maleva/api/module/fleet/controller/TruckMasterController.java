@@ -1,5 +1,6 @@
 package my.maleva.api.module.fleet.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.fleet.dto.TruckMasterDto;
 import my.maleva.api.module.fleet.service.TruckMasterService;
 import org.slf4j.Logger;
@@ -19,7 +20,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/truck-masters")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+@PermitAll
 public class TruckMasterController {
 
     private static final Logger logger = LoggerFactory.getLogger(TruckMasterController.class);

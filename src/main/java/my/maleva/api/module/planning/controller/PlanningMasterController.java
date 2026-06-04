@@ -1,5 +1,6 @@
 package my.maleva.api.module.planning.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.planning.dto.PlanningMasterDto;
 import my.maleva.api.module.planning.service.PlanningMasterService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -17,7 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/planning-masters")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class PlanningMasterController {
 
     private final PlanningMasterService planningMasterService;

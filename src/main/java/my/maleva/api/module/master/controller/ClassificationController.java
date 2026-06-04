@@ -1,5 +1,6 @@
 package my.maleva.api.module.master.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.master.dto.ClassificationDto;
 import my.maleva.api.module.master.service.ClassificationService;
 import my.maleva.api.common.dto.ApiResponse;
@@ -18,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/classifications")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class ClassificationController {
 
     private static final Logger logger = LoggerFactory.getLogger(ClassificationController.class);

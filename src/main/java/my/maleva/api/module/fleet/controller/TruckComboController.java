@@ -1,5 +1,7 @@
 package my.maleva.api.module.fleet.controller;
 
+import jakarta.annotation.security.PermitAll;
+import my.maleva.api.common.constant.SecurityConstants;
 import my.maleva.api.common.dto.ComboListModel;
 import my.maleva.api.module.fleet.dto.request.TruckComboRequest;
 import my.maleva.api.common.dto.ResponseViewModel;
@@ -51,7 +53,6 @@ public class TruckComboController {
     
     private static final String ERR_COMPANY_ID_INVALID = "Company ID is required and must be a positive integer";
     private static final String MSG_SUCCESS = "Success";
-    private static final String ROLE_CHECK = "hasAnyAuthority('ROLE_ADMIN', 'ROLE_SUPERADMIN', 'ROLE_USER')";
 
     // ==================== Dependencies ====================
     private final TruckMasterService truckMasterService;
@@ -102,7 +103,7 @@ public class TruckComboController {
      * @throws InvalidRequestException if companyId is null or invalid
      */
     @GetMapping
-    @PreAuthorize(ROLE_CHECK)
+    @PermitAll
     public ResponseEntity<ResponseViewModel> getTruckCombo(
             @RequestParam Integer companyId,
             @RequestParam(name = "type", required = false) String type) {
@@ -149,7 +150,7 @@ public class TruckComboController {
      * @throws InvalidRequestException if validation fails
      */
     @PostMapping
-    @PreAuthorize(ROLE_CHECK)
+    @PermitAll
     public ResponseEntity<ResponseViewModel> getTruckComboPost(
             @Valid @RequestBody TruckComboRequest request) {
 

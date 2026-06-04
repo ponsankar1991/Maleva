@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface BillsOrderDetailsRepository extends JpaRepository<BillsOrderDetails, Integer> {
     List<BillsOrderDetails> findByBillsOrderMasterRefId(Integer billsOrderMasterRefId);
+    void deleteByBillsOrderMasterRefId(Integer billsOrderMasterRefId);
 }

@@ -1,5 +1,6 @@
 package my.maleva.api.module.customer.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.customer.dto.CustomerDto;
 import my.maleva.api.module.customer.dto.request.CustomerSelectRequest;
@@ -16,7 +17,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/customers")
-@PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN')")
+@PermitAll
 public class CustomerController {
 
     private final CustomerService customerService;

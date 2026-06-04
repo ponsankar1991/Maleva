@@ -1,5 +1,6 @@
 package my.maleva.api.module.jobs.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.jobs.dto.JobStatusMasterDto;
 import my.maleva.api.module.jobs.service.JobStatusMasterService;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
@@ -17,7 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/job-status-master")
 @Validated
-@PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class JobStatusMasterController {
 
     private final JobStatusMasterService service;

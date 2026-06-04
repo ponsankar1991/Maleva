@@ -6,8 +6,8 @@ import my.maleva.api.module.rti.service.RTIMasterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,7 @@ public class RTIMasterController {
     private RTIMasterService rtiMasterService;
 
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIMasterDto>> getAllByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Fetching all RTIMaster records for company: {}", companyRefId);
         List<RTIMasterDto> records = rtiMasterService.getAllByCompanyId(companyRefId);
@@ -40,7 +40,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIMasterDto>> getActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Fetching active RTIMaster records for company: {}", companyRefId);
         List<RTIMasterDto> records = rtiMasterService.getActiveByCompanyId(companyRefId);
@@ -48,7 +48,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching RTIMaster by ID: {}", id);
         Optional<RTIMasterDto> record = rtiMasterService.getById(id);
@@ -60,7 +60,7 @@ public class RTIMasterController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody RTIMasterDto dto) {
         logger.info("Creating new RTIMaster for company: {}", dto.getCompanyRefId());
         try {
@@ -73,7 +73,7 @@ public class RTIMasterController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody RTIMasterDto dto) {
         logger.info("Updating RTIMaster with ID: {}", id);
         try {
@@ -89,7 +89,7 @@ public class RTIMasterController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting RTIMaster with ID: {}", id);
         try {
@@ -106,7 +106,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/cnumber/{cNumber}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByCNumber(@PathVariable Integer companyRefId, @PathVariable Integer cNumber) {
         logger.info("Fetching RTIMaster by CNumber: {} for company: {}", cNumber, companyRefId);
         if (companyRefId == null || cNumber == null) {
@@ -129,7 +129,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/employee/{employeeRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIMasterDto>> getByEmployee(@PathVariable Integer companyRefId, @PathVariable Integer employeeRefId) {
         logger.info("Fetching RTIMaster for employee: {}", employeeRefId);
         List<RTIMasterDto> records = rtiMasterService.getByEmployee(companyRefId, employeeRefId);
@@ -137,7 +137,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/agent/{agentMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIMasterDto>> getByAgent(@PathVariable Integer companyRefId, @PathVariable Integer agentMasterRefId) {
         logger.info("Fetching RTIMaster for agent: {}", agentMasterRefId);
         List<RTIMasterDto> records = rtiMasterService.getByAgent(companyRefId, agentMasterRefId);
@@ -145,7 +145,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/date-range")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIMasterDto>> getByDateRange(@PathVariable Integer companyRefId,
             @RequestParam String startDate, @RequestParam String endDate) {
         logger.info("Fetching RTIMaster between dates: {} to {}", startDate, endDate);
@@ -157,7 +157,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/cnumber-display/{cNumberDisplay}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getByCNumberDisplay(@PathVariable String cNumberDisplay) {
         logger.info("Fetching RTIMaster by CNumberDisplay: {}", cNumberDisplay);
         Optional<RTIMasterDto> record = rtiMasterService.getByCNumberDisplay(cNumberDisplay);
@@ -169,7 +169,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/sleeping")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIMasterDto>> getSleepingRecords(@PathVariable Integer companyRefId) {
         logger.info("Fetching sleeping RTIMaster records for company: {}", companyRefId);
         List<RTIMasterDto> records = rtiMasterService.getSleepingRecords(companyRefId);
@@ -177,7 +177,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/truck/{truckRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<RTIMasterDto>> getByTruck(@PathVariable Integer companyRefId, @PathVariable Integer truckRefId) {
         logger.info("Fetching RTIMaster for truck: {}", truckRefId);
         List<RTIMasterDto> records = rtiMasterService.getByTruck(companyRefId, truckRefId);
@@ -185,7 +185,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting RTIMaster records for company: {}", companyRefId);
         long count = rtiMasterService.countByCompanyId(companyRefId);
@@ -193,7 +193,7 @@ public class RTIMasterController {
     }
 
     @GetMapping("/company/{companyRefId}/count/active")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting active RTIMaster records for company: {}", companyRefId);
         long count = rtiMasterService.countActiveByCompanyId(companyRefId);
@@ -201,7 +201,7 @@ public class RTIMasterController {
     }
 
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> activate(@PathVariable Integer id) {
         logger.info("Activating RTIMaster with ID: {}", id);
         try {
@@ -217,7 +217,7 @@ public class RTIMasterController {
     }
 
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deactivate(@PathVariable Integer id) {
         logger.info("Deactivating RTIMaster with ID: {}", id);
         try {
@@ -232,4 +232,5 @@ public class RTIMasterController {
         }
     }
 }
+
 

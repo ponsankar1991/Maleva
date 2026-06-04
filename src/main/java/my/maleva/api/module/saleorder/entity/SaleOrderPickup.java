@@ -40,7 +40,7 @@ public class SaleOrderPickup {
     @Column(name = "PickupTime")
     private LocalDateTime pickupTime;
 
-    @Column(name = "PickupWeaight", length = 100)
+    @Column(name = "pickupWeight", length = 100)
     private String pickupWeight;
 
     @Column(name = "PickupQuantity", length = 100)

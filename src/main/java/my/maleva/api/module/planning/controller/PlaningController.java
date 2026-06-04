@@ -1,5 +1,6 @@
 package my.maleva.api.module.planning.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.planning.dto.PlaningNumberResponseDTO;
 import my.maleva.api.module.planning.dto.PlanningEditResponseDto;
 import my.maleva.api.module.planning.dto.PlanningRequest;
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -81,7 +83,7 @@ public class PlaningController {
      * @throws RuntimeException if database operation fails (caught by GlobalExceptionHandler)
      */
     @PostMapping("/max-planning-no/{companyId}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<PlaningNumberResponseDTO> getMaxPlanningNo(
             @PathVariable @NotNull @Positive Integer companyId) {
 
@@ -143,14 +145,14 @@ public class PlaningController {
      * @return PlanningF5View with combined master and detail data
      */
     @PostMapping("/select-planning")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<PlanningF5View> selectPlanning(@RequestBody @Valid PlanningF5RequestDto filter) {
         PlanningF5View result = planningMasterService.selectPlanning(filter);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/edit")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
     public ResponseEntity<PlanningEditResponseDto> editPlanning(
             @RequestParam(required = false) @Positive Integer id,
             @RequestParam(required = false) @Positive Integer planningNo,
@@ -160,7 +162,7 @@ public class PlaningController {
     }
 
     @PostMapping("/search")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<List<PlanningDetailsModel>> planningSearch(
             @RequestBody @Valid PLANINGSearchRequestDto filter) {
         List<PlanningDetailsModel> result = planningMasterService.planningSearch(filter);
@@ -208,7 +210,7 @@ public class PlaningController {
      * [{ "ok": false, "message": "Error description" }]
      */
     @PostMapping("/save")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<List<PlanningSaveResponseDto>> savePlanning(
             @RequestBody List<PlanningRequest> requests,
             @RequestHeader(value = "Comid") Integer comid) {
@@ -231,7 +233,7 @@ public class PlaningController {
      * { "ok": false, "message": "Planning not found" }
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<PlanningSaveResponseDto> deletePlanning(
             @PathVariable Integer id,
             @RequestParam Integer companyId) {

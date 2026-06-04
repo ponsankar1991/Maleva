@@ -1,6 +1,7 @@
 package my.maleva.api.module.vessalplanning.controller;
 
 import jakarta.validation.Valid;
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.vessalplanning.dto.VesselPlanningDetailsDto;
 import my.maleva.api.module.vessalplanning.dto.VesselPlanningLegacyDtos;
@@ -14,13 +15,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 
 import java.util.List;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/vessel-plannings")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_100')")
+@PermitAll
 public class VesselPlanningController {
 
     private static final Logger logger = LoggerFactory.getLogger(VesselPlanningController.class);
@@ -141,4 +143,5 @@ public class VesselPlanningController {
         public void setDetails(List<VesselPlanningDetailsDto> details) { this.details = details; }
     }
 }
+
 

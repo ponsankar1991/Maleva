@@ -16,6 +16,7 @@ public enum UserRoles {
     DRIVER(700),
     HR(800),
     ACCOUNTS(900),
+    TRANSPORTATION(1000),
     PAYABLE(1100),
     RECEIVABLE(1200),
     MAINTENANCE(1300);

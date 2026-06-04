@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ public class PurchaseOrderDetailsController {
      * GET /api/purchase-order-details/purchase-order/{purchaseOrderMasterRefId}
      */
     @GetMapping("/purchase-order/{purchaseOrderMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderDetailsDto>> getByPurchaseOrderMasterId(
             @PathVariable Integer purchaseOrderMasterRefId) {
         logger.info("Fetching PurchaseOrderDetails for PurchaseOrderMaster: {}", purchaseOrderMasterRefId);
@@ -46,7 +47,7 @@ public class PurchaseOrderDetailsController {
      * GET /api/purchase-order-details/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching PurchaseOrderDetails by ID: {}", id);
         Optional<PurchaseOrderDetailsDto> record = purchaseOrderDetailsService.getById(id);
@@ -64,7 +65,7 @@ public class PurchaseOrderDetailsController {
      * POST /api/purchase-order-details
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody PurchaseOrderDetailsDto dto) {
         logger.info("Creating new PurchaseOrderDetails for PurchaseOrderMaster: {}", dto.getPurchaseOrderMasterRefId());
 
@@ -83,7 +84,7 @@ public class PurchaseOrderDetailsController {
      * PUT /api/purchase-order-details/{id}
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> update(
             @PathVariable Integer id,
             @Valid @RequestBody PurchaseOrderDetailsDto dto) {
@@ -108,7 +109,7 @@ public class PurchaseOrderDetailsController {
      * DELETE /api/purchase-order-details/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting PurchaseOrderDetails with ID: {}", id);
 
@@ -132,7 +133,7 @@ public class PurchaseOrderDetailsController {
      * GET /api/purchase-order-details/product/{productMasterRefId}
      */
     @GetMapping("/product/{productMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<List<PurchaseOrderDetailsDto>> getByProductMasterId(
             @PathVariable Integer productMasterRefId) {
         logger.info("Fetching PurchaseOrderDetails by product: {}", productMasterRefId);
@@ -145,7 +146,7 @@ public class PurchaseOrderDetailsController {
      * GET /api/purchase-order-details/purchase-order/{purchaseOrderMasterRefId}/count
      */
     @GetMapping("/purchase-order/{purchaseOrderMasterRefId}/count")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> countByPurchaseOrderMasterId(
             @PathVariable Integer purchaseOrderMasterRefId) {
         logger.info("Counting PurchaseOrderDetails for PurchaseOrderMaster: {}", purchaseOrderMasterRefId);
@@ -158,7 +159,7 @@ public class PurchaseOrderDetailsController {
      * DELETE /api/purchase-order-details/purchase-order/{purchaseOrderMasterRefId}
      */
     @DeleteMapping("/purchase-order/{purchaseOrderMasterRefId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN')")
+    @PermitAll
     public ResponseEntity<?> deleteByPurchaseOrderMasterId(
             @PathVariable Integer purchaseOrderMasterRefId) {
         logger.info("Deleting all PurchaseOrderDetails for PurchaseOrderMaster: {}", purchaseOrderMasterRefId);
@@ -173,4 +174,5 @@ public class PurchaseOrderDetailsController {
         }
     }
 }
+
 

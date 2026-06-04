@@ -1,5 +1,6 @@
 package my.maleva.api.module.master.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.master.dto.AddressMasterDto;
 import my.maleva.api.module.master.service.AddressMasterService;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,8 @@ public class AddressMasterController {
      * Get all addresses
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
+
     public List<AddressMasterDto> list() {
         return service.listAll();
     }
@@ -36,7 +38,8 @@ public class AddressMasterController {
      * Get address by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+
+    @PermitAll
     public AddressMasterDto get(@PathVariable Integer id) {
         return service.getById(id);
     }
@@ -45,7 +48,7 @@ public class AddressMasterController {
      * Create new address
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<AddressMasterDto> create(@Valid @RequestBody AddressMasterDto dto) {
         AddressMasterDto saved = service.create(dto);
         return ResponseEntity.created(URI.create("/api/addresses/" + saved.getId())).body(saved);
@@ -55,7 +58,8 @@ public class AddressMasterController {
      * Update address
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+
+    @PermitAll
     public AddressMasterDto update(@PathVariable Integer id, @Valid @RequestBody AddressMasterDto dto) {
         return service.update(id, dto);
     }
@@ -64,7 +68,7 @@ public class AddressMasterController {
      * Delete address
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
@@ -81,7 +85,7 @@ public class AddressMasterController {
      * @return list of active addresses matching criteria ordered by name
      */
     @GetMapping("/company/{companyRefId}/search")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<Map<String, Object>> searchAddresses(
             @PathVariable Integer companyRefId,
             @RequestParam(required = false, defaultValue = "") String keyword) {
@@ -109,7 +113,7 @@ public class AddressMasterController {
      * @return list of active addresses ordered by name
      */
     @GetMapping("/company/{companyRefId}/active")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
+    @PermitAll
     public ResponseEntity<Map<String, Object>> getActiveAddresses(@PathVariable Integer companyRefId) {
         List<AddressMasterDto> data = service.getActiveAddressesByCompany(companyRefId);
 

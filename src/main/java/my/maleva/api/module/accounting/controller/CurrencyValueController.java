@@ -1,5 +1,6 @@
 package my.maleva.api.module.accounting.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.accounting.dto.CurrencyValueDto;
 import my.maleva.api.module.accounting.service.CurrencyValueService;
@@ -19,7 +20,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/currency-value")
-@PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_USER')")
+@PermitAll
 public class CurrencyValueController {
 
     private static final Logger logger = LoggerFactory.getLogger(CurrencyValueController.class);

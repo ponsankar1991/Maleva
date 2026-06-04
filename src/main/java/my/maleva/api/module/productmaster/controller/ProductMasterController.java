@@ -1,5 +1,6 @@
 package my.maleva.api.module.productmaster.controller;
 
+import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.productmaster.dto.ProductMasterDto;
 import my.maleva.api.module.productmaster.service.ProductMasterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,7 @@ public class ProductMasterController {
      * Get all ProductMaster records by company ID
      */
     @GetMapping("/company/{companyRefId}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterDto>> getAllByCompanyId(
             @PathVariable Integer companyRefId) {
         logger.info("Fetching all ProductMaster records for company: {}", companyRefId);
@@ -44,7 +45,7 @@ public class ProductMasterController {
      * Get active ProductMaster records by company ID
      */
     @GetMapping("/company/{companyRefId}/active")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterDto>> getActiveByCompanyId(
             @PathVariable Integer companyRefId) {
         logger.info("Fetching active ProductMaster records for company: {}", companyRefId);
@@ -56,7 +57,7 @@ public class ProductMasterController {
      * Get ProductMaster by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         logger.info("Fetching ProductMaster by ID: {}", id);
         Optional<ProductMasterDto> record = productMasterService.getById(id);
@@ -73,7 +74,7 @@ public class ProductMasterController {
      * Create new ProductMaster record
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> create(@Valid @RequestBody ProductMasterDto dto) {
         logger.info("Creating new ProductMaster for company: {}", dto.getCompanyRefId());
 
@@ -91,7 +92,7 @@ public class ProductMasterController {
      * Update ProductMaster record
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> update(
             @PathVariable Integer id,
             @Valid @RequestBody ProductMasterDto dto) {
@@ -111,7 +112,7 @@ public class ProductMasterController {
      * Delete ProductMaster record
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         logger.info("Deleting ProductMaster with ID: {}", id);
 
@@ -129,7 +130,7 @@ public class ProductMasterController {
      * Get ProductMaster by product code
      */
     @GetMapping("/code/{prodCode}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> getByProdCode(
             @PathVariable String prodCode,
             @RequestParam Integer companyRefId) {
@@ -148,7 +149,7 @@ public class ProductMasterController {
      * Search ProductMaster by product name
      */
     @GetMapping("/company/{companyRefId}/search")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterDto>> searchByProductName(
             @PathVariable Integer companyRefId,
             @RequestParam String pname) {
@@ -161,7 +162,7 @@ public class ProductMasterController {
      * Get ProductMaster by HSN Code
      */
     @GetMapping("/hsn/{hsnCode}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterDto>> getByHsnCode(@PathVariable String hsnCode) {
         logger.info("Fetching ProductMaster by HSN Code: {}", hsnCode);
         List<ProductMasterDto> records = productMasterService.getByHsnCode(hsnCode);
@@ -183,7 +184,7 @@ public class ProductMasterController {
      * Get ProductMaster by UOM Code
      */
     @GetMapping("/uom-code/{uomCode}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+ @PermitAll
     public ResponseEntity<List<ProductMasterDto>> getByUomCode(@PathVariable Integer uomCode) {
         logger.info("Fetching ProductMaster by UOM Code: {}", uomCode);
         List<ProductMasterDto> records = productMasterService.getByUomCode(uomCode);
@@ -194,7 +195,7 @@ public class ProductMasterController {
      * Check if product code exists
      */
     @GetMapping("/check-code")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<Boolean> existsByProdCode(
             @RequestParam Integer companyRefId,
             @RequestParam String prodCode) {
@@ -207,7 +208,7 @@ public class ProductMasterController {
      * Get ProductMaster by second product code
      */
     @GetMapping("/second-code/{secondPCode}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> getBySecondPCode(@PathVariable String secondPCode) {
         logger.info("Fetching ProductMaster by second product code: {}", secondPCode);
         Optional<ProductMasterDto> record = productMasterService.getBySecondPCode(secondPCode);
@@ -224,7 +225,7 @@ public class ProductMasterController {
      * Get products by is product flag
      */
     @GetMapping("/company/{companyRefId}/is-product/{isProduct}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<List<ProductMasterDto>> getByIsProduct(
             @PathVariable Integer companyRefId,
             @PathVariable Integer isProduct) {
@@ -237,7 +238,7 @@ public class ProductMasterController {
      * Count products by company
      */
     @GetMapping("/company/{companyRefId}/count")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<Long> countByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting ProductMaster records for company: {}", companyRefId);
         Long count = productMasterService.countByCompanyId(companyRefId);
@@ -248,7 +249,7 @@ public class ProductMasterController {
      * Count active products by company
      */
     @GetMapping("/company/{companyRefId}/count-active")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<Long> countActiveByCompanyId(@PathVariable Integer companyRefId) {
         logger.info("Counting active ProductMaster records for company: {}", companyRefId);
         Long count = productMasterService.countActiveByCompanyId(companyRefId);
@@ -259,7 +260,7 @@ public class ProductMasterController {
      * Activate ProductMaster record
      */
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> activate(@PathVariable Integer id) {
         logger.info("Activating ProductMaster with ID: {}", id);
 
@@ -277,7 +278,7 @@ public class ProductMasterController {
      * Deactivate ProductMaster record
      */
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> deactivate(@PathVariable Integer id) {
         logger.info("Deactivating ProductMaster with ID: {}", id);
 
@@ -295,7 +296,7 @@ public class ProductMasterController {
      * Execute SP_ProductMaster stored procedure for bulk operations
      */
     @PostMapping("/bulk-import")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPRERADMIN','SUPERADMIN') or hasAnyAuthority('ROLE_ADMIN','ROLE_SUPERADMIN','ROLE_SUPERADMIN','ROLE_100','ROLE_200')")
+    @PermitAll
     public ResponseEntity<?> executeBulkImport(
             @RequestParam String detailsJson,
             @RequestParam Integer companyId,
@@ -312,4 +313,5 @@ public class ProductMasterController {
         }
     }
 }
+
 
