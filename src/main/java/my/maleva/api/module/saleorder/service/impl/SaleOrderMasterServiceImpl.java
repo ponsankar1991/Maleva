@@ -1098,8 +1098,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     private SaleOrderMaster findActiveSaleOrder(Integer id) {
         return repository.findByIdAndActive(id, SaleOrderApiConstants.ACTIVE_STATUS)
                 .orElseThrow(() -> new EntityNotFoundException(String.format(
-                        SaleOrderApiConstants.MESSAGE_ORDER_NOT_FOUND,
-                        id
+                        SaleOrderApiConstants.MESSAGE_ORDER_NOT_FOUND, id
                 )));
     }
 

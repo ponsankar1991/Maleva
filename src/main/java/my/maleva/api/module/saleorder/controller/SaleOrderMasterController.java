@@ -90,9 +90,7 @@ public class SaleOrderMasterController {
         logger.info("Update SaleOrder aggregate request received - id: {}, company: {}, customer: {}",
                 id, dto.getCompanyRefId(), dto.getCustomerRefId());
 
-        return ResponseEntity.ok(ApiResponse.success(
-                service.update(id, dto),
-                SaleOrderApiConstants.MESSAGE_UPDATE_SUCCESS
+        return ResponseEntity.ok(ApiResponse.success(service.update(id, dto), SaleOrderApiConstants.MESSAGE_UPDATE_SUCCESS
         ));
     }
 
