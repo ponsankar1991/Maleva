@@ -1,8 +1,11 @@
 package my.maleva.api.module.rti.repository;
 
 import my.maleva.api.module.rti.entity.RTIMaster;
+import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +28,14 @@ public interface RTIMasterRepository extends JpaRepository<RTIMaster, Integer> {
      */
     List<RTIMaster> findByCompanyRefIdAndActive(Integer companyRefId, Integer active);
 
+
     /**
+     * Find RTIMaster by ID
+     */
+
+    Optional<RTIMaster> findByCompanyRefIdAndCNumberAndActive(Integer companyRefId, Integer cNumber, Integer active);
+
+    Optional<RTIMaster> findByIdAndActive(Integer id, Integer active);    /**
      * Find RTIMaster by CNumber
      */
     Optional<RTIMaster> findByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
@@ -74,5 +84,11 @@ public interface RTIMasterRepository extends JpaRepository<RTIMaster, Integer> {
      * Count active RTIMaster by company
      */
     long countByCompanyRefIdAndActive(Integer companyRefId, Integer active);
+
+    /**
+     * Find the maximum CNumber used for a company. Returns null if none exist.
+     */
+    @Query("SELECT MAX(r.CNumber) FROM RTIMaster r WHERE r.companyRefId = :companyRefId")
+    Integer findMaxCNumberByCompanyRefId(@Param("companyRefId") Integer companyRefId);
 }
 

@@ -40,9 +40,16 @@ public class RTIDetailsDto {
 
     private Integer pwdType;
 
+    // These were LocalDateTime previously. To match legacy .NET output we keep
+    // the exact SQL-formatted strings (e.g. CONVERT(VARCHAR(26), sm.PickupDate, 20)).
     private LocalDateTime pickupDateD;
 
     private LocalDateTime deliveryDateD;
+
+    // Enriched fields from SaleOrderMaster / Customer for revise UI
+    private String jobNo; // SaleOrderMaster.CNumberDisplay
+    private String jobDate; // SaleOrderMaster.SaleDate as string to mirror .NET output
+    private String customerName;
 
     @Size(max = 250, message = "Origin cannot exceed 250 characters")
     private String originD;

@@ -158,4 +158,6 @@ public class PlanningDetailsModel {
 
     @JsonProperty("Delivertimelist")
     private String deliveryTimeList;
+
+
 }

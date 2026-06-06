@@ -325,5 +325,11 @@ public class PlanningRequest {
          * BL Copy (from SaleOrderMaster)
          */
         private String blCopy;
+
+        /**
+         * driver name add  from the planning
+         */
+        private String driverName;
+
     }
 }

@@ -14,9 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import my.maleva.api.module.customer.repository.CustomerRepository;
+import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 
 /**
  * RTIMasterServiceImpl
@@ -35,6 +38,15 @@ public class RTIMasterServiceImpl implements RTIMasterService {
 
     @Autowired
     private RTIMasterMapper mapper;
+
+    @Autowired
+    private my.maleva.api.module.rti.repository.RTIDetailsRepository rtiDetailsRepository;
+    
+    @Autowired
+    private my.maleva.api.module.rti.mapper.RTIDetailsMapper rtiDetailsMapper;
+
+    @Autowired
+    private CustomerRepository customerRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -107,7 +119,21 @@ public class RTIMasterServiceImpl implements RTIMasterService {
 
         RTIMaster saved = rtiMasterRepository.save(entity);
         logger.info("RTIMaster created with ID: {}", saved.getId());
-        return mapper.toDto(saved);
+
+        List<my.maleva.api.module.rti.dto.RTIDetailsDto> savedDetailsDto = new java.util.ArrayList<>();
+        if (dto.getRtiDetails() != null && !dto.getRtiDetails().isEmpty()) {
+            for (my.maleva.api.module.rti.dto.RTIDetailsDto detailDto : dto.getRtiDetails()) {
+                my.maleva.api.module.rti.entity.RTIDetails detailEntity = rtiDetailsMapper.toEntity(detailDto);
+                detailEntity.setId(null);
+                detailEntity.setRtiMasterRefId(saved.getId());
+                my.maleva.api.module.rti.entity.RTIDetails savedDetail = rtiDetailsRepository.save(detailEntity);
+                savedDetailsDto.add(rtiDetailsMapper.toDto(savedDetail));
+            }
+        }
+
+        RTIMasterDto result = mapper.toDto(saved);
+        result.setRtiDetails(savedDetailsDto);
+        return result;
     }
 
     @Override
@@ -127,7 +153,22 @@ public class RTIMasterServiceImpl implements RTIMasterService {
 
         RTIMaster updated = rtiMasterRepository.save(entity);
         logger.info("RTIMaster updated with ID: {}", id);
-        return mapper.toDto(updated);
+
+        List<my.maleva.api.module.rti.dto.RTIDetailsDto> savedDetailsDto = new java.util.ArrayList<>();
+        if (dto.getRtiDetails() != null) {
+            rtiDetailsRepository.deleteByRtiMasterRefId(updated.getId());
+            for (my.maleva.api.module.rti.dto.RTIDetailsDto detailDto : dto.getRtiDetails()) {
+                my.maleva.api.module.rti.entity.RTIDetails detailEntity = rtiDetailsMapper.toEntity(detailDto);
+                detailEntity.setId(null);
+                detailEntity.setRtiMasterRefId(updated.getId());
+                my.maleva.api.module.rti.entity.RTIDetails savedDetail = rtiDetailsRepository.save(detailEntity);
+                savedDetailsDto.add(rtiDetailsMapper.toDto(savedDetail));
+            }
+        }
+
+        RTIMasterDto result = mapper.toDto(updated);
+        result.setRtiDetails(savedDetailsDto);
+        return result;
     }
 
     @Override
@@ -272,5 +313,72 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     public String generateCNumberDisplay(Integer cNumber) {
         logger.info("Generating CNumberDisplay for CNumber: {}", cNumber);
         return String.format("RTI%09d", cNumber);
+    }
+
+    // NOTE: create/clone revise behavior removed to match legacy .NET ReviseRTI which is read-only.
+
+    @Override
+    @Transactional(readOnly = true)
+    public RTIMasterDto getForRevise(Integer id, Integer sourceCNumber, Integer companyRefId) {
+        logger.info("Loading RTI for revise UI. id={}, sourceCNumber={}, companyRefId={}", id, sourceCNumber, companyRefId);
+
+        RTIMaster source;
+        if (sourceCNumber != null && sourceCNumber != 0) {
+            if (companyRefId == null) {
+                throw new RuntimeException("companyRefId is required when sourceCNumber (RTINo) is provided");
+            }
+            source = rtiMasterRepository.findByCompanyRefIdAndCNumber(companyRefId, sourceCNumber)
+                    .orElseThrow(() -> new RuntimeException("RTIMaster not found with CNumber: " + sourceCNumber + " for company: " + companyRefId));
+        } else {
+            source = rtiMasterRepository.findById(id)
+                    .orElseGet(() -> {
+                        // Fallback: If id wasn't found as PK, check if the frontend accidentally passed CNumber as id
+                        if (companyRefId != null) {
+                            return rtiMasterRepository.findByCompanyRefIdAndCNumber(companyRefId, id)
+                                    .orElseThrow(() -> new RuntimeException("RTIMaster not found with ID or CNumber: " + id));
+                        }
+                        throw new RuntimeException("RTIMaster not found with ID: " + id);
+                    });
+        }
+        
+        logger.info("Successfully loaded source RTI id={}, companyRefId={}", source.getId(), source.getCompanyRefId());
+
+        RTIMasterDto masterDto = mapper.toDto(source);
+
+        List<my.maleva.api.module.rti.entity.RTIDetails> details = rtiDetailsRepository.findByRtiMasterRefId(source.getId());
+        if (details == null || details.isEmpty()) {
+            masterDto.setRtiDetails(List.of());
+            return masterDto;
+        }
+
+        List<my.maleva.api.module.rti.dto.RTIDetailsDto> detailDtos = details.stream().map(d -> {
+            my.maleva.api.module.rti.dto.RTIDetailsDto dto = rtiDetailsMapper.toDto(d);
+
+            // Enrich with SaleOrderMaster job fields
+            if (d.getSaleOrderMasterRefId() != null && d.getSaleOrderMasterRefId() > 0) {
+                SaleOrderMaster som = saleOrderMasterRepository.findByIdAndActive(d.getSaleOrderMasterRefId(), 1).orElse(null);
+                if (som != null) {
+                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    dto.setJobNo(som.getCNumberDisplay());
+                    dto.setJobDate(som.getSaleDate() != null ? som.getSaleDate().format(fmt) : null);
+                    
+                    // Overwrite the old RTI Detail properties with the fresh data from SaleOrderMaster
+                    dto.setPickupDateD(som.getPickupDate());
+                    dto.setDeliveryDateD(som.getDeliveryDate());
+                    dto.setOriginD(som.getOrigin());
+                    dto.setDestinationD(som.getDestination());
+                    // Fetch customer name safely
+                    if (som.getCustomerRefId() != null) {
+                        customerRepository.findByIdAndCompanyRefId(som.getCustomerRefId(), som.getCompanyRefId())
+                                .ifPresent(cust -> dto.setCustomerName(cust.getCustomerName()));
+                    }
+                }
+            }
+
+            return dto;
+        }).collect(Collectors.toList());
+
+        masterDto.setRtiDetails(detailDtos);
+        return masterDto;
     }
 }

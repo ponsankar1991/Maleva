@@ -727,6 +727,14 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         SaleOrderMaster entity = findActiveSaleOrder(dto.getId());
         mapper.updateEntityFromDto(dto, entity);
 
+        // Manually allow clearing of dates if the frontend sends null or empty strings
+        if (dto.getEta() == null || dto.getEta().trim().isEmpty()) entity.setEta(null);
+        if (dto.getEtb() == null || dto.getEtb().trim().isEmpty()) entity.setEtb(null);
+        if (dto.getEtd() == null || dto.getEtd().trim().isEmpty()) entity.setEtd(null);
+        if (dto.getOeta() == null || dto.getOeta().trim().isEmpty()) entity.setOeta(null);
+        if (dto.getOetb() == null || dto.getOetb().trim().isEmpty()) entity.setOetb(null);
+        if (dto.getOetd() == null || dto.getOetd().trim().isEmpty()) entity.setOetd(null);
+
         Integer resolvedCNumber = resolveUpdateCNumber(dto);
         if (hasPositiveCNumber(resolvedCNumber)) {
             entity.setCNumber(resolvedCNumber);

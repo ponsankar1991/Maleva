@@ -253,6 +253,7 @@ public class PlanningSaveService {
                     .deliveryTimeList(item.getDelivertimelist())
                     .createdDate(now)
                     .modifiedDate(now)
+                    .driverName(item.getDriverName()) // SP saves DriverName same as DriverNameD
                     .build();
 
             detailsRepository.save(detail);

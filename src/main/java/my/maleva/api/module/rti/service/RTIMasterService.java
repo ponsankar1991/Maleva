@@ -111,5 +111,19 @@ public interface RTIMasterService {
      * Generate CNumberDisplay
      */
     String generateCNumberDisplay(Integer cNumber);
-}
 
+    /**
+     * Revise an existing RTI: create a new RTI record copied from the source
+     * and assign a new CNumber (either provided or generated). Returns the
+     * created RTIMasterDto.
+     */
+    /**
+     * Fetch RTI master and details prepared for revision UI (no DB insert).
+     * Mirrors the legacy .NET ReviseRTI which returns master + joined detail rows
+     * including job (SaleOrderMaster) and customer info.
+     * If sourceCNumber (RTINo) is provided and non-zero, companyRefId must also be provided
+     * and source will be located by companyRefId + CNumber. Otherwise source is loaded by id.
+     */
+    RTIMasterDto getForRevise(Integer id, Integer sourceCNumber, Integer companyRefId);
+
+}

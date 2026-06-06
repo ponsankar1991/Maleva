@@ -70,5 +70,9 @@ public class PlanningDetails {
 
     @Column(name = "Delivertimelist", length = 500)
     private String deliveryTimeList;
+
+
+    @Column(name = "DriverName", length = 200)
+    private String driverName;
 }
 

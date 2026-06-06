@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import my.maleva.api.common.dto.ApiResponse;
 
 /**
  * RTIMaster REST Controller
@@ -213,6 +214,30 @@ public class RTIMasterController {
         } catch (Exception e) {
             logger.error("Error activating RTIMaster", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error activating RTIMaster: " + e.getMessage());
+        }
+    }
+
+    // POST /{id}/revise (create/clone) removed - legacy .NET ReviseRTI is read-only. Use GET /{id}/revise to load data for the UI.
+
+    /**
+     * Load RTI master and details for revise UI (read-only). Mirrors legacy .NET ReviseRTI which
+     * returns master + details joined with SaleOrder and Customer.
+     */
+    @GetMapping("/{id}/revise")
+    @PermitAll
+    public ResponseEntity<ApiResponse<RTIMasterDto>> getForRevise(@PathVariable Integer id,
+                                                                  @RequestParam(required = false) Integer sourceCNumber,
+                                                                  @RequestParam(required = false) Integer companyRefId) {
+        logger.info("Loading RTIMaster for revise UI id={} sourceCNumber={}", id, sourceCNumber);
+        try {
+            RTIMasterDto dto = rtiMasterService.getForRevise(id, sourceCNumber, companyRefId);
+            return ResponseEntity.ok(ApiResponse.success(dto, "RTIMaster data for revise"));
+        } catch (RuntimeException e) {
+            logger.error("RTIMaster not found for revise id={}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage(), HttpStatus.NOT_FOUND.value()));
+        } catch (Exception e) {
+            logger.error("Error loading RTIMaster for revise", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error("Error loading RTIMaster for revise: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
         }
     }
 
