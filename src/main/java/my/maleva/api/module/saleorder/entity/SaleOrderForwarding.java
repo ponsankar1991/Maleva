@@ -62,8 +62,7 @@ public class SaleOrderForwarding {
     @Column(name = "ExitRef", length = 200)
     private String exitRef;
 
-    @Column(name = "Quantity")
-    private BigDecimal quantity;
+    @Column(name = "Quantity") private String quantity;
 
     @Column(name = "S1", length = 200)
     private String s1;

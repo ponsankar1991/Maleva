@@ -32,5 +32,17 @@ public interface RTIDetailsRepository extends JpaRepository<RTIDetails, Integer>
      * Delete all details for an RTIMaster
      */
     void deleteByRtiMasterRefId(Integer rtiMasterRefId);
+
+    /**
+     * Fetch RTIDetails with their associated SaleOrderMaster and Customer names
+     * to prevent N+1 queries during revise logic.
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT d, sm, c.customerName FROM RTIDetails d " +
+        "LEFT JOIN SaleOrderMaster sm ON sm.id = d.saleOrderMasterRefId " +
+        "LEFT JOIN my.maleva.api.module.customer.entity.Customer c ON c.id = sm.customerRefId " +
+        "WHERE d.rtiMasterRefId = :rtiMasterId"
+    )
+    List<Object[]> findDetailsWithEnrichment(@org.springframework.data.repository.query.Param("rtiMasterId") Integer rtiMasterId);
 }
 

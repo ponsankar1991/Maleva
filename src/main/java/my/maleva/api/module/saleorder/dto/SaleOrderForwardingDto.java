@@ -46,7 +46,7 @@ public class SaleOrderForwardingDto {
     @Size(max = 200, message = "Exit Ref must not exceed 200 characters")
     private String exitRef;
 
-    private BigDecimal quantity;
+    private String quantity;
 
     @Size(max = 200, message = "S1 must not exceed 200 characters")
     private String s1;

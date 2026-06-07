@@ -345,34 +345,31 @@ public class RTIMasterServiceImpl implements RTIMasterService {
 
         RTIMasterDto masterDto = mapper.toDto(source);
 
-        List<my.maleva.api.module.rti.entity.RTIDetails> details = rtiDetailsRepository.findByRtiMasterRefId(source.getId());
-        if (details == null || details.isEmpty()) {
+        List<Object[]> enrichedDetails = rtiDetailsRepository.findDetailsWithEnrichment(source.getId());
+        if (enrichedDetails == null || enrichedDetails.isEmpty()) {
             masterDto.setRtiDetails(List.of());
             return masterDto;
         }
 
-        List<my.maleva.api.module.rti.dto.RTIDetailsDto> detailDtos = details.stream().map(d -> {
+        List<my.maleva.api.module.rti.dto.RTIDetailsDto> detailDtos = enrichedDetails.stream().map(row -> {
+            my.maleva.api.module.rti.entity.RTIDetails d = (my.maleva.api.module.rti.entity.RTIDetails) row[0];
+            SaleOrderMaster som = (SaleOrderMaster) row[1];
+            String customerName = (String) row[2];
+
             my.maleva.api.module.rti.dto.RTIDetailsDto dto = rtiDetailsMapper.toDto(d);
 
             // Enrich with SaleOrderMaster job fields
-            if (d.getSaleOrderMasterRefId() != null && d.getSaleOrderMasterRefId() > 0) {
-                SaleOrderMaster som = saleOrderMasterRepository.findByIdAndActive(d.getSaleOrderMasterRefId(), 1).orElse(null);
-                if (som != null) {
-                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                    dto.setJobNo(som.getCNumberDisplay());
-                    dto.setJobDate(som.getSaleDate() != null ? som.getSaleDate().format(fmt) : null);
-                    
-                    // Overwrite the old RTI Detail properties with the fresh data from SaleOrderMaster
-                    dto.setPickupDateD(som.getPickupDate());
-                    dto.setDeliveryDateD(som.getDeliveryDate());
-                    dto.setOriginD(som.getOrigin());
-                    dto.setDestinationD(som.getDestination());
-                    // Fetch customer name safely
-                    if (som.getCustomerRefId() != null) {
-                        customerRepository.findByIdAndCompanyRefId(som.getCustomerRefId(), som.getCompanyRefId())
-                                .ifPresent(cust -> dto.setCustomerName(cust.getCustomerName()));
-                    }
-                }
+            if (som != null) {
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                dto.setJobNo(som.getCNumberDisplay());
+                dto.setJobDate(som.getSaleDate() != null ? som.getSaleDate().format(fmt) : null);
+                
+                // Overwrite the old RTI Detail properties with the fresh data from SaleOrderMaster
+                dto.setPickupDateD(som.getPickupDate());
+                dto.setDeliveryDateD(som.getDeliveryDate());
+                dto.setOriginD(som.getOrigin());
+                dto.setDestinationD(som.getDestination());
+                dto.setCustomerName(customerName);
             }
 
             return dto;
