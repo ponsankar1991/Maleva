@@ -126,6 +126,8 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
 
             if (!isNewRecord) {
                 // UPDATE Process
+
+                updateSaleOrderMasterFlags(dto);
                 billsOrderDetailsRepository.deleteByBillsOrderMasterRefId(dto.getId());
                 
                 masterEntity = billsOrderMasterRepository.findById(dto.getId())
@@ -133,7 +135,10 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 
                 masterEntity.setModifiedDate(LocalDateTime.now());
                 masterEntity.setModifiedBy("system");
-            } else {
+            }
+
+
+            else {
                 // INSERT Process
                 masterEntity = new BillsOrderMaster();
                 masterEntity.setActive(1);
@@ -240,7 +245,8 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
 
                 // Update SaleOrderMaster Flags
                 updateSaleOrderMasterFlags(dto);
-            } else {
+            }
+            else {
                 billNoDisplay = masterEntity.getCNumberDisplay();
             }
 
@@ -325,28 +331,30 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
     private String buildFlagUpdateQuery(String description, Integer saleMasterRefId) {
         switch (description) {
             case "PORT CHARGES":
-                return "UPDATE SaleOrderMaster SET PortCPop = 2, LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND (PortCPop = 1 OR LiveCPop = 1)";
+                // Update when PortCPop or LiveCPop is 0 or 1
+                return "UPDATE SaleOrderMaster SET PortCPop = 2, LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND (PortCPop IN (0,1) OR LiveCPop IN (0,1))";
             case "LIVE CHARGES":
-                return "UPDATE SaleOrderMaster SET LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND LiveCPop = 1";
+                return "UPDATE SaleOrderMaster SET LiveCPop = 2 WHERE Id = " + saleMasterRefId + " AND LiveCPop IN (0,1)";
             case "CUSTOM CLEARANCE":
             case "CUSTOMER CLEARANCE":
-                return "UPDATE SaleOrderMaster SET ForwardingCPop = 2 WHERE Id = " + saleMasterRefId + " AND ForwardingCPop = 1";
+                return "UPDATE SaleOrderMaster SET ForwardingCPop = 2 WHERE Id = " + saleMasterRefId + " AND ForwardingCPop IN (0,1)";
             case "BOAT CHARGES":
-                return "UPDATE SaleOrderMaster SET BoatCPop = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop = 1";
+                return "UPDATE SaleOrderMaster SET BoatCPop = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop IN (0,1)";
             case "PERMIT CHARGES":
             case "INWARD PERMIT CHARGES":
-                return "UPDATE SaleOrderMaster SET PermitCPop = 2 WHERE Id = " + saleMasterRefId + " AND PermitCPop = 1";
+                return "UPDATE SaleOrderMaster SET PermitCPop = 2 WHERE Id = " + saleMasterRefId + " AND PermitCPop IN (0,1)";
             case "MMHE CHARGES":
-                return "UPDATE SaleOrderMaster SET MMHECPop = 2 WHERE Id = " + saleMasterRefId + " AND MMHECPop = 1";
+                return "UPDATE SaleOrderMaster SET MMHECPop = 2 WHERE Id = " + saleMasterRefId + " AND MMHECPop IN (0,1)";
             case "AIR FREIGHT EXPORT CHARGES":
-                return "UPDATE SaleOrderMaster SET AFpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND AFpoCPop = 1";
+                return "UPDATE SaleOrderMaster SET AFpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND AFpoCPop IN (0,1)";
             case "STORAGE FEE":
             case "FREIGHT CHARGES":
-                return "UPDATE SaleOrderMaster SET SFWpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND SFWpoCPop = 1";
+                return "UPDATE SaleOrderMaster SET SFWpoCPop = 2 WHERE Id = " + saleMasterRefId + " AND SFWpoCPop IN (0,1)";
             case "CRANE & WHARFMARK CHARGES":
-                return "UPDATE SaleOrderMaster SET BoatCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop1 = 1";
+                return "UPDATE SaleOrderMaster SET BoatCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop1 IN (0,1)";
             case "PFP & PAC CHARGES":
-                return "UPDATE SaleOrderMaster SET PFPPCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND PFPPCPop1 = 1";
+                // Also update when column is 0 (as requested)
+                return "UPDATE SaleOrderMaster SET PFPPCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND PFPPCPop1 IN (0,1)";
             default:
                 return null;
         }

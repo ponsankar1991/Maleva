@@ -104,15 +104,9 @@ public class CustomerController {
             @RequestBody CustomerSelectRequest request
 
     ) {
-        CustomerSelectResult result =
-                customerService.selectCustomer(request);
+        CustomerSelectResult result = customerService.selectCustomer(request);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
-                        "Customer fetched successfully",
-                        result.getCustomers(),
-                        Map.of("count", result.getTotalCount())
-                )
+        return ResponseEntity.ok(ApiResponse.success("Customer fetched successfully", result.getCustomers(), Map.of("count", result.getTotalCount()))
         );
     }
 
