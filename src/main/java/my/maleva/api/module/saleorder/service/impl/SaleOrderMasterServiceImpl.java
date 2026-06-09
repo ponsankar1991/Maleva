@@ -1333,4 +1333,62 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         }
         return innermost;
     }
+    @Override
+    public List<my.maleva.api.module.saleorder.dto.SaleOrderDTO> editMultiSaleOrder(my.maleva.api.module.invoice.dto.MultiInvoiceDto dto) {
+        if (dto == null || dto.getId() == null || dto.getId().isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<SaleOrderMaster> masters = repository.findAllById(dto.getId());
+        List<my.maleva.api.module.saleorder.dto.SaleOrderDTO> results = new ArrayList<>();
+        boolean isMulti = dto.getId().size() > 1;
+        
+        for (SaleOrderMaster master : masters) {
+            if (!Objects.equals(master.getCompanyRefId(), dto.getComid())) continue;
+            
+            SaleOrderMasterDto mapped = mapper.toDto(master);
+            hydrateEditMasterDto(mapped, master, dto.getComid());
+            
+            my.maleva.api.module.saleorder.dto.SaleOrderDTO saleOrderDTO = mapper.toSaleOrderDto(mapped);
+            
+            List<SaleOrderEditDetailsDto> details = buildEditDetails(master.getId(), dto.getComid());
+            List<SaleOrderDetailsDto> finalDetails = new ArrayList<>();
+            
+            for (SaleOrderEditDetailsDto detail : details) {
+                String sdRemarks = detail.getSdRemarks() != null && !detail.getSdRemarks().trim().isEmpty() 
+                        ? detail.getSdRemarks() 
+                        : detail.getProductName();
+                        
+                if (isMulti) {
+                    detail.setSdRemarks(sdRemarks + " - " + mapped.getCNumberDisplay());
+                } else {
+                    detail.setSdRemarks(sdRemarks);
+                }
+                
+                detail.setSaleJobNo(mapped.getCNumberDisplay());
+                finalDetails.add(detail);
+            }
+            
+            saleOrderDTO.setSaleOrderDetails(finalDetails);
+            
+            saleOrderDTO.setPickupDetails(saleOrderPickupRepository.findBySaleOrderMasterRefId(master.getId()).stream()
+                          .map(mapper::toPickupDetailDTO)
+                          .collect(Collectors.toList()));
+            saleOrderDTO.setDeliveryDetails(saleOrderDeliveryRepository.findBySaleOrderMasterRefId(master.getId()).stream()
+                          .map(mapper::toDeliveryDetailDTO)
+                          .collect(Collectors.toList()));
+            saleOrderDTO.setForwardingDetails(saleOrderForwardingRepository.findBySaleOrderMasterRefId(master.getId()).stream()
+                          .map(mapper::toForwardingDetailDTO)
+                          .collect(Collectors.toList()));
+            
+            results.add(saleOrderDTO);
+        }
+        
+        if (results.isEmpty()) {
+            throw new EntityNotFoundException("Invaild Saleorder No !!!.");
+        }
+        
+        return results;
+    }
 }
+

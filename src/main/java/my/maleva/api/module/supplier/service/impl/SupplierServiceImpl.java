@@ -337,7 +337,7 @@ public class SupplierServiceImpl implements SupplierService {
                     }
                 } else if ("Id".equalsIgnoreCase(column)) {
                     try {
-                        Integer keywordId = Integer.parseInt(keyword);
+                        Integer keywordId = Integer.parseInt(keyword.trim());
                         if (hasTypeFilter) {
                             resultList = repository.searchByIdWithType(comid, keywordId, type);
                         } else {
@@ -369,20 +369,30 @@ public class SupplierServiceImpl implements SupplierService {
             }
 
             // Step 3: Handle pagination
-            // If startindex is -1, calculate last page
-            if (startindex == -1) {
-                if (totalCount > pageCount) {
-                    double div = (double) totalCount / pageCount;
-                    div = Math.floor(div);
-                    startindex = (int) (div * pageCount);
-                } else {
-                    startindex = 0;
+            // In .NET, pagination is ONLY applied when keyword is empty
+            List<Supplier> paginatedList;
+            if (keyword.isEmpty()) {
+                // If startindex is -1, calculate last page
+                if (startindex == -1) {
+                    if (totalCount > pageCount && pageCount > 0) {
+                        double div = (double) totalCount / pageCount;
+                        div = Math.floor(div);
+                        startindex = (int) (div * pageCount);
+                    } else {
+                        startindex = 0;
+                    }
                 }
-            }
 
-            // Apply pagination
-            int endIndex = Math.min(startindex + pageCount, resultList.size());
-            List<Supplier> paginatedList = resultList.subList(startindex, endIndex);
+                // Apply pagination
+                if (pageCount > 0) {
+                    int endIndex = Math.min(startindex + pageCount, resultList.size());
+                    paginatedList = resultList.subList(startindex, endIndex);
+                } else {
+                    paginatedList = new ArrayList<>();
+                }
+            } else {
+                paginatedList = resultList; // No pagination when searching by keyword
+            }
 
             // Step 4: Convert to DTOs and sort by created date
             List<SupplierDto> supplierDtos = paginatedList.stream()

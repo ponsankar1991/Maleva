@@ -26,12 +26,20 @@ public interface SaleOrderMasterMapper {
     SaleOrderMasterDto toDto(SaleOrderMaster entity);
     SaleOrderMaster toEntity(SaleOrderMasterDto dto);
     SaleOrderMaster toEntity(SaleOrderDTO dto);
+    SaleOrderDTO toSaleOrderDto(SaleOrderMasterDto dto);
     List<SaleDetails> toSaleDetailsentity(List<SaleDetailsDto> dto);
     
     @org.mapstruct.Mapping(source = "pickupWeaight", target = "pickupWeight")
     SaleOrderPickup toSaleOrderPickup(PickupDetailDTO dto);
     
     List<SaleOrderPickup> toSaleOrderPickupentity(List<PickupDetailDTO> dto);
+    
+    @org.mapstruct.Mapping(source = "pickupWeight", target = "pickupWeaight")
+    PickupDetailDTO toPickupDetailDTO(SaleOrderPickup entity);
+    
+    DeliveryDetailDTO toDeliveryDetailDTO(SaleOrderDelivery entity);
+    ForwardingDetailDTO toForwardingDetailDTO(SaleOrderForwarding entity);
+    
     List<SaleOrderDelivery> toSaleOrderDeliveryentity(List<DeliveryDetailDTO> dto);
     List<SaleOrderForwarding> toSaleOrderForwardingentity(List<ForwardingDetailDTO> dto);
     void updateEntityFromDto(SaleOrderMasterDto dto, @MappingTarget SaleOrderMaster entity);

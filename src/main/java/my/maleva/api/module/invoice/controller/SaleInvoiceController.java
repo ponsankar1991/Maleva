@@ -570,7 +570,8 @@ public class SaleInvoiceController {
                     .data1(jobs)
                     .build());
 
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
             // Extract innermost exception
             Exception innermost = ex;
             while (innermost.getCause() != null && innermost.getCause() instanceof Exception) {
@@ -675,6 +676,24 @@ public class SaleInvoiceController {
                     .body(ApiResponse.error("Error retrieving invoice: " + e.getMessage(), 500));
         }
     }
+    @PostMapping("/edit-multi-sale-order")
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.saleorder.dto.SaleOrderDTO>>> editMultiSaleOrder(@RequestBody my.maleva.api.module.invoice.dto.MultiInvoiceDto obj) {
+        logger.info("EditMultiSaleOrder requested with Comid: {}, Ids: {}", obj.getComid(), obj.getId());
+        try {
+            List<my.maleva.api.module.saleorder.dto.SaleOrderDTO> result = saleOrderMasterService.editMultiSaleOrder(obj);
+            return ResponseEntity.ok(ApiResponse.<List<my.maleva.api.module.saleorder.dto.SaleOrderDTO>>builder()
+                    .isSuccess(true)
+                    .statusCode(200)
+                    .message("Success")
+                    .data1(result)
+                    .build());
+        } catch (my.maleva.api.common.exception.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage(), 404));
+        } catch (Exception e) {
+            logger.error("Error in EditMultiSaleOrder: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Api Details : SaleInvoice_EditMultiSaleOrder - " + e.getMessage(), 500));
+        }
+    }
 }
-
-

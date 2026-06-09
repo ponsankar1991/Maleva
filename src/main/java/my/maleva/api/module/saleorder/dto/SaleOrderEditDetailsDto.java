@@ -23,4 +23,6 @@ public class SaleOrderEditDetailsDto extends SaleOrderDetailsDto {
     private String taxCode;
 
     private String uom;
+
+    private String saleJobNo;
 }
