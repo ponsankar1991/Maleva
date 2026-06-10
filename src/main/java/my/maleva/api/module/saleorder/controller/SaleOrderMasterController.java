@@ -1,5 +1,8 @@
 package my.maleva.api.module.saleorder.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import my.maleva.api.module.invoice.dto.SaleF5View;
 import my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO;
 import my.maleva.api.module.saleorder.dto.SaleOrderDTO;
@@ -23,6 +26,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.security.PermitAll;
+
 
 /**
  * SaleOrderMasterController - REST Controller for SaleOrderMaster API
@@ -260,5 +264,35 @@ public class SaleOrderMasterController {
             );
         }
     }
+
+
+    @GetMapping("/count")
+    @Operation(
+            summary     = "Check pending port-charge pops for a Sale Order job",
+            description = "Returns a count of SaleOrderMaster rows where at least one "
+                    + "port-charge pop flag is active and its waiver flag is not set. "
+                    + "A count > 0 means the job still has pending charges."
+    )
+
+    public ResponseEntity<ApiResponse<Integer>> selectPortChargeCount(
+            @Parameter(description = "Company reference ID", required = true, example = "1")
+            @RequestParam @Positive int companyId,
+
+            @Parameter(description = "Sale Order Master ID (job ID)", required = true, example = "1001")
+            @RequestParam @Positive int jobId
+    ) {
+        logger.info("[PortCharge] selectPortChargeCount called | companyId={} jobId={}", companyId, jobId);
+
+        if (companyId <= 0 || jobId <= 0) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.error("companyId and jobId must be positive integers.", HttpStatus.BAD_REQUEST.value())
+            );
+        }
+
+        Integer count = service.selectPortChargeCount(companyId, jobId);
+        return ResponseEntity.ok(ApiResponse.success(count, "Pending port-charge count retrieved."));
+    }
+
+
 }
 

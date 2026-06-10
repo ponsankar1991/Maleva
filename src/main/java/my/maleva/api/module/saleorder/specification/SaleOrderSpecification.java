@@ -215,7 +215,12 @@ public class SaleOrderSpecification {
 
             // Invoice check filter (invoiceNo = 0)
             if (invoiceCheck != null && invoiceCheck) {
-                predicates.add(cb.equal(root.get("invoiceNo"), 0));
+                predicates.add(
+                        cb.or(
+                                cb.equal(root.get("invoiceNo"), 0),
+                                cb.isNull(root.get("invoiceNo"))
+                        )
+                );
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

@@ -202,4 +202,33 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
     List<Object[]> findSaleDetailsRawDataWithJoinsByOrderIds(
             @Param("companyId") Integer companyId,
             @Param("orderIds") List<Integer> orderIds);
+
+
+    @Query(
+            value = """
+            SELECT COUNT(S.Id)
+            FROM   SaleOrderMaster S WITH (NOLOCK)
+            WHERE  S.CompanyRefId = :companyId
+              AND  S.Id           = :jobId
+              AND  (
+                       (S.PortCPop       = 1 AND ISNULL(S.Notportchagre,  0) = 0)
+                    OR (S.BoatCPop       = 1 AND ISNULL(S.NotBoatCPop,    0) = 0)
+                    OR (S.BoatCPop1      = 1 AND ISNULL(S.NotBoatCPop1,   0) = 0)
+                    OR (S.ForwardingCPop = 1 AND ISNULL(S.NotForwardingCPop, 0) = 0)
+                    OR (S.PermitCPop     = 1 AND ISNULL(S.NotPermitCPop,  0) = 0)
+                    OR (S.LiveCPop       = 1 AND ISNULL(S.NotLevyChares,  0) = 0)
+                    OR (S.MMHECPop       = 1 AND ISNULL(S.NotMMHECPop,    0) = 0)
+                    OR (S.AFpoCPop       = 1 AND ISNULL(S.NotAFpoCPop,    0) = 0)
+                    OR (S.SFWpoCPop      = 1 AND ISNULL(S.NotSFWpoCPop,   0) = 0)
+                    OR (S.SFEWpoCPop     = 1 AND ISNULL(S.NotSFEWpoCPop,  0) = 0)
+                    OR (S.PFPPCPop1      = 1 AND ISNULL(S.NotPFPPCPop1,   0) = 0)
+                   )
+            """,
+            nativeQuery = true
+    )
+    int countPendingPortCharges(
+            @Param("companyId") int companyId,
+            @Param("jobId")     int jobId
+    );
+
 }

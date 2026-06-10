@@ -1390,5 +1390,41 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         
         return results;
     }
+
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer selectPortChargeCount(int companyId, int jobId) {
+
+        // Prefer primitives and Integer.valueOf to avoid deprecated constructor usage
+        Integer response = Integer.valueOf(0);
+
+        try {
+            /*
+             * Delegate the entire query to the repository instance. The repository
+             * provides a native query that performs a COUNT at the database level.
+             */
+            int count = repository.countPendingPortCharges(companyId, jobId);
+            response = Integer.valueOf(count);
+
+        } catch (Exception ex) {
+            String errorMessage = (ex.getCause() != null)
+                    ? ex.getCause().getMessage()
+                    : ex.getMessage();
+
+            logger.error("[PortCharge] selectPortChargeCount failed | companyId={} jobId={} | error={}",
+                    companyId, jobId, errorMessage, ex);
+
+            response = Integer.valueOf(0);
+        }
+
+        return response;
+    }
+
+
+
+
+
 }
 

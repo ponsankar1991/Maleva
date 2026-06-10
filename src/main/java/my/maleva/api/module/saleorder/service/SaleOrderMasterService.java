@@ -65,4 +65,6 @@ public interface SaleOrderMasterService {
      */
     List<JobNumberDto> getCustJobNumbers(Integer companyId, Integer customerId, Integer invoiceNo);
     List<my.maleva.api.module.saleorder.dto.SaleOrderDTO> editMultiSaleOrder(my.maleva.api.module.invoice.dto.MultiInvoiceDto dto);
+
+    Integer selectPortChargeCount(int companyId, int jobId);
 }
