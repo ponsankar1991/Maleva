@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,6 +31,7 @@ public class JobTypeMasterService {
     /**
      * Get all job types
      */
+    @Cacheable(value = "jobTypes", key = "'all'")
     public List<JobTypeMasterDto> listAll() {
         return repository.findAll()
                 .stream()
@@ -39,6 +42,7 @@ public class JobTypeMasterService {
     /**
      * Get active job types by company ID
      */
+    @Cacheable(value = "jobTypes", key = "'company_' + #companyId")
     public ResponseEntity<ApiResponse<List<JobTypeMasterDto>>> getJobTypes(Integer companyId) {
         if (companyId == null || companyId <= 0) {
             return ResponseEntity.badRequest()
@@ -61,6 +65,7 @@ public class JobTypeMasterService {
     /**
      * Get job type by ID
      */
+    @Cacheable(value = "jobTypes", key = "'id_' + #id")
     public JobTypeMasterDto getById(Integer id) {
         return repository.findById(id)
                 .map(mapper::toDto)
@@ -71,6 +76,7 @@ public class JobTypeMasterService {
      * Create new job type
      */
     @Transactional
+    @CacheEvict(value = "jobTypes", allEntries = true)
     public JobTypeMasterDto create(JobTypeMasterDto dto) {
         if (dto == null) {
             throw new IllegalArgumentException("JobTypeMasterDto cannot be null");
@@ -89,6 +95,7 @@ public class JobTypeMasterService {
      * Update existing job type
      */
     @Transactional
+    @CacheEvict(value = "jobTypes", allEntries = true)
     public JobTypeMasterDto update(Integer id, JobTypeMasterDto dto) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Invalid ID provided");
@@ -112,6 +119,7 @@ public class JobTypeMasterService {
      * Delete job type by ID
      */
     @Transactional
+    @CacheEvict(value = "jobTypes", allEntries = true)
     public void delete(Integer id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Invalid ID provided");

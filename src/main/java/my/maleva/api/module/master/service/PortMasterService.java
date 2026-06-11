@@ -9,6 +9,8 @@ import my.maleva.api.module.master.repository.PortMasterRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,6 +31,7 @@ public class PortMasterService {
     /**
      * Get all active port records by company
      */
+    @Cacheable(value = "ports", key = "'all'")
     public List<PortMasterDto> listAll() {
         return portMasterRepository.findByCompanyRefIdAndActiveNot(0, 2)
                 .stream()
@@ -39,6 +42,7 @@ public class PortMasterService {
     /**
      * Get port record by ID
      */
+    @Cacheable(value = "ports", key = "'id_' + #id")
     public PortMasterDto getById(Integer id) {
         PortMaster port = portMasterRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Port Master not found: " + id));
@@ -48,6 +52,7 @@ public class PortMasterService {
     /**
      * Get all ports by company
      */
+    @Cacheable(value = "ports", key = "'company_' + #companyId")
     public List<PortMasterDto> getByCompany(Integer companyId) {
         return portMasterRepository.findByCompanyRefId(companyId)
                 .stream()
@@ -58,6 +63,7 @@ public class PortMasterService {
     /**
      * Get active ports by company
      */
+    @Cacheable(value = "ports", key = "'active_company_' + #companyId")
     public List<PortMasterDto> getActiveByCompany(Integer companyId) {
         return portMasterRepository.findByCompanyRefIdAndActive(companyId, 1)
                 .stream()
@@ -69,6 +75,7 @@ public class PortMasterService {
      * Create new port record (Implements SP_PortMaster create logic)
      */
     @Transactional
+    @CacheEvict(value = "ports", allEntries = true)
     public PortMasterDto create(PortMasterDto dto) {
         if (dto.getCompanyRefId() == null) {
             throw new InvalidRequestException("Company reference ID is required");
@@ -103,6 +110,7 @@ public class PortMasterService {
      * Create multiple port records in batch (Implements SP_PortMaster bulk logic)
      */
     @Transactional
+    @CacheEvict(value = "ports", allEntries = true)
     public List<PortMasterDto> createBatch(Integer companyId, List<PortMasterDto> dtos) {
         if (companyId == null) {
             throw new InvalidRequestException("Company reference ID is required");
@@ -160,6 +168,7 @@ public class PortMasterService {
      * Update port record (Implements SP_PortMaster update logic)
      */
     @Transactional
+    @CacheEvict(value = "ports", allEntries = true)
     public PortMasterDto update(Integer id, PortMasterDto dto) {
         PortMaster port = portMasterRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Port Master not found: " + id));
@@ -194,6 +203,7 @@ public class PortMasterService {
      * Delete port record
      */
     @Transactional
+    @CacheEvict(value = "ports", allEntries = true)
     public void delete(Integer id) {
         PortMaster port = portMasterRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Port Master not found: " + id));
@@ -222,6 +232,7 @@ public class PortMasterService {
      * Soft delete by setting active to 2
      */
     @Transactional
+    @CacheEvict(value = "ports", allEntries = true)
     public void softDelete(Integer id) {
         PortMaster port = portMasterRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Port Master not found: " + id));
@@ -237,6 +248,7 @@ public class PortMasterService {
      * Activate port record
      */
     @Transactional
+    @CacheEvict(value = "ports", allEntries = true)
     public PortMasterDto activate(Integer id) {
         PortMaster port = portMasterRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Port Master not found: " + id));
@@ -253,6 +265,7 @@ public class PortMasterService {
      * Deactivate port record
      */
     @Transactional
+    @CacheEvict(value = "ports", allEntries = true)
     public PortMasterDto deactivate(Integer id) {
         PortMaster port = portMasterRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Port Master not found: " + id));

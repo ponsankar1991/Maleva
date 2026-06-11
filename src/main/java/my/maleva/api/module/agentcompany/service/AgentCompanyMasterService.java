@@ -7,6 +7,8 @@ import my.maleva.api.module.agentcompany.mapper.AgentCompanyMasterMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,6 +34,7 @@ public class AgentCompanyMasterService {
      * Retrieve all agent companies (active != 2).
      * @return List of AgentCompanyMasterDTO
      */
+    @Cacheable(value = "agentCompanies", key = "'all'")
     public List<AgentCompanyMasterDTO> getAllAgentCompanies() {
         return repository.findByActiveNot(2).stream()
                 .map(mapper::toDto)
@@ -43,6 +46,7 @@ public class AgentCompanyMasterService {
      * @param companyRefId The company reference ID
      * @return List of AgentCompanyMasterDTO
      */
+    @Cacheable(value = "agentCompanies", key = "'company_' + #companyRefId")
     public List<AgentCompanyMasterDTO> getAgentCompaniesByCompanyRefId(Integer companyRefId) {
         return repository.findByCompanyRefIdAndActiveNot(companyRefId, 2).stream()
                 .map(mapper::toDto)
@@ -54,6 +58,7 @@ public class AgentCompanyMasterService {
      * @param id The agent company ID
      * @return AgentCompanyMasterDTO
      */
+    @Cacheable(value = "agentCompanies", key = "'id_' + #id")
     public AgentCompanyMasterDTO getAgentCompanyById(Long id) {
         AgentCompanyMaster entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Agent Company not found: " + id));
@@ -67,6 +72,7 @@ public class AgentCompanyMasterService {
      * @return Created AgentCompanyMasterDTO
      */
     @Transactional
+    @CacheEvict(value = "agentCompanies", allEntries = true)
     public AgentCompanyMasterDTO createAgentCompany(AgentCompanyMasterDTO dto) {
         // Validate input
         if (dto.getCompanyRefId() == null || dto.getCompanyRefId() <= 0) {
@@ -112,6 +118,7 @@ public class AgentCompanyMasterService {
      * @return List of saved DTOs
      */
     @Transactional
+    @CacheEvict(value = "agentCompanies", allEntries = true)
     public List<AgentCompanyMasterDTO> upsertAgentCompanies(Integer companyRefId, List<AgentCompanyMasterDTO> dtos) {
         if (companyRefId == null || companyRefId <= 0) {
             throw new InvalidRequestException("CompanyRefId must be a valid positive integer");
@@ -168,6 +175,7 @@ public class AgentCompanyMasterService {
      * @return Updated AgentCompanyMasterDTO
      */
     @Transactional
+    @CacheEvict(value = "agentCompanies", allEntries = true)
     public AgentCompanyMasterDTO updateAgentCompany(Long id, AgentCompanyMasterDTO dto) {
         AgentCompanyMaster entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Agent Company not found: " + id));
@@ -184,6 +192,7 @@ public class AgentCompanyMasterService {
      * @param id The agent company ID
      */
     @Transactional
+    @CacheEvict(value = "agentCompanies", allEntries = true)
     public void deleteAgentCompany(Long id) {
         AgentCompanyMaster entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Agent Company not found: " + id));
@@ -200,6 +209,7 @@ public class AgentCompanyMasterService {
      * @param companyRefId The company reference ID
      * @return List of matching DTOs
      */
+    @Cacheable(value = "agentCompanies", key = "'search_company_' + #companyRefId")
     public List<AgentCompanyMasterDTO> searchByCompanyRefId(Integer companyRefId) {
         return getAgentCompaniesByCompanyRefId(companyRefId);
     }

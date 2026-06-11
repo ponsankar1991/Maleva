@@ -8,6 +8,8 @@ import my.maleva.api.module.master.repository.AddressMasterRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,16 +25,19 @@ public class AddressMasterService {
         this.mapper = mapper;
     }
 
+    @Cacheable(value = "addresses", key = "'all'")
     public List<AddressMasterDto> listAll() {
         return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "addresses", key = "'id_' + #id")
     public AddressMasterDto getById(Integer id) {
         AddressMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("AddressMaster not found: " + id));
         return mapper.toDto(ent);
     }
 
     @Transactional
+    @CacheEvict(value = "addresses", allEntries = true)
     public AddressMasterDto create(AddressMasterDto dto) {
         LocalDateTime now = LocalDateTime.now();
         AddressMaster ent = mapper.toEntity(dto);
@@ -43,6 +48,7 @@ public class AddressMasterService {
     }
 
     @Transactional
+    @CacheEvict(value = "addresses", allEntries = true)
     public AddressMasterDto update(Integer id, AddressMasterDto dto) {
         AddressMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("AddressMaster not found: " + id));
         mapper.updateFromDto(dto, ent);
@@ -52,6 +58,7 @@ public class AddressMasterService {
     }
 
     @Transactional
+    @CacheEvict(value = "addresses", allEntries = true)
     public void delete(Integer id) {
         AddressMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("AddressMaster not found: " + id));
         repository.delete(ent);
@@ -68,6 +75,7 @@ public class AddressMasterService {
      * @return list of matching active addresses ordered by name
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "addresses", key = "'search_' + #companyRefId + '_' + (#keyword != null ? #keyword : 'ALL')")
     public List<AddressMasterDto> searchAddresses(Integer companyRefId, String keyword) {
         List<AddressMaster> result;
 
@@ -94,6 +102,7 @@ public class AddressMasterService {
      * @return list of active addresses ordered by name
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "addresses", key = "'active_company_' + #companyRefId")
     public List<AddressMasterDto> getActiveAddressesByCompany(Integer companyRefId) {
         return repository.findActiveByCompanyId(companyRefId).stream()
                 .map(mapper::toDto)

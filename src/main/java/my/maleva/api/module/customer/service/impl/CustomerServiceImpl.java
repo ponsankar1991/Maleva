@@ -9,6 +9,8 @@ import my.maleva.api.module.customer.entity.Customer;
 import my.maleva.api.module.customer.repository.CustomerQueryRepository;
 import my.maleva.api.module.customer.repository.CustomerRepository;
 import my.maleva.api.module.customer.service.CustomerService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @CacheEvict(value = "customers", allEntries = true)
     public CustomerDto create(CustomerDto dto) {
         Customer entity = mapper.toEntity(dto);
         LocalDateTime now = LocalDateTime.now();
@@ -41,6 +44,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @CacheEvict(value = "customers", allEntries = true)
     public CustomerDto update(Integer id, CustomerDto dto) {
         Customer existing = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
@@ -54,6 +58,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "customers", key = "'id_' + #id")
     public CustomerDto getById(Integer id) {
         Customer c = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
@@ -62,7 +67,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-
+    @Cacheable(value = "customers", key = "'name_' + (#name != null ? #name : 'ALL')")
     public List<CustomerDto> findAll(String name) {
         List<Customer> list;
         if (name == null || name.isBlank()) {
@@ -86,6 +91,7 @@ public class CustomerServiceImpl implements CustomerService {
 
 
     @Override
+    @CacheEvict(value = "customers", allEntries = true)
     public void softDelete(Integer customerId) {
         Customer customer = repository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
@@ -96,6 +102,7 @@ public class CustomerServiceImpl implements CustomerService {
 
 
     @Override
+    @CacheEvict(value = "customers", allEntries = true)
     public void delete(Integer id) {
         if (!repository.existsById(id)) {
             throw new RuntimeException("Customer not found: " + id);

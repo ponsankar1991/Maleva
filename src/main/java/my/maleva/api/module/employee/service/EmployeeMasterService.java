@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +35,7 @@ public class EmployeeMasterService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @CacheEvict(value = "employees", allEntries = true)
     public EmployeeMasterDto create(EmployeeMasterDto dto) {
         EmployeeMaster entity = mapper.toEntity(dto);
         // If neither roleId nor role provided in DTO, apply DB default in entity to avoid null insertion
@@ -46,6 +49,7 @@ public class EmployeeMasterService {
         return mapper.toDto(saved);
     }
 
+    @CacheEvict(value = "employees", allEntries = true)
     public EmployeeMasterDto update(Integer id, EmployeeMasterDto dto) {
         EmployeeMaster existing = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Employee not found: " + id));
         mapper.updateFromDto(dto, existing);
@@ -61,6 +65,7 @@ public class EmployeeMasterService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "employees", key = "'name_' + (#name != null ? #name : 'ALL')")
     public List<EmployeeMasterDto> findAll(String name) {
         List<EmployeeMaster> list;
         if (name == null || name.isBlank()) {
@@ -71,6 +76,7 @@ public class EmployeeMasterService {
         return list.stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "employees", allEntries = true)
     public void delete(Integer id) {
         if (!repository.existsById(id)) throw new EntityNotFoundException("Employee not found: " + id);
         repository.deleteById(id);
@@ -107,6 +113,7 @@ public class EmployeeMasterService {
      * @return List of employees matching the filter criteria with only Active=1 status
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "employees", key = "'roles_' + #companyRefId + '_' + (#roleId != null ? #roleId : 0) + '_' + (#roleId1 != null ? #roleId1 : 0)")
     public List<EmployeeMasterDto> getEmployeesByCompanyAndRoles(Integer companyRefId, Integer roleId, Integer roleId1) {
         List<Integer> roleIdList = new java.util.ArrayList<>();
 
@@ -147,6 +154,7 @@ public class EmployeeMasterService {
      * @return List of employees ordered by employee name
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "employees", key = "'type_' + #companyRefId + '_' + (#type != null ? #type : 'ALL')")
     public List<EmployeeAllDto> selectEmployeeAll(Integer companyRefId, String type) {
         List<EmployeeMaster> employees;
 
