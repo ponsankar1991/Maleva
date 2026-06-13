@@ -48,6 +48,9 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     @Autowired
     private CustomerRepository customerRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Override
     @Transactional(readOnly = true)
     public List<RTIMasterDto> getAllByCompanyId(Integer companyRefId) {
@@ -128,6 +131,52 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                 detailEntity.setRtiMasterRefId(saved.getId());
                 my.maleva.api.module.rti.entity.RTIDetails savedDetail = rtiDetailsRepository.save(detailEntity);
                 savedDetailsDto.add(rtiDetailsMapper.toDto(savedDetail));
+
+                // Synchronize RTIPickup and RTIDelivery tables on creation matching legacy .NET behavior
+                if (savedDetail.getSaleOrderMasterRefId() != null) {
+                    int rtiMasterRefId = saved.getId();
+                    int saleOrderMasterRefId = savedDetail.getSaleOrderMasterRefId();
+
+                    // Pickup Insertion
+                    jdbcTemplate.update("""
+                            INSERT INTO RTIPickup (
+                                RTIMasterRefId, SaleOrderMasterRefId,
+                                PickupAddress, PickupTime,
+                                PickupWeight, PickupQuantity, CreatedDate
+                            )
+                            SELECT
+                                ?,
+                                ?,
+                                PickupAddress,
+                                PickupTime,
+                                PickupWeight,
+                                PickupQuantity,
+                                GETDATE()
+                            FROM SaleOrderPickup WITH(NOLOCK)
+                            WHERE SaleOrderMasterRefId = ?
+                            """,
+                            rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
+
+                    // Delivery Insertion
+                    jdbcTemplate.update("""
+                            INSERT INTO RTIDelivery (
+                                RTIMasterRefId, SaleOrderMasterRefId,
+                                DeliveryAddress, DeliveryTime,
+                                DeliveryWeight, DeliveryQuantity, CreatedDate
+                            )
+                            SELECT
+                                ?,
+                                ?,
+                                DeliveryAddress,
+                                DeliveryTime,
+                                DeliveryWeight,
+                                DeliveryQuantity,
+                                GETDATE()
+                            FROM SaleOrderDelivery WITH(NOLOCK)
+                            WHERE SaleOrderMasterRefId = ?
+                            """,
+                            rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
+                }
             }
         }
 
@@ -318,7 +367,7 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     // NOTE: create/clone revise behavior removed to match legacy .NET ReviseRTI which is read-only.
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public RTIMasterDto getForRevise(Integer id, Integer sourceCNumber, Integer companyRefId) {
         logger.info("Loading RTI for revise UI. id={}, sourceCNumber={}, companyRefId={}", id, sourceCNumber, companyRefId);
 
@@ -374,6 +423,62 @@ public class RTIMasterServiceImpl implements RTIMasterService {
 
             return dto;
         }).collect(Collectors.toList());
+
+        // Synchronize RTIPickup and RTIDelivery tables matching legacy .NET Dapper behavior
+        if (!detailDtos.isEmpty()) {
+            for (my.maleva.api.module.rti.dto.RTIDetailsDto item : detailDtos) {
+                if (item.getSaleOrderMasterRefId() != null) {
+                    int rtiMasterRefId = source.getId();
+                    int saleOrderMasterRefId = item.getSaleOrderMasterRefId();
+
+                    // Pickup Sync
+                    jdbcTemplate.update("DELETE FROM RTIPickup WHERE RTIMasterRefId = ? AND SaleOrderMasterRefId = ?",
+                            rtiMasterRefId, saleOrderMasterRefId);
+
+                    jdbcTemplate.update("""
+                            INSERT INTO RTIPickup (
+                                RTIMasterRefId, SaleOrderMasterRefId,
+                                PickupAddress, PickupTime,
+                                PickupWeight, PickupQuantity, CreatedDate
+                            )
+                            SELECT
+                                ?,
+                                ?,
+                                PickupAddress,
+                                PickupTime,
+                                PickupWeight,
+                                PickupQuantity,
+                                GETDATE()
+                            FROM SaleOrderPickup WITH(NOLOCK)
+                            WHERE SaleOrderMasterRefId = ?
+                            """,
+                            rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
+
+                    // Delivery Sync
+                    jdbcTemplate.update("DELETE FROM RTIDelivery WHERE RTIMasterRefId = ? AND SaleOrderMasterRefId = ?",
+                            rtiMasterRefId, saleOrderMasterRefId);
+
+                    jdbcTemplate.update("""
+                            INSERT INTO RTIDelivery (
+                                RTIMasterRefId, SaleOrderMasterRefId,
+                                DeliveryAddress, DeliveryTime,
+                                DeliveryWeight, DeliveryQuantity, CreatedDate
+                            )
+                            SELECT
+                                ?,
+                                ?,
+                                DeliveryAddress,
+                                DeliveryTime,
+                                DeliveryWeight,
+                                DeliveryQuantity,
+                                GETDATE()
+                            FROM SaleOrderDelivery WITH(NOLOCK)
+                            WHERE SaleOrderMasterRefId = ?
+                            """,
+                            rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
+                }
+            }
+        }
 
         masterDto.setRtiDetails(detailDtos);
         return masterDto;
