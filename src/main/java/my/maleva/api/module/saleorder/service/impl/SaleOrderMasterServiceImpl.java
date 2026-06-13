@@ -425,10 +425,18 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     @Transactional
     public SaleOrderMasterDto updateMaster(Integer id, SaleOrderMasterDto dto) {
         SaleOrderMaster entity = findActiveSaleOrder(id);
+        Integer originalStatusId = entity.getJStatus();
         validateMasterUpdateRequest(dto, entity);
         calculateOrderTotals(dto);
 
         mapper.updateEntityFromDto(dto, entity);
+
+        Integer targetStatusId = entity.getJStatus();
+        if (!Objects.equals(originalStatusId, targetStatusId)) {
+            String targetStatusName = resolveStatusName(targetStatusId);
+            checkPendingPortCharges(entity, targetStatusId, targetStatusName);
+        }
+
         entity.setId(id);
         Integer resolvedCNumber = resolveUpdateCNumber(dto, entity);
         if (hasPositiveCNumber(resolvedCNumber)) {
@@ -463,6 +471,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                 .filter(status -> Objects.equals(status.getCompanyRefId(), companyId))
                 .filter(status -> !Objects.equals(status.getActive(), SaleOrderApiConstants.INACTIVE_STATUS))
                 .orElseThrow(() -> new InvalidRequestException(SaleOrderApiConstants.MESSAGE_JOB_STATUS_INVALID));
+
+        checkPendingPortCharges(entity, statusEntity.getId(), statusEntity.getName());
 
         entity.setJStatus(statusEntity.getId());
         entity.setModifiedDate(LocalDateTime.now());
@@ -500,6 +510,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                     .filter(status -> Objects.equals(status.getCompanyRefId(), dto.getCompanyRefId()))
                     .filter(status -> !Objects.equals(status.getActive(), SaleOrderApiConstants.INACTIVE_STATUS))
                     .orElseThrow(() -> new InvalidRequestException(SaleOrderApiConstants.MESSAGE_JOB_STATUS_INVALID));
+            checkPendingPortCharges(entity, statusEntity.getId(), statusEntity.getName());
             entity.setJStatus(statusEntity.getId());
         }
 
@@ -588,6 +599,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         JobStatusMaster statusEntity = jobStatusMasterRepository.findById(jobStatusId)
                 .filter(status -> !Objects.equals(status.getActive(), SaleOrderApiConstants.INACTIVE_STATUS))
                 .orElseThrow(() -> new InvalidRequestException("Invalid Job Status ID"));
+
+        checkPendingPortCharges(entity, statusEntity.getId(), statusEntity.getName());
 
         // Update JStatus and modified date
         entity.setJStatus(statusEntity.getId());
@@ -725,7 +738,14 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
     private SaleOrderMaster buildExistingSaleOrder(SaleOrderDTO dto) {
         SaleOrderMaster entity = findActiveSaleOrder(dto.getId());
+        Integer originalStatusId = entity.getJStatus();
         mapper.updateEntityFromDto(dto, entity);
+
+        Integer targetStatusId = entity.getJStatus();
+        if (!Objects.equals(originalStatusId, targetStatusId)) {
+            String targetStatusName = resolveStatusName(targetStatusId);
+            checkPendingPortCharges(entity, targetStatusId, targetStatusName);
+        }
 
         // Manually allow clearing of dates if the frontend sends null or empty strings
         if (dto.getEta() == null || dto.getEta().trim().isEmpty()) entity.setEta(null);
@@ -1422,9 +1442,22 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         return response;
     }
 
+    private void checkPendingPortCharges(SaleOrderMaster entity, Integer targetStatusId, String statusName) {
+        if (entity == null || entity.getId() == null || entity.getId() <= 0) {
+            return;
+        }
+        String statusNameClean = statusName != null ? statusName.trim().toUpperCase() : "";
+        if (targetStatusId == 15 || "WAITING FOR BILLING".equals(statusNameClean) ||
+            targetStatusId == 20 || "WAITING FOR POD".equals(statusNameClean)) {
+            Integer count = selectPortChargeCount(entity.getCompanyRefId(), entity.getId());
+            if (count != null && count > 0) {
+                throw new InvalidRequestException("Please complete all purchase orders before changing status!");
+            }
+        }
+    }
+
 
 
 
 
 }
-

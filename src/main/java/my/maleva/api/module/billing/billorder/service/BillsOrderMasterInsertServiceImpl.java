@@ -340,9 +340,13 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 return "UPDATE SaleOrderMaster SET ForwardingCPop = 2 WHERE Id = " + saleMasterRefId + " AND ForwardingCPop IN (0,1)";
             case "BOAT CHARGES":
                 return "UPDATE SaleOrderMaster SET BoatCPop = 2 WHERE Id = " + saleMasterRefId + " AND BoatCPop IN (0,1)";
+
             case "PERMIT CHARGES":
             case "INWARD PERMIT CHARGES":
-                return "UPDATE SaleOrderMaster SET PermitCPop = 2 WHERE Id = " + saleMasterRefId + " AND PermitCPop IN (0,1)";
+                return "UPDATE SaleOrderMaster " +
+                        "SET PermitCPop = CASE WHEN PermitCPop IN (0,1) THEN 2 ELSE PermitCPop END, " +
+                        "    PFPPCPop1 = CASE WHEN PFPPCPop1 IN (0,1) THEN 2 ELSE PFPPCPop1 END " +
+                        "WHERE Id = " + saleMasterRefId;
             case "MMHE CHARGES":
                 return "UPDATE SaleOrderMaster SET MMHECPop = 2 WHERE Id = " + saleMasterRefId + " AND MMHECPop IN (0,1)";
             case "AIR FREIGHT EXPORT CHARGES":
