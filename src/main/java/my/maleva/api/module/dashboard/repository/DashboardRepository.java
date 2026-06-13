@@ -1000,7 +1000,7 @@ public class DashboardRepository {
             return switch (etaType) {
                 case 1 -> addBaseCondition(true, "CAST(S.OETA AS DATE) BETWEEN ? AND ?", fromDate, toDate);
                 case 2 -> addBaseCondition(true, "CAST(S.ETA AS DATE) BETWEEN ? AND ?", fromDate, toDate);
-                case 5 -> addBaseCondition(true, "S.JobMasterRefId IN (1,2) AND CAST(S.FlightTime AS DATE) BETWEEN ? AND ?", fromDate, toDate);
+                case 5 -> addBaseCondition(true, "S.JobMasterRefId IN (1,2) AND CAST(S.FlighTime AS DATE) BETWEEN ? AND ?", fromDate, toDate);
                 default -> {
                     // For etaType 3 or others: base uses ETA, union uses OETA
                     addBaseCondition(true, "CAST(S.ETA AS DATE) BETWEEN ? AND ?", fromDate, toDate);
@@ -1012,7 +1012,7 @@ public class DashboardRepository {
 
         public QueryBuilder addFlightTimeFilter(Integer etaType, String fromDate, String toDate) {
             return addBaseCondition(etaType != null && etaType == 5 && fromDate != null && toDate != null,
-                "S.JobMasterRefId IN (1,2) AND CAST(S.FlightTime AS DATE) BETWEEN ? AND ?", fromDate, toDate);
+                "S.JobMasterRefId IN (1,2) AND CAST(S.FlighTime AS DATE) BETWEEN ? AND ?", fromDate, toDate);
         }
 
         public QueryBuilder addStatusFilter(Integer statusId) {
@@ -1439,8 +1439,8 @@ public class DashboardRepository {
                 S.BoatCPop, S.PermitCPop, S.ForwardingCPop, S.PortCPop, S.LiveCPop, S.MMHECPop, S.AFpoCPop,
                 S.PPFpoCPop, S.SFEWpoCPop, S.SFWpoCPop, S.BoatCPop1, S.PFPPCPop1, S.SCN as OSCN, S.LSCN,
                 S.Vessel as VesselType, FORMAT(ISNULL(S.SaleDate,'1900-01-01'),'dd/MM/yyyy') as JobDate,
-                ISNULL(J.Name,'') as JobStatus, ISNULL(S.FlightTime, S.OETA) as DETA,
-                ISNULL(CONVERT(VARCHAR(26), S.FlightTime, 20), '') as SETA, S.FlightTime as ETA,
+                ISNULL(J.Name,'') as JobStatus, ISNULL(S.FlighTime, S.OETA) as DETA,
+                ISNULL(CONVERT(VARCHAR(26), S.FlighTime, 20), '') as SETA, S.FlighTime as ETA,
                 ISNULL(CONVERT(VARCHAR(26), S.ETB, 20), '') as SETB, S.ETB,
                 ISNULL(CONVERT(VARCHAR(26), S.ETD, 20), '') as SETD, S.ETD,
                 ISNULL(CONVERT(VARCHAR(26), S.OETA, 20), '') as SOETA, S.OETA,
@@ -1462,7 +1462,7 @@ public class DashboardRepository {
                 ISNULL(S.BoardingOfficerRefId, 0) as BoardingOfficerRefId, ISNULL(EB.EmployeeName, '') as BoardingOfficerName,
                 ISNULL(S.BoardingOfficer1RefId, 0) as BoardingOfficer1RefId, ISNULL(EB1.EmployeeName, '') as BoardingOfficerName1,
                 S.BoardingAmount, S.BoardingAmount1, C.CustomerName, ISNULL(E.EmployeeName, '') as EmployeeName,
-                '' as Remarks, CASE WHEN CAST(S.FlightTime AS DATE) < ? THEN 1 ELSE 0 END AS SDId
+                '' as Remarks, CASE WHEN CAST(S.FlighTime AS DATE) < ? THEN 1 ELSE 0 END AS SDId
             FROM SaleOrderMaster S WITH (NOLOCK)
             INNER JOIN Customer C WITH (NOLOCK) ON C.Id = S.CustomerRefId
             INNER JOIN JobTypeMaster JT WITH (NOLOCK) ON JT.Id = S.JobMasterRefId
