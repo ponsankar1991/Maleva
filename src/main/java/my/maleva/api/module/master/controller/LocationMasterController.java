@@ -1,6 +1,7 @@
 package my.maleva.api.module.master.controller;
 
 import jakarta.annotation.security.PermitAll;
+import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.master.dto.LocationMasterDto;
 import my.maleva.api.module.master.service.LocationMasterService;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,14 @@ public class LocationMasterController {
     @GetMapping
     public List<LocationMasterDto> list() {
         return service.listAll();
+    }
+
+    @GetMapping("/company/{companyId}/active")
+    public ResponseEntity<ApiResponse<List<LocationMasterDto>>> getActiveByCompany(@PathVariable Integer companyId) {
+        if (companyId == null || companyId <= 0) {
+            throw new IllegalArgumentException("Company ID must be a positive integer");
+        }List<LocationMasterDto> locations = service.getActiveByCompany(companyId);
+        return ResponseEntity.ok(ApiResponse.success("Active locations retrieved successfully", locations));
     }
 
     @GetMapping("/{id}")

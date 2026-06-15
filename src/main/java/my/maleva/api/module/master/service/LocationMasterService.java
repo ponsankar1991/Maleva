@@ -27,6 +27,13 @@ public class LocationMasterService {
         return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
+    public List<LocationMasterDto> getActiveByCompany(Integer companyId) {
+        return repository.findByCompanyRefIdAndActiveNot(companyId, 2)
+                .stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     public LocationMasterDto getById(Integer id) {
         LocationMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("LocationMaster not found: " + id));
         return mapper.toDto(ent);

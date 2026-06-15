@@ -176,6 +176,24 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                             WHERE SaleOrderMasterRefId = ?
                             """,
                             rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
+
+                    // Warehouse Data Update
+                    jdbcTemplate.update("""
+        UPDATE RD
+        SET
+            RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
+            RD.WareHouseExitDate = SOM.WareHouseExitDate,
+            RD.WareHouseAddress = SOM.WareHouseAddress
+        FROM RTIDetails RD
+        INNER JOIN SaleOrderMaster SOM
+            ON SOM.Id = ?
+        WHERE RD.RTIMasterRefId = ?
+          AND RD.SaleOrderMasterRefId = ?
+        """,
+                            saleOrderMasterRefId,
+                            rtiMasterRefId,
+                            saleOrderMasterRefId);
+
                 }
             }
         }
@@ -476,6 +494,27 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                             WHERE SaleOrderMasterRefId = ?
                             """,
                             rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
+
+                    jdbcTemplate.update("""
+        UPDATE RD
+        SET
+            RD.WareHouseEnterDate = SM.WareHouseEnterDate,
+            RD.WareHouseExitDate  = SM.WareHouseExitDate,
+            RD.WareHouseAddress   = SM.WareHouseAddress
+        FROM RTIDetails RD
+        INNER JOIN SaleOrderMaster SM
+            ON SM.Id = RD.SaleOrderMasterRefId
+        WHERE RD.RTIMasterRefId = ?
+          AND RD.SaleOrderMasterRefId = ?
+        """,
+                            rtiMasterRefId,
+                            saleOrderMasterRefId);
+
+
+
+
+
+
                 }
             }
         }
