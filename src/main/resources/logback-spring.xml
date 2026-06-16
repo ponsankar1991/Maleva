@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Property definitions -->
+    <property name="LOG_DIR" value="logs"/>
+    <property name="LOG_FILE_NAME" value="application"/>
+    <property name="LOG_PATTERN" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%thread] %-5level [REQ:%X{requestId}] [USER:%X{username}] %logger{36} - %msg%n"/>
+    <property name="LOG_PATTERN_CONSOLE" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%thread] %-5level %logger{36} - %msg%n"/>
+
+    <!-- Console Appender (for development) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${LOG_PATTERN_CONSOLE}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender with Time and Size Based Rolling Policy (for production) -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${LOG_FILE_NAME}.log</file>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+
+        <!-- Time and Size Based Rolling Policy -->
+        <!-- Rolls every hour with pattern yyyy-MM-dd_HH -->
+        <!-- Also rolls when file reaches 100MB -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Hourly rollover pattern -->
+            <fileNamePattern>${LOG_DIR}/${LOG_FILE_NAME}-%d{yyyy-MM-dd_HH}.%i.log</fileNamePattern>
+
+            <!-- Maximum file size before rolling (100MB) -->
+            <maxFileSize>100MB</maxFileSize>
+
+            <!-- Maximum number of files to keep (2400 files = ~100 days at hourly rollover) -->
+            <maxHistory>2400</maxHistory>
+
+            <!-- Total size limit (optional, commented out for now) -->
+            <!-- <totalSizeCap>240GB</totalSizeCap> -->
+        </rollingPolicy>
+    </appender>
+
+    <!-- Module-specific logging levels -->
+    <logger name="org.hibernate.SQL" level="INFO"/>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+
+    <!-- Development Profile: Console only, INFO level -->
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- Production Profile: File only, WARN level -->
+    <springProfile name="prod">
+        <root level="WARN">
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- Fallback if no profile is specified (defaults to development behavior) -->
+    <!-- This ensures console output when neither dev nor prod is explicitly set -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>
+

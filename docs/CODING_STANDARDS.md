@@ -890,6 +890,124 @@ public class GlobalExceptionHandler {
 
 ---
 
+## 📋 LOGGING CONFIGURATION (Logback)
+
+### Overview
+Maleva uses **Logback** as the primary logging framework configured via `logback-spring.xml` in `src/main/resources/`. The configuration supports different logging behaviors per Spring profile:
+
+- **Development Profile** (default): Console output with INFO level
+- **Production Profile** (`prod`): Rolling file output with WARN level
+
+### Log File Storage and Rotation
+- **Location**: `logs/` directory in the application root (created automatically)
+- **Naming Pattern**: `application-YYYY-MM-DD_HH.log` (hourly rotation)
+- **Max File Size**: 100MB per file (size-based rotation)
+- **Retention**: 2400 files maximum (≈100 days of logs at hourly rollover)
+- **Charset**: UTF-8 (supports international characters)
+
+### Log Message Format
+All log messages follow this pattern:
+```
+[YYYY-MM-DD HH:mm:ss.SSS] [thread-name] LEVEL logger-name - message
+```
+
+Example:
+```
+[2026-06-16 14:30:45.123] [http-nio-8082-exec-1] INFO  m.m.a.m.c.UserController - User login successful
+```
+
+### Using Loggers in Code
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class CustomerService {
+    private static final Logger log = LoggerFactory.getLogger(CustomerService.class);
+    
+    public void processCustomer(Long id) {
+        log.info("Processing customer: {}", id);
+        try {
+            // Business logic
+        } catch (Exception e) {
+            log.error("Error processing customer: {}", id, e);
+        }
+    }
+}
+```
+
+**With Lombok**: Add `@Slf4j` annotation to auto-generate logger:
+```java
+@Slf4j
+public class CustomerService {
+    public void processCustomer(Long id) {
+        log.info("Processing customer: {}", id);
+        // ...
+    }
+}
+```
+
+### Development Mode
+Run with default configuration or explicitly with `dev` profile:
+```bash
+./mvnw spring-boot:run                          # Default: development mode
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
+```
+**Output**: Logs appear in console (stdout) with INFO level and above
+
+### Production Mode
+Run with `prod` profile:
+```bash
+java -jar target/maleva-*.jar --spring.profiles.active=prod
+```
+**Output**: Logs written to rolling files in `logs/` directory with WARN level and above
+
+### Enabling DEBUG Logging for Modules
+For troubleshooting, enable DEBUG logging for specific modules by setting environment variables or modifying `application.yaml`:
+
+```yaml
+logging:
+  level:
+    my.maleva.api.module.payment: DEBUG           # Debug payment module
+    my.maleva.api.integration.qne: DEBUG          # Debug QNE integration
+```
+
+### Log Retention and Disk Space
+- **Storage Calculation**: 2400 files × 100MB = 240GB maximum
+- **Retention Period**: ~100 days (2400 hours ÷ 24 hours/day)
+- **Automatic Cleanup**: Files older than the retention limit are automatically deleted
+
+Monitor disk space in production:
+```bash
+du -sh logs/                    # Linux/macOS
+dir /s logs/                    # Windows
+```
+
+### Best Practices
+1. **Use appropriate log levels**:
+   - `DEBUG`: Detailed diagnostic info (not visible in production by default)
+   - `INFO`: General informational messages (customer actions, important milestones)
+   - `WARN`: Warning conditions that should be investigated (deprecated API usage)
+   - `ERROR`: Error events (exceptions, failed operations)
+
+2. **Use structured logging with parameters**:
+   ```java
+   log.info("Customer created: id={}, name={}, email={}", id, name, email);  // Good
+   log.info("Customer created: " + id + ", " + name);                         // Avoid string concatenation
+   ```
+
+3. **Don't log sensitive data** (PII/passwords):
+   ```java
+   log.info("User authenticated: {}", username);              // OK - username is not sensitive
+   log.info("API key: {}", apiKey);                          // BAD - don't log secrets
+   ```
+
+4. **Include context in error logs**:
+   ```java
+   log.error("Failed to process order: id={}, status={}, error={}", orderId, status, e.getMessage(), e);
+   ```
+
+---
+
 ## ✅ CHECKLIST FOR NEW FEATURES
 
 When adding a new feature/module:

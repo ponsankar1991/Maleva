@@ -32,6 +32,9 @@ build/
 # Uploaded files
 uploads/
 
+# Logback logs
+logs/
+
 ### VS Code ###
 .vscode/
 .gitattributes

@@ -64,11 +64,6 @@ server:
       max-file-size: 10MB
       max-request-size: 50MB
 
-logging:
-  level:
-    org.hibernate.SQL: INFO           # Changed from DEBUG to reduce logging overhead
-    org.hibernate.type.descriptor.sql.BasicBinder: WARN  # Reduced from TRACE
-    com.zaxxer.hikari: INFO           # Monitor connection pool
 
 file:
   upload:
