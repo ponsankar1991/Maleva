@@ -177,22 +177,34 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                             """,
                             rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
 
-                    // Warehouse Data Update
-                    jdbcTemplate.update("""
-        UPDATE RD
-        SET
-            RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
-            RD.WareHouseExitDate = SOM.WareHouseExitDate,
-            RD.WareHouseAddress = SOM.WareHouseAddress
-        FROM RTIDetails RD
-        INNER JOIN SaleOrderMaster SOM
-            ON SOM.Id = ?
-        WHERE RD.RTIMasterRefId = ?
-          AND RD.SaleOrderMasterRefId = ?
-        """,
-                            saleOrderMasterRefId,
-                            rtiMasterRefId,
-                            saleOrderMasterRefId);
+                    // CONDITIONAL: Warehouse Data Update - Only if pwdType = 1 or 2
+                    if (detailDto.getPwdType() != null && detailDto.getPwdType() > 0) {
+                        if (detailDto.getPwdType() == 1 || detailDto.getPwdType() == 2) {
+                            logger.info("RTI_WAREHOUSE: Executing warehouse update - RTIMasterRefId: {}, SaleOrderMasterRefId: {}, pwdType: {}",
+                                    rtiMasterRefId, saleOrderMasterRefId, detailDto.getPwdType());
+
+                            int rowsUpdated = jdbcTemplate.update("""
+                                UPDATE RD
+                                SET
+                                    RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
+                                    RD.WareHouseExitDate = SOM.WareHouseExitDate,
+                                    RD.WareHouseAddress = SOM.WareHouseAddress
+                                FROM RTIDetails RD
+                                INNER JOIN SaleOrderMaster SOM
+                                    ON SOM.Id = ?
+                                WHERE RD.RTIMasterRefId = ?
+                                  AND RD.SaleOrderMasterRefId = ?
+                                """,
+                                saleOrderMasterRefId,
+                                rtiMasterRefId,
+                                saleOrderMasterRefId);
+
+                            logger.info("RTI_WAREHOUSE: Completed - Rows: {}, RTIMasterRefId: {}, pwdType: {}",
+                                    rowsUpdated, rtiMasterRefId, detailDto.getPwdType());
+                        }
+                    } else if (detailDto.getPwdType() == null || detailDto.getPwdType() == 0) {
+                        logger.debug("RTI_WAREHOUSE: Skipped warehouse update - pwdType is 0 or null (disabled)");
+                    }
 
                 }
             }
@@ -230,6 +242,42 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                 detailEntity.setRtiMasterRefId(updated.getId());
                 my.maleva.api.module.rti.entity.RTIDetails savedDetail = rtiDetailsRepository.save(detailEntity);
                 savedDetailsDto.add(rtiDetailsMapper.toDto(savedDetail));
+
+                // Synchronize RTIPickup and RTIDelivery tables on update matching legacy .NET behavior
+                if (savedDetail.getSaleOrderMasterRefId() != null) {
+                    int rtiMasterRefId = updated.getId();
+                    int saleOrderMasterRefId = savedDetail.getSaleOrderMasterRefId();
+
+
+                    // CONDITIONAL: Warehouse Data Update - Only if pwdType = 1 or 2
+                    if (detailDto.getPwdType() != null && detailDto.getPwdType() > 0) {
+                        if (detailDto.getPwdType() == 1 || detailDto.getPwdType() == 2) {
+                            logger.info("RTI_WAREHOUSE: Executing warehouse update - RTIMasterRefId: {}, SaleOrderMasterRefId: {}, pwdType: {}",
+                                    rtiMasterRefId, saleOrderMasterRefId, detailDto.getPwdType());
+
+                            int rowsUpdated = jdbcTemplate.update("""
+                                UPDATE RD
+                                SET
+                                    RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
+                                    RD.WareHouseExitDate = SOM.WareHouseExitDate,
+                                    RD.WareHouseAddress = SOM.WareHouseAddress
+                                FROM RTIDetails RD
+                                INNER JOIN SaleOrderMaster SOM
+                                    ON SOM.Id = ?
+                                WHERE RD.RTIMasterRefId = ?
+                                  AND RD.SaleOrderMasterRefId = ?
+                                """,
+                                saleOrderMasterRefId,
+                                rtiMasterRefId,
+                                saleOrderMasterRefId);
+
+                            logger.info("RTI_WAREHOUSE: Completed - Rows: {}, RTIMasterRefId: {}, pwdType: {}",
+                                    rowsUpdated, rtiMasterRefId, detailDto.getPwdType());
+                        }
+                    } else if (detailDto.getPwdType() == null || detailDto.getPwdType() == 0) {
+                        logger.debug("RTI_WAREHOUSE: Skipped warehouse update - pwdType is 0 or null (disabled)");
+                    }
+                }
             }
         }
 
@@ -495,22 +543,34 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                             """,
                             rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
 
-                    jdbcTemplate.update("""
-        UPDATE RD
-        SET
-            RD.WareHouseEnterDate = SM.WareHouseEnterDate,
-            RD.WareHouseExitDate  = SM.WareHouseExitDate,
-            RD.WareHouseAddress   = SM.WareHouseAddress
-        FROM RTIDetails RD
-        INNER JOIN SaleOrderMaster SM
-            ON SM.Id = RD.SaleOrderMasterRefId
-        WHERE RD.RTIMasterRefId = ?
-          AND RD.SaleOrderMasterRefId = ?
-        """,
-                            rtiMasterRefId,
-                            saleOrderMasterRefId);
+                    // CONDITIONAL: Warehouse Data Update - Only if pwdType = 1 or 2
+                    if (item.getPwdType() != null && item.getPwdType() > 0) {
+                        if (item.getPwdType() == 1 || item.getPwdType() == 2) {
+                            logger.info("RTI_WAREHOUSE: Executing warehouse update in getForRevise - RTIMasterRefId: {}, SaleOrderMasterRefId: {}, pwdType: {}",
+                                    rtiMasterRefId, saleOrderMasterRefId, item.getPwdType());
 
+                            int rowsUpdated = jdbcTemplate.update("""
+                                UPDATE RD
+                                SET
+                                    RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
+                                    RD.WareHouseExitDate = SOM.WareHouseExitDate,
+                                    RD.WareHouseAddress = SOM.WareHouseAddress
+                                FROM RTIDetails RD
+                                INNER JOIN SaleOrderMaster SOM
+                                    ON SOM.Id = ?
+                                WHERE RD.RTIMasterRefId = ?
+                                  AND RD.SaleOrderMasterRefId = ?
+                                """,
+                                saleOrderMasterRefId,
+                                rtiMasterRefId,
+                                saleOrderMasterRefId);
 
+                            logger.info("RTI_WAREHOUSE: Completed in getForRevise - Rows: {}, RTIMasterRefId: {}, pwdType: {}",
+                                    rowsUpdated, rtiMasterRefId, item.getPwdType());
+                        }
+                    } else if (item.getPwdType() == null || item.getPwdType() == 0) {
+                        logger.debug("RTI_WAREHOUSE: Skipped warehouse update in getForRevise - pwdType is 0 or null (disabled)");
+                    }
 
 
 
@@ -523,3 +583,4 @@ public class RTIMasterServiceImpl implements RTIMasterService {
         return masterDto;
     }
 }
+

@@ -1456,8 +1456,73 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         }
     }
 
-
-
+    /**
+     * AUDIT LOGGING: Track if address fields are deleted or changed during updates
+     * This helps identify when pickup/delivery addresses are unexpectedly lost
+     * Logs appear in application.log with "ADDRESS_AUDIT" prefix for easy searching
+     * 
+     * @param jobNumber Sale order job number (CNumberDisplay) for identification
+     * @param originalPickupAddress Original pickup address before update
+     * @param originalDeliveryAddress Original delivery address before update
+     * @param originalOrigin Original origin before update
+     * @param originalDestination Original destination before update
+     * @param updatedEntity The entity after updates applied
+     */
+    private void auditAddressChanges(String jobNumber, String originalPickupAddress, 
+                                     String originalDeliveryAddress, String originalOrigin, 
+                                     String originalDestination, SaleOrderMaster updatedEntity) {
+        try {
+            boolean pickupAddressDeleted = (originalPickupAddress != null && !originalPickupAddress.trim().isEmpty())
+                    && (updatedEntity.getPickupAddress() == null || updatedEntity.getPickupAddress().trim().isEmpty());
+            
+            boolean deliveryAddressDeleted = (originalDeliveryAddress != null && !originalDeliveryAddress.trim().isEmpty())
+                    && (updatedEntity.getDeliveryAddress() == null || updatedEntity.getDeliveryAddress().trim().isEmpty());
+            
+            boolean originDeleted = (originalOrigin != null && !originalOrigin.trim().isEmpty())
+                    && (updatedEntity.getOrigin() == null || updatedEntity.getOrigin().trim().isEmpty());
+            
+            boolean destinationDeleted = (originalDestination != null && !originalDestination.trim().isEmpty())
+                    && (updatedEntity.getDestination() == null || updatedEntity.getDestination().trim().isEmpty());
+            
+            if (pickupAddressDeleted) {
+                logger.warn("ADDRESS_AUDIT: Pickup Address DELETED - Job: {}, Original: {}, ID: {}",
+                        jobNumber, originalPickupAddress, updatedEntity.getId());
+            }
+            
+            if (deliveryAddressDeleted) {
+                logger.warn("ADDRESS_AUDIT: Delivery Address DELETED - Job: {}, Original: {}, ID: {}",
+                        jobNumber, originalDeliveryAddress, updatedEntity.getId());
+            }
+            
+            if (originDeleted) {
+                logger.warn("ADDRESS_AUDIT: Origin DELETED - Job: {}, Original: {}, ID: {}",
+                        jobNumber, originalOrigin, updatedEntity.getId());
+            }
+            
+            if (destinationDeleted) {
+                logger.warn("ADDRESS_AUDIT: Destination DELETED - Job: {}, Original: {}, ID: {}",
+                        jobNumber, originalDestination, updatedEntity.getId());
+            }
+            
+            // Log when addresses are modified (not just deleted)
+            if (originalPickupAddress != null && !originalPickupAddress.equals(updatedEntity.getPickupAddress())) {
+                if (!pickupAddressDeleted) {
+                    logger.info("ADDRESS_AUDIT: Pickup Address CHANGED - Job: {}, From: {} | To: {}, ID: {}",
+                            jobNumber, originalPickupAddress, updatedEntity.getPickupAddress(), updatedEntity.getId());
+                }
+            }
+            
+            if (originalDeliveryAddress != null && !originalDeliveryAddress.equals(updatedEntity.getDeliveryAddress())) {
+                if (!deliveryAddressDeleted) {
+                    logger.info("ADDRESS_AUDIT: Delivery Address CHANGED - Job: {}, From: {} | To: {}, ID: {}",
+                            jobNumber, originalDeliveryAddress, updatedEntity.getDeliveryAddress(), updatedEntity.getId());
+                }
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error in address audit logging for job: {}", jobNumber, e);
+        }
+    }
 
 
 }
