@@ -77,11 +77,21 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
             BillsOrderMasterInsertDto dto,
             Integer companyId) {
 
-        logger.info("Starting BillsOrderMaster insert for Company: {}", companyId);
+        logger.info("═══════════════════════════════════════════════════════════════");
+        logger.info("🔵 START: BillsOrderMaster INSERT/UPDATE Operation");
+        logger.info("═══════════════════════════════════════════════════════════════");
+        logger.info("Company ID: {}", companyId);
+        logger.info("Operation Type: {}", (dto.getId() == null || dto.getId() == 0) ? "INSERT (New)" : "UPDATE (Existing)");
+        logger.info("─── DTO DATA RECEIVED ───");
+        logDtoData(dto);
+        logger.info("─── END DTO DATA ───");
 
         try {
+            logger.info("Step 1/10: Validating BillsOrderDetails...");
             validateBillsOrderDetails(dto);
+            logger.info("✓ Step 1: Validation passed");
 
+            logger.info("Step 2/10: Preparing reference ID validations...");
             // Null checking for primitive types mimicking the SP logic
             Integer userRefId = (dto.getUserRefId() != null && dto.getUserRefId() > 0) ? dto.getUserRefId() : null;
             Integer employeeRefId = (dto.getEmployeeRefId() != null && dto.getEmployeeRefId() > 0) ? dto.getEmployeeRefId() : null;
@@ -89,56 +99,80 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
             Integer driverRefId = (dto.getDriverRefid() != null && dto.getDriverRefid() > 0) ? dto.getDriverRefid() : null;
             Integer saleMasterRefId = (dto.getSaleMasterRefId() != null && dto.getSaleMasterRefId() > 0) ? dto.getSaleMasterRefId() : null;
 
+            logger.info("  • UserRefId (after null check): {}", userRefId);
+            logger.info("  • EmployeeRefId (after null check): {}", employeeRefId);
+            logger.info("  • TruckRefId (after null check): {}", truckRefId);
+            logger.info("  • DriverRefId (after null check): {}", driverRefId);
+            logger.info("  • SaleMasterRefId (after null check): {}", saleMasterRefId);
+
+            logger.info("Step 3/10: Validating Foreign Key references...");
             // Foreign Key Validations
             if (userRefId != null) {
-                if (!appUserRepository.existsByIdAndCompanyRefIdAndActive(userRefId, companyId, 1)) {
+                boolean exists = appUserRepository.existsByIdAndCompanyRefIdAndActive(userRefId, companyId, 1);
+                logger.info("  • User ID {} exists: {}", userRefId, exists);
+                if (!exists) {
                     return buildErrorResponse("Login User Not Found Issue id" + userRefId);
                 }
             }
 
             if (dto.getPaymentTermsRefid() != null && dto.getPaymentTermsRefid() > 0) {
-                if (!paymentTermsMasterRepository.existsByIdAndCompanyRefIdAndActive(dto.getPaymentTermsRefid(), companyId, 1)) {
+                boolean exists = paymentTermsMasterRepository.existsByIdAndCompanyRefIdAndActive(dto.getPaymentTermsRefid(), companyId, 1);
+                logger.info("  • PaymentTerms ID {} exists: {}", dto.getPaymentTermsRefid(), exists);
+                if (!exists) {
                     return buildErrorResponse("Payment Terms Not Found Issue id" + dto.getPaymentTermsRefid());
                 }
             }
 
             if (employeeRefId != null) {
-                if (!employeeMasterRepository.existsByIdAndCompanyRefIdAndActive(employeeRefId, companyId, 1)) {
+                boolean exists = employeeMasterRepository.existsByIdAndCompanyRefIdAndActive(employeeRefId, companyId, 1);
+                logger.info("  • Employee ID {} exists: {}", employeeRefId, exists);
+                if (!exists) {
                     return buildErrorResponse("Employee Not Found Issue id" + employeeRefId);
                 }
             }
 
             if (truckRefId != null) {
-                if (!truckMasterRepository.existsByIdAndCompanyRefIdAndActive(truckRefId, companyId, 1)) {
+                boolean exists = truckMasterRepository.existsByIdAndCompanyRefIdAndActive(truckRefId, companyId, 1);
+                logger.info("  • Truck ID {} exists: {}", truckRefId, exists);
+                if (!exists) {
                     return buildErrorResponse("Truck Not Found Issue id" + truckRefId);
                 }
             }
 
             if (driverRefId != null) {
-                if (!driverMasterRepository.existsByIdAndCompanyRefIdAndActive(driverRefId, companyId, 1)) {
+                boolean exists = driverMasterRepository.existsByIdAndCompanyRefIdAndActive(driverRefId, companyId, 1);
+                logger.info("  • Driver ID {} exists: {}", driverRefId, exists);
+                if (!exists) {
                     return buildErrorResponse("Driver Not Found Issue id" + driverRefId);
                 }
             }
+            logger.info("✓ Step 3: All FK references validated");
 
+            logger.info("Step 4/10: Determining INSERT vs UPDATE...");
             boolean isNewRecord = (dto.getId() == null || dto.getId() == 0);
+            logger.info("  • isNewRecord: {}", isNewRecord);
+
             BillsOrderMaster masterEntity;
             String billNoDisplay = "";
 
             if (!isNewRecord) {
+                logger.info("Step 5/10: UPDATE MODE - Processing existing record ID: {}", dto.getId());
                 // UPDATE Process
-
+                logger.info("  • Calling updateSaleOrderMasterFlags...");
                 updateSaleOrderMasterFlags(dto);
+
+                logger.info("  • Deleting old detail records for BillsOrderMaster ID: {}", dto.getId());
                 billsOrderDetailsRepository.deleteByBillsOrderMasterRefId(dto.getId());
                 
+                logger.info("  • Fetching existing master record...");
                 masterEntity = billsOrderMasterRepository.findById(dto.getId())
                         .orElseThrow(() -> new IllegalArgumentException("BillsOrderMaster not found for id: " + dto.getId()));
                 
                 masterEntity.setModifiedDate(LocalDateTime.now());
                 masterEntity.setModifiedBy("system");
-            }
-
-
-            else {
+                logger.info("✓ Step 5: Record prepared for update");
+            } else {
+                logger.info("Step 5/10: INSERT MODE - Creating new record");
                 // INSERT Process
                 masterEntity = new BillsOrderMaster();
                 masterEntity.setActive(1);
@@ -148,8 +182,10 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 masterEntity.setModifiedBy("system");
                 masterEntity.setCNumber(0);
                 masterEntity.setCNumberDisplay("");
+                logger.info("✓ Step 5: New entity created");
             }
 
+            logger.info("Step 6/10: Mapping DTO fields to Entity...");
             // Map standard fields
             masterEntity.setCompanyRefId(companyId);
             masterEntity.setUserRefId(userRefId);
@@ -185,14 +221,19 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
             masterEntity.setBillStatus(dto.getBillStatus());
             masterEntity.setPayTo(dto.getPayTo());
             masterEntity.setDueDate(dto.getDueDate());
+            logger.info("✓ Step 6: All fields mapped to entity");
 
+            logger.info("Step 7/10: Saving Master Record to database...");
             // Save Master Record
             masterEntity = billsOrderMasterRepository.save(masterEntity);
             Integer newMasterId = masterEntity.getId();
+            logger.info("✓ Step 7: Master Record saved with ID: {}", newMasterId);
 
+            logger.info("Step 8/10: Processing {} Detail Records...", dto.getBillsOrderDetails().size());
             // Insert Details
             List<BillsOrderDetails> detailsList = new ArrayList<>();
-            for (BillsOrderDetailsInsertDto detailDto : dto.getBillsOrderDetails()) {
+            for (int i = 0; i < dto.getBillsOrderDetails().size(); i++) {
+                BillsOrderDetailsInsertDto detailDto = dto.getBillsOrderDetails().get(i);
                 BillsOrderDetails detail = new BillsOrderDetails();
                 detail.setBillsOrderMasterRefId(newMasterId);
                 detail.setAccountMasterRefId(detailDto.getAccountMasterRefId());
@@ -217,19 +258,28 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 detail.setSerialNo(detailDto.getSerialNo() != null ? detailDto.getSerialNo() : "");
                 
                 detailsList.add(detail);
+                logger.info("  • Detail[{}] prepared for save - AccountId: {}, Amount: {}",
+                    (i+1), detail.getAccountMasterRefId(), detail.getAmount());
             }
             billsOrderDetailsRepository.saveAll(detailsList);
+            logger.info("✓ Step 8: All {} detail records saved", detailsList.size());
 
+            logger.info("Step 9/10: Processing Sequence Number...");
             // Sequence Number Logic
             if (isNewRecord) {
                 Integer maxSeq = sequenceNoMasterRepository.findMaxBillsOrderSequenceNo(companyId);
+                logger.info("  • Current Max Sequence: {}", maxSeq);
+
                 Integer newSeq = (maxSeq == null || maxSeq == 0) ? 1 : maxSeq + 1;
-                
+                logger.info("  • New Sequence to assign: {}", newSeq);
+
                 masterEntity.setCNumber(newSeq);
                 billNoDisplay = String.format("PO%09d", newSeq);
                 masterEntity.setCNumberDisplay(billNoDisplay);
-                
+                logger.info("  • Generated Bill Display Number: {}", billNoDisplay);
+
                 billsOrderMasterRepository.save(masterEntity);
+                logger.info("  • Master record updated with sequence number");
 
                 // Update SequenceNoMaster
                 SequenceNoMaster seqMaster = sequenceNoMasterRepository
@@ -242,22 +292,40 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                     });
                 seqMaster.setSequenceNo(newSeq);
                 sequenceNoMasterRepository.save(seqMaster);
+                logger.info("  • SequenceNoMaster updated for company: {}", companyId);
 
+                logger.info("Step 10/10: Calling updateSaleOrderMasterFlags for new INSERT...");
                 // Update SaleOrderMaster Flags
                 updateSaleOrderMasterFlags(dto);
+                logger.info("✓ Step 10: Update flags completed");
             }
             else {
                 billNoDisplay = masterEntity.getCNumberDisplay();
+                logger.info("Step 10/10: UPDATE mode - No sequence update needed, using existing display: {}", billNoDisplay);
             }
 
+            logger.info("Final Step: WhatsApp Notification...");
             // WhatsApp Notification
             if (isNewRecord && whatsAppEnabled) {
                 try {
+                    logger.info("  • WhatsApp enabled and new record - sending notification...");
                     whatsAppService.sendBillOrderNotification(dto, newMasterId, companyId);
+                    logger.info("  • WhatsApp notification sent successfully");
                 } catch (Exception ex) {
-                    logger.error("! Failed to send WhatsApp notification", ex);
+                    logger.error("❌ Failed to send WhatsApp notification", ex);
                 }
+            } else {
+                logger.info("  • WhatsApp notification skipped (isNewRecord={}, whatsAppEnabled={})",
+                    isNewRecord, whatsAppEnabled);
             }
+
+            logger.info("═══════════════════════════════════════════════════════════════");
+            logger.info("✅ OPERATION COMPLETED SUCCESSFULLY");
+            logger.info("═══════════════════════════════════════════════════════════════");
+            logger.info("Result Summary:");
+            logger.info("  • Bill ID: {}", newMasterId);
+            logger.info("  • Bill Display No: {}", billNoDisplay);
+            logger.info("  • Operation: {}", isNewRecord ? "INSERT" : "UPDATE");
 
             return BillsOrderMasterResponseDto.builder()
                     .result(1)
@@ -268,10 +336,13 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                     .build();
 
         } catch (IllegalArgumentException ex) {
-            logger.error("✗ Validation error: {}", ex.getMessage());
+            logger.error("❌ VALIDATION ERROR: {}", ex.getMessage());
             return buildErrorResponse(ex.getMessage());
         } catch (Exception ex) {
-            logger.error("✗ Unexpected error in insertBillsOrderMaster", ex);
+            logger.error("❌ UNEXPECTED ERROR in insertBillsOrderMaster", ex);
+            logger.error("Exception Type: {}", ex.getClass().getName());
+            logger.error("Exception Message: {}", ex.getMessage());
+            logger.error("Stack Trace:", ex);
             return buildErrorResponse("Error: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
         }
     }
@@ -305,27 +376,71 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
     }
 
     public void updateSaleOrderMasterFlags(BillsOrderMasterInsertDto dto) {
+        logger.info("─── SALE ORDER MASTER FLAG UPDATE ───");
+
         if (dto.getSaleMasterRefId() == null || dto.getSaleMasterRefId() == 0) {
+            logger.info("⏭️  SaleMasterRefId is null or 0, skipping SaleOrderMaster flag update");
             return;
         }
 
         String description = dto.getDescription();
         if (description == null || description.isEmpty()) {
+            logger.info("⏭️  Description is null or empty, skipping SaleOrderMaster flag update");
             return;
         }
 
         Integer saleMasterRefId = dto.getSaleMasterRefId();
-        String updateQuery = buildFlagUpdateQuery(description.toUpperCase().trim(), saleMasterRefId);
+        String descriptionUpper = description.toUpperCase().trim();
+
+        logger.info("Parameters for flag update:");
+        logger.info("  • SaleMasterRefId: {}", saleMasterRefId);
+        logger.info("  • Description: '{}' (original: '{}')", descriptionUpper, description);
+
+        String updateQuery = buildFlagUpdateQuery(descriptionUpper, saleMasterRefId);
 
         if (updateQuery != null) {
+            logger.info("Update Query Built for Description '{}': {}", descriptionUpper, updateQuery);
+
             try {
+                // Check if SaleOrderMaster record exists first
+                String checkQuery = "SELECT COUNT(*) FROM SaleOrderMaster WHERE Id = " + saleMasterRefId;
+                logger.debug("Checking if SaleOrderMaster exists with query: {}", checkQuery);
+
+                Integer recordCount = jdbcTemplate.queryForObject(checkQuery, Integer.class);
+                logger.info("SaleOrderMaster Record Count for ID {}: {}", saleMasterRefId, recordCount);
+
+                if (recordCount == null || recordCount == 0) {
+                    logger.warn("❌ SaleOrderMaster record NOT FOUND for ID: {} - Description: '{}' - Cannot proceed with update",
+                        saleMasterRefId, descriptionUpper);
+                    return;
+                }
+
+                logger.info("✓ SaleOrderMaster record EXISTS - Proceeding with UPDATE");
+                logger.info("Executing Query: {}", updateQuery);
+
                 int rowsUpdated = jdbcTemplate.update(updateQuery);
-                logger.info("Updated SaleOrderMaster for description '{}': {} rows affected",
-                    description, rowsUpdated);
+                logger.info("Query Execution Result: {} rows affected", rowsUpdated);
+
+                if (rowsUpdated > 0) {
+                    logger.info("✅ SUCCESS: Updated SaleOrderMaster ID={} for description '{}': {} rows affected",
+                        saleMasterRefId, descriptionUpper, rowsUpdated);
+                } else {
+                    // Log current values to help diagnose why WHERE clause didn't match
+                    String selectQuery = "SELECT PortCPop, LiveCPop, ForwardingCPop, BoatCPop, PermitCPop, MMHECPop, AFpoCPop, SFWpoCPop, BoatCPop1, PFPPCPop1 FROM SaleOrderMaster WHERE Id = " + saleMasterRefId;
+                    logger.warn("⚠️  No rows updated (WHERE condition not met). Current column values for ID {}:", saleMasterRefId);
+                    logger.warn("    Query to check current values: {}", selectQuery);
+                    logger.warn("    This means the record exists but the flag columns may already have values other than 0 or 1");
+                    logger.warn("    Expected condition: Flags should be IN (0,1) to be updated to 2");
+                }
             } catch (Exception ex) {
-                logger.error("Error updating SaleOrderMaster flags", ex);
+                logger.error("❌ ERROR updating SaleOrderMaster flags for ID={}, description='{}'",
+                    saleMasterRefId, descriptionUpper, ex);
             }
+        } else {
+            logger.info("⏭️  No update query built for description: '{}' - Not in switch case", descriptionUpper);
         }
+
+        logger.info("─── END SALE ORDER MASTER FLAG UPDATE ───");
     }
 
     private String buildFlagUpdateQuery(String description, Integer saleMasterRefId) {
@@ -361,6 +476,45 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 return "UPDATE SaleOrderMaster SET PFPPCPop1 = 2 WHERE Id = " + saleMasterRefId + " AND PFPPCPop1 IN (0,1)";
             default:
                 return null;
+        }
+    }
+
+    private void logDtoData(BillsOrderMasterInsertDto dto) {
+        logger.info("Master Record Fields:");
+        logger.info("  ID: {} (0=New Insert, >0=Update)", dto.getId() != null ? dto.getId() : "NULL");
+        logger.info("  Description: '{}'", dto.getDescription());
+        logger.info("  SaleMasterRefId: {}", dto.getSaleMasterRefId());
+        logger.info("  SupplierRefId: {}", dto.getSupplierRefId());
+        logger.info("  UserRefId: {}", dto.getUserRefId());
+        logger.info("  EmployeeRefId: {}", dto.getEmployeeRefId());
+        logger.info("  InvoiceNo: '{}'", dto.getInvoiceNo());
+        logger.info("  InvoiceDate: {}", dto.getInvoiceDate());
+        logger.info("  SaleDate: {}", dto.getSaleDate());
+        logger.info("  GrossAmount: {}", dto.getGrossAmount());
+        logger.info("  TaxAmount: {}", dto.getTaxAmount());
+        logger.info("  DiscountAmount: {}", dto.getDiscountAmount());
+        logger.info("  Amount: {}", dto.getAmount());
+        logger.info("  PaymentTermsRefId: {}", dto.getPaymentTermsRefid());
+        logger.info("  TruckRefId: {}", dto.getTruckRefid());
+        logger.info("  DriverRefId: {}", dto.getDriverRefid());
+        logger.info("  BillStatus: '{}'", dto.getBillStatus());
+        logger.info("  PayTo: '{}'", dto.getPayTo());
+        logger.info("  OffVessel: '{}'", dto.getOffVessal());
+        logger.info("  LoadingVessel: '{}'", dto.getLodingVessal());
+
+        if (dto.getBillsOrderDetails() != null) {
+            logger.info("Detail Records Count: {}", dto.getBillsOrderDetails().size());
+            for (int i = 0; i < dto.getBillsOrderDetails().size(); i++) {
+                BillsOrderDetailsInsertDto detail = dto.getBillsOrderDetails().get(i);
+                logger.info("  Detail[{}]:", i + 1);
+                logger.info("    • AccountMasterRefId: {}", detail.getAccountMasterRefId());
+                logger.info("    • ProductRefId: {}", detail.getProductRefId());
+                logger.info("    • Amount: {}", detail.getAmount());
+                logger.info("    • Quantity: {}", detail.getItemQty());
+                logger.info("    • TaxAmount: {}", detail.getTaxAmount());
+            }
+        } else {
+            logger.warn("⚠️  No detail records provided!");
         }
     }
 }
