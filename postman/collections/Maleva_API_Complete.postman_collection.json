@@ -2567,6 +2567,40 @@
           "response": []
         },
         {
+          "name": "Driver RTI Report (POST)",
+          "id": "d9f3a1b2-8f5c-4a6b-9d3e-0c1a2b3c4d5e",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comid\": 6,\n  \"driverId\": 0,\n  \"truckId\": 0,\n  \"fromDate\": \"2026-06-01\",\n  \"toDate\": \"2026-06-24\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rti/driver-report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rti",
+                "driver-report"
+              ]
+            },
+            "description": "Generate Driver RTI Report for the new RTI endpoint. Sample payload uses comid=6 and date range 2026-06-01 to 2026-06-24. Ensure you run Login first to set {{token}}."
+          },
+          "response": []
+        },
+        {
           "name": "PreAlert Masters - Get All by Company (GET)",
           "id": "fd68b458-72d2-4cac-a9ae-92f20e85eb9f",
           "request": {

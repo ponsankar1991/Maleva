@@ -431,6 +431,12 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
         mapper.updateEntityFromDto(dto, entity);
 
+        // Apply pickup/delivery dates from DTO directly. When DTO fields are null this will
+        // clear the stored values in the database. This matches the client's request to
+        // set the column to NULL when the DTO contains null for these fields.
+        entity.setPickupDate(dto.getPickupDate());
+        entity.setDeliveryDate(dto.getDeliveryDate());
+
         Integer targetStatusId = entity.getJStatus();
         if (!Objects.equals(originalStatusId, targetStatusId)) {
             String targetStatusName = resolveStatusName(targetStatusId);
@@ -754,6 +760,18 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         if (dto.getOeta() == null || dto.getOeta().trim().isEmpty()) entity.setOeta(null);
         if (dto.getOetb() == null || dto.getOetb().trim().isEmpty()) entity.setOetb(null);
         if (dto.getOetd() == null || dto.getOetd().trim().isEmpty()) entity.setOetd(null);
+        // Allow clearing or updating of pickup/delivery dates (DTO carries strings)
+        if (dto.getPickupDate() == null || dto.getPickupDate().trim().isEmpty()) {
+            entity.setPickupDate(null);
+        } else {
+            entity.setPickupDate(parseQuickUpdateDateTime(dto.getPickupDate()));
+        }
+
+        if (dto.getDeliveryDate() == null || dto.getDeliveryDate().trim().isEmpty()) {
+            entity.setDeliveryDate(null);
+        } else {
+            entity.setDeliveryDate(parseQuickUpdateDateTime(dto.getDeliveryDate()));
+        }
 
         Integer resolvedCNumber = resolveUpdateCNumber(dto);
         if (hasPositiveCNumber(resolvedCNumber)) {

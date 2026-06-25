@@ -176,10 +176,9 @@ public class PlanningMasterService {
             LEFT JOIN TruckMaster T WITH(NOLOCK) ON T.Id = B.TruckRefid
             LEFT JOIN JobStatusMaster J WITH(NOLOCK) ON J.Id = SM.JStatus
             LEFT JOIN JobTypeMaster JT WITH(NOLOCK) ON JT.Id = SM.JobMasterRefId
-            LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = SM.LastEmployeeRefid
+            LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = SM.EmployeeRefId
             WHERE A.Id = :planningId
               AND A.CompanyRefId = :companyId
-            ORDER BY ISNULL(B.SortBy, 0) ASC, B.Id ASC
             """;
 
     public PlanningMasterService(

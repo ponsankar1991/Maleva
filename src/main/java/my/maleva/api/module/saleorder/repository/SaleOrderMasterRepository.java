@@ -53,7 +53,7 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
     Optional<SaleOrderMaster> findByCompanyRefIdAndCNumberAndActive(Integer companyRefId, Integer cNumber, Integer active);
 
     /**
-     * Get customer job numbers for a given company and customer
+     * Get customer job numbers for a given company and customercountPendingPortCharges
      * 
      * Business Logic (from GetCustJobNo endpoint):
      * 1. Filter by company (multi-tenancy) - required
