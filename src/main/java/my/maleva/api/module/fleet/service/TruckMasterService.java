@@ -58,4 +58,16 @@ public interface TruckMasterService {
     boolean existsByTruckNumber(String truckNumber, Integer companyRefId);
 
     TruckMasterDto processTruck(TruckMasterDto dto, Integer companyId);
+
+    /**
+     * Search trucks with optional keyword, column filter, type and pagination.
+     * @param companyId company id
+     * @param startIndex offset (0-based). If -1, return last page start offset.
+     * @param pageCount number of records per page (if <=0 then all records returned)
+     * @param keyword search keyword
+     * @param column column to search (TruckName, Id, All)
+     * @param type optional truck type filter
+     * @return SearchResultDto containing list and total count
+     */
+    my.maleva.api.module.fleet.dto.SearchResultDto searchTrucks(Integer companyId, Integer startIndex, Integer pageCount, String keyword, String column, String type);
 }

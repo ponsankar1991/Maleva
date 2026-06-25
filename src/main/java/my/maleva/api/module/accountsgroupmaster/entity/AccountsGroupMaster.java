@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "AccountsGroupMaster")
@@ -24,29 +24,29 @@ public class AccountsGroupMaster {
     @Column(name = "CompanyRefId")
     private Integer companyRefId;
 
-    @Column(name = "Classification")
-    private Integer classification;
-
     @Column(name = "AccountCode")
     private String accountCode;
-
-    @Column(name = "ClassificationName")
-    private String classificationName;
 
     @Column(name = "AccountName")
     private String accountName;
 
-    @Transient
-    private String accountName1;
-
-    @Column(name = "ParentName")
-    private String parentName;
-
     @Column(name = "ParentId")
-    private UUID parentId;
+    private Integer parentId;
 
-    @Column(name = "RootId")
-    private UUID rootId;
+    @Column(name = "Editmode")
+    private Integer editmode;
+
+    @Column(name = "NoChild")
+    private Integer noChild;
+
+    @Column(name = "Created_Date")
+    private LocalDateTime createdDate;
+
+    @Column(name = "Modified_Date")
+    private LocalDateTime modifiedDate;
+
+    @Column(name = "Modified_By")
+    private String modifiedBy;
 
     @Column(name = "Active")
     private Integer active;

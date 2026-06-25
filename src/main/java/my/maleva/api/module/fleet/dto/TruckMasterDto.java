@@ -106,5 +106,8 @@ public class TruckMasterDto {
 
     @Size(max = 300, message = "Vehicle Type must not exceed 300 characters")
     private String vehicleType;
+
+    // Account code from AccountsGroupMaster (optional)
+    private String accountCode;
 }
 

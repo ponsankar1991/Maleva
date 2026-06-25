@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.module.fleet.dto.SearchResultDto;
 
 import java.util.List;
 import java.util.Optional;
@@ -182,6 +184,23 @@ public class TruckMasterController {
         logger.info("Deleting TruckMaster with ID: {}", id);
         return service.delete(id) ? ResponseEntity.noContent().build() :
                ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+    }
+
+    /**
+     * Search trucks with pagination and filters
+     * GET /api/truck-masters/search?companyId=&startIndex=&pageCount=&keyword=&column=&type=
+     */
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<SearchResultDto>> searchTrucks(
+            @RequestParam Integer companyId,
+            @RequestParam(required = false, defaultValue = "0") Integer startIndex,
+            @RequestParam(required = false, defaultValue = "0") Integer pageCount,
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @RequestParam(required = false, defaultValue = "All") String column,
+            @RequestParam(required = false) String type) {
+
+        SearchResultDto result = service.searchTrucks(companyId, startIndex, pageCount, keyword, column, type);
+        return ResponseEntity.ok(ApiResponse.success(result, "Success"));
     }
 
     /**
