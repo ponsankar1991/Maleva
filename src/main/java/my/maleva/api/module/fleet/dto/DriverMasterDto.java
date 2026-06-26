@@ -63,6 +63,7 @@ public class DriverMasterDto {
     @Size(max = 50)
     private String password;
 
+    // DocumentType is not present in DB schema; omitted to match table
     @Size(max = 50)
     private String latitude;
 
@@ -132,6 +133,9 @@ public class DriverMasterDto {
     @Size(max = 100)
     private String accountNo;
 
+    @Size(max = 20)
+    private String accountCode;
+
     private Integer truckRefId;
 
     @Size(max = 300)
@@ -175,4 +179,6 @@ public class DriverMasterDto {
 
     @Size(max = 500)
     private String kemamanPortStatus;
+
+    private java.time.LocalDate jurongPort;
 }

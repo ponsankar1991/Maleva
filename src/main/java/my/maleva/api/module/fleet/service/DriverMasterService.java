@@ -1,59 +1,51 @@
 package my.maleva.api.module.fleet.service;
 
 import my.maleva.api.module.fleet.dto.DriverMasterDto;
-import my.maleva.api.common.exception.EntityNotFoundException;
-import my.maleva.api.module.fleet.mapper.DriverMasterMapper;
-import my.maleva.api.module.fleet.entity.DriverMaster;
-import my.maleva.api.module.fleet.repository.DriverMasterRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import my.maleva.api.module.fleet.dto.DriverSearchResultDto;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
-@Service
-public class DriverMasterService {
+/**
+ * DriverMasterService - Business logic interface for DriverMaster operations
+ * Includes CRUD operations and search with pagination/filtering
+ */
+public interface DriverMasterService {
 
-    private final DriverMasterRepository repository;
-    private final DriverMasterMapper mapper;
+    /**
+     * Get all drivers
+     */
+    List<DriverMasterDto> listAll();
 
-    public DriverMasterService(DriverMasterRepository repository, DriverMasterMapper mapper) {
-        this.repository = repository;
-        this.mapper = mapper;
-    }
+    /**
+     * Get driver by ID
+     */
+    DriverMasterDto getById(Integer id);
 
-    public List<DriverMasterDto> listAll() {
-        return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
-    }
+    /**
+     * Create new driver
+     */
+    DriverMasterDto create(DriverMasterDto dto);
 
-    public DriverMasterDto getById(Integer id) {
-        DriverMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("DriverMaster not found: " + id));
-        return mapper.toDto(ent);
-    }
+    /**
+     * Update existing driver
+     */
+    DriverMasterDto update(Integer id, DriverMasterDto dto);
 
-    @Transactional
-    public DriverMasterDto create(DriverMasterDto dto) {
-        LocalDateTime now = LocalDateTime.now();
-        DriverMaster ent = mapper.toEntity(dto);
-        ent.setCreatedDate(now);
-        ent.setModifiedDate(now);
-        DriverMaster saved = repository.save(ent);
-        return mapper.toDto(saved);
-    }
+    /**
+     * Delete driver
+     */
+    void delete(Integer id);
 
-    @Transactional
-    public DriverMasterDto update(Integer id, DriverMasterDto dto) {
-        DriverMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("DriverMaster not found: " + id));
-        mapper.updateFromDto(dto, ent);
-        ent.setModifiedDate(LocalDateTime.now());
-        DriverMaster saved = repository.save(ent);
-        return mapper.toDto(saved);
-    }
-
-    @Transactional
-    public void delete(Integer id) {
-        DriverMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("DriverMaster not found: " + id));
-        repository.delete(ent);
-    }
+    /**
+     * Search drivers with pagination and filtering
+     * Equivalent to C# SelectDriver method
+     *
+     * @param companyId Company ID (required)
+     * @param startIndex Zero-based offset. If -1, returns last page start offset
+     * @param pageCount Number of records per page (if <= 0, return all records)
+     * @param keyword Search keyword (optional)
+     * @param column Column to search: "DriverName", "MobileNo", "Id", or "All"
+     * @return DriverSearchResultDto containing list and total count
+     */
+    DriverSearchResultDto searchDrivers(Integer companyId, Integer startIndex, Integer pageCount, String keyword, String column);
 }

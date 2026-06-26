@@ -72,6 +72,7 @@ public class DriverMaster {
     @Column(name = "Password", length = 50)
     private String password;
 
+    // DocumentType is not present in the actual database schema; removed to match table
     @Column(name = "Latitude", length = 50)
     private String latitude;
 
@@ -209,4 +210,7 @@ public class DriverMaster {
 
     @Column(name = "KemamanPortStatus", length = 500)
     private String kemamanPortStatus;
+
+    @Column(name = "JurongPort")
+    private java.time.LocalDate jurongPort;
 }
