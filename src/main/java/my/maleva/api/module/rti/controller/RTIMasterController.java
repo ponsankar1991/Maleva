@@ -42,9 +42,24 @@ public class RTIMasterController {
 
     @GetMapping("/company/{companyRefId}/active")
     @PermitAll
-    public ResponseEntity<List<RTIMasterDto>> getActiveByCompanyId(@PathVariable Integer companyRefId) {
-        logger.info("Fetching active RTIMaster records for company: {}", companyRefId);
-        List<RTIMasterDto> records = rtiMasterService.getActiveByCompanyId(companyRefId);
+    public ResponseEntity<List<RTIMasterDto>> getActiveByCompanyId(
+            @PathVariable Integer companyRefId,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) Integer driverId,
+            @RequestParam(required = false) Integer truckId,
+            @RequestParam(required = false) Integer employeeId,
+            @RequestParam(required = false) String search) {
+        logger.info("Fetching active RTIMaster records for company: {} with filters", companyRefId);
+        List<RTIMasterDto> records = rtiMasterService.getActiveByCompanyId(
+                companyRefId,
+                fromDate,
+                toDate,
+                driverId,
+                truckId,
+                employeeId,
+                search
+        );
         return ResponseEntity.ok(records);
     }
 

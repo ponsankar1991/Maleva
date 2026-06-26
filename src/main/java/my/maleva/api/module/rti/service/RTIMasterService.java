@@ -23,6 +23,18 @@ public interface RTIMasterService {
     List<RTIMasterDto> getActiveByCompanyId(Integer companyRefId);
 
     /**
+     * Get active RTIMaster records by company ID with the legacy SelectRTI filters.
+     */
+    List<RTIMasterDto> getActiveByCompanyId(
+            Integer companyRefId,
+            String fromDate,
+            String toDate,
+            Integer driverId,
+            Integer truckId,
+            Integer employeeId,
+            String search);
+
+    /**
      * Get RTIMaster by ID
      */
     Optional<RTIMasterDto> getById(Integer id);

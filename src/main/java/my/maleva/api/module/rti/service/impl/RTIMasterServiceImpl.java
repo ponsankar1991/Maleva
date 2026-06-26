@@ -13,8 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -69,6 +73,74 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                 .stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RTIMasterDto> getActiveByCompanyId(
+            Integer companyRefId,
+            String fromDate,
+            String toDate,
+            Integer driverId,
+            Integer truckId,
+            Integer employeeId,
+            String search) {
+        logger.info(
+                "Fetching active RTIMaster records for company: {} fromDate={} toDate={} driverId={} truckId={} employeeId={} search={}",
+                companyRefId,
+                fromDate,
+                toDate,
+                driverId,
+                truckId,
+                employeeId,
+                search
+        );
+
+        String normalizedSearch = search != null ? search.trim() : "";
+        if (!normalizedSearch.isEmpty()) {
+            return rtiMasterRepository.findActiveByCompanyAndRtiNo(companyRefId, normalizedSearch)
+                    .stream()
+                    .map(mapper::toDto)
+                    .collect(Collectors.toList());
+        }
+
+        LocalDateTime start = parseDateParam(fromDate, false);
+        LocalDateTime end = parseDateParam(toDate, true);
+
+        return rtiMasterRepository.findActiveByCompanyWithFilters(
+                        companyRefId,
+                        start,
+                        end,
+                        driverId,
+                        truckId,
+                        employeeId
+                )
+                .stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    private LocalDateTime parseDateParam(String value, boolean endOfDay) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        String normalizedDate = trimmed.replace('/', '-');
+        if (normalizedDate.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            LocalDate date = LocalDate.parse(normalizedDate);
+            return endOfDay ? date.atTime(23, 59, 59, 999_000_000) : date.atStartOfDay();
+        }
+
+        try {
+            return OffsetDateTime.parse(trimmed)
+                    .atZoneSameInstant(ZoneId.systemDefault())
+                    .toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+            // Fall through to local date-time parsing for legacy callers.
+        }
+
+        return LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_DATE_TIME);
     }
 
     @Override

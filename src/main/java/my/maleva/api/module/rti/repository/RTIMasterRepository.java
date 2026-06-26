@@ -28,6 +28,45 @@ public interface RTIMasterRepository extends JpaRepository<RTIMaster, Integer> {
      */
     List<RTIMaster> findByCompanyRefIdAndActive(Integer companyRefId, Integer active);
 
+    /**
+     * Legacy SelectRTI equivalent when RTI number search is provided.
+     * Search intentionally ignores date/driver/truck/employee filters, matching the old .NET flow.
+     */
+    @Query("""
+            SELECT r
+            FROM RTIMaster r
+            WHERE r.companyRefId = :companyRefId
+              AND r.active = 1
+              AND r.CNumberDisplay = :search
+            ORDER BY r.saleDate DESC, r.id DESC
+            """)
+    List<RTIMaster> findActiveByCompanyAndRtiNo(
+            @Param("companyRefId") Integer companyRefId,
+            @Param("search") String search);
+
+    /**
+     * Legacy SelectRTI equivalent for date and optional driver/truck/employee filters.
+     */
+    @Query("""
+            SELECT r
+            FROM RTIMaster r
+            WHERE r.companyRefId = :companyRefId
+              AND r.active = 1
+              AND (:fromDate IS NULL OR r.saleDate >= :fromDate)
+              AND (:toDate IS NULL OR r.saleDate <= :toDate)
+              AND (:driverId IS NULL OR :driverId = 0 OR r.driverRefId = :driverId)
+              AND (:truckId IS NULL OR :truckId = 0 OR r.truckRefId = :truckId)
+              AND (:employeeId IS NULL OR :employeeId = 0 OR r.employeeRefId = :employeeId)
+            ORDER BY r.saleDate DESC, r.id DESC
+            """)
+    List<RTIMaster> findActiveByCompanyWithFilters(
+            @Param("companyRefId") Integer companyRefId,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate,
+            @Param("driverId") Integer driverId,
+            @Param("truckId") Integer truckId,
+            @Param("employeeId") Integer employeeId);
+
 
     /**
      * Find RTIMaster by ID
