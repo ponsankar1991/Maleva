@@ -51,8 +51,8 @@ public class SaleOrderSpecification {
                 predicates.add(cb.equal(root.get("jobMasterRefId"), jobId));
             }
 
-            // Filter by employee ID with RulesTypeMaster subquery logic
-            if (employeeId != null && employeeId != 0) {
+            // Filter by employee ID with RulesTypeMaster subquery logic (ignored if searching by job number)
+            if (employeeId != null && employeeId != 0 && (search == null || search.trim().isEmpty())) {
                 if (dashboardStatus != null && dashboardStatus == 2) {
                     // Subquery: IN (select SubEmployeeId from RulesTypeMaster ...) UNION ALL select employeeId
                     Subquery<Integer> subquery = query.subquery(Integer.class);

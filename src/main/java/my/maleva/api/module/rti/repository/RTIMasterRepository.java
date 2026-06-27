@@ -38,7 +38,7 @@ public interface RTIMasterRepository extends JpaRepository<RTIMaster, Integer> {
             WHERE r.companyRefId = :companyRefId
               AND r.active = 1
               AND r.CNumberDisplay = :search
-            ORDER BY r.saleDate DESC, r.id DESC
+            ORDER BY r.saleDate ASC, r.id ASC
             """)
     List<RTIMaster> findActiveByCompanyAndRtiNo(
             @Param("companyRefId") Integer companyRefId,
@@ -57,7 +57,7 @@ public interface RTIMasterRepository extends JpaRepository<RTIMaster, Integer> {
               AND (:driverId IS NULL OR :driverId = 0 OR r.driverRefId = :driverId)
               AND (:truckId IS NULL OR :truckId = 0 OR r.truckRefId = :truckId)
               AND (:employeeId IS NULL OR :employeeId = 0 OR r.employeeRefId = :employeeId)
-            ORDER BY r.saleDate DESC, r.id DESC
+            ORDER BY r.saleDate ASC, r.id ASC
             """)
     List<RTIMaster> findActiveByCompanyWithFilters(
             @Param("companyRefId") Integer companyRefId,
