@@ -123,6 +123,9 @@ public class EmployeeMaster {
     @Column(name = "role_id", nullable = false, columnDefinition = "numeric(4) default 100")
     private Integer roleId;
 
+    @Column(name = "PermisionId", nullable = false)
+    private Integer permisionId;
+
     @Column(name = "TinNo", length = 100)
     private String tinNo;
 

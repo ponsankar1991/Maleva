@@ -29,19 +29,92 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
     private static final String SELECT_MASTER_SQL = """
             SELECT A.Id,A.CNumber as VESSELPLANINGNo,A.CNumberDisplay as VESSELPLANINGNoDisplay,
                    CONVERT(VARCHAR(10),ISNULL(A.SaleDate,'1900-01-01'),103) as VESSELPLANINGDate,
-                   ISNULL(A.Remarks,'') as Remarks
+                    CONVERT(VARCHAR(10),A.FDate,23) as SFDate,
+                   CONVERT(VARCHAR(10),A.TDate,23) as STDate,
+                   ISNULL(A.Remarks,'') as Remarks, ISNULL(A.Search,'') as Search
+
             FROM VESSELPLANINGMaster A WITH(NOLOCK)
             """;
 
     private static final String SELECT_DETAILS_SQL = """
-            SELECT B.Id,0 as SDId,B.VESSELPLANINGMasterRefId,B.SaleOrderMasterRefId,
-                   ISNULL(B.Remarks,'') as Remarks,SM.CNumberDisplay as JobNo,
-                   CONVERT(VARCHAR(10),ISNULL(SM.SaleDate,'1900-01-01'),103) as JobDate,
-                   ISNULL(C.CustomerName,'') as CustomerName
-            FROM VESSELPLANINGDetails B WITH(NOLOCK)
-            INNER JOIN VESSELPLANINGMaster A WITH(NOLOCK) ON B.VESSELPLANINGMasterRefId=A.Id
-            INNER JOIN SaleOrderMaster SM WITH(NOLOCK) ON SM.Id=B.SaleOrderMasterRefId
-            LEFT JOIN Customer C WITH(NOLOCK) ON C.Id=SM.CustomerRefId
+            SELECT B.Id,
+                   B.Id as SDId,
+                   B.VESSELPLANINGMasterRefId,
+                   B.SaleOrderMasterRefId,
+                   ISNULL(S.Origin,'') as Origin,
+                   ISNULL(S.Destination,'') as Destination,
+                   S.CNumberDisplay as JobNo,
+                   CONVERT(VARCHAR(10),ISNULL(S.SaleDate,'1900-01-01'),103) as JobDate,
+                   ISNULL(J.Name,'') as JobStatus,
+                   ISNULL(S.SCN,'') as SCN,
+                   ISNULL(S.LSCN,'') as LSCN,
+                   S.ETA as ETA,
+                   ISNULL(CONVERT(VARCHAR(19),S.ETA,120),'') as SETA,
+                   S.ETB as ETB,
+                   ISNULL(CONVERT(VARCHAR(19),S.ETB,120),'') as SETB,
+                   S.ETD as ETD,
+                   ISNULL(CONVERT(VARCHAR(19),S.ETD,120),'') as SETD,
+                   S.OETA as OETA,
+                   ISNULL(CONVERT(VARCHAR(19),S.OETA,120),'') as SOETA,
+                   S.OETB as OETB,
+                   ISNULL(CONVERT(VARCHAR(19),S.OETB,120),'') as SOETB,
+                   S.OETD as OETD,
+                   ISNULL(CONVERT(VARCHAR(19),S.OETD,120),'') as SOETD,
+                   S.PickupDate as PickupDate,
+                   ISNULL(CONVERT(VARCHAR(19),S.PickupDate,120),'') as SPickupDate,
+                   S.DeliveryDate as DeliveryDate,
+                   ISNULL(CONVERT(VARCHAR(19),S.DeliveryDate,120),'') as SDeliveryDate,
+                   S.WareHouseEnterDate as WareHouseEnterDate,
+                   ISNULL(CONVERT(VARCHAR(19),S.WareHouseEnterDate,120),'') as SWareHouseEnterDate,
+                   S.WareHouseExitDate as WareHouseExitDate,
+                   ISNULL(CONVERT(VARCHAR(19),S.WareHouseExitDate,120),'') as SWareHouseExitDate,
+                   ISNULL(S.WareHouseAddress,'') as WareHouseAddress,
+                   ISNULL(S.Quantity,'') + '/' + ISNULL(S.TotalWeight,'') as pkg,
+                   ISNULL(S.Loadingvesselname,'') as Loadingvesselname,
+                   ISNULL(S.BLCopy,'') as BLCopy,
+                   ISNULL(S.TruckSize,'') as TruckSize,
+                   ISNULL(S.Offvesselname,'') as Offvesselname,
+                   ISNULL(S.Commodity,'') as Commodity,
+                   ISNULL(S.Vessel,'') as Vessel,
+                   ISNULL(S.OVessel,'') as OVessel,
+                   ISNULL(S.SPort,'') as SPort,
+                   ISNULL(S.OPort,'') as OPort,
+                   ISNULL(JT.Name,'') as JobName,
+                   ISNULL(S.AWBNo,'') as AWBNo,
+                   ISNULL(S.Remarks,'') as Remarks1,
+                   ISNULL(S.Cargo,'') as Cargo,
+                   ISNULL(S.PTW,'') as PTW,
+                   ISNULL(S.ZB,'') as ZB,
+                   ISNULL(S.ZB2,'') as ZB2,
+                   ISNULL(S.ZBRef,'') as ZBRef,
+                   ISNULL(S.ZBRef2,'') as ZBRef2,
+                   ISNULL(S.PortCharges,0) as PortCharges,
+                   ISNULL(S.PortChargesRef,'') as PortChargesRef,
+                   ISNULL(Ag.AgentName,'') as AgentName,
+                   ISNULL(Ag.MobileNo,'') as AgentPhone,
+                   ISNULL(OAg.AgentName,'') as OAgentName,
+                   ISNULL(OAg.MobileNo,'') as OAgentPhone,
+                   ISNULL(S.BoardingOfficerRefid,0) as BoardingOfficerRefid,
+                   ISNULL(EB.EmployeeName,'') as BoardingOfficerName,
+                   ISNULL(S.BoardingOfficer1Refid,0) as BoardingOfficer1Refid,
+                   ISNULL(EB1.EmployeeName,'') as BoardingOfficerName1,
+                   ISNULL(S.BoardingAmount,0) as BoardingAmount,
+                   ISNULL(S.BoardingAmount1,0) as BoardingAmount1,
+                   ISNULL(C.CustomerName,'') as CustomerName,
+                   ISNULL(E.EmployeeName,'') as EmployeeName,
+                   ISNULL(B.Remarks,'') as Remarks,
+                   ISNULL(S.ETA,S.OETA) as DETA
+            FROM VESSELPLANINGMaster A WITH(NOLOCK)
+            INNER JOIN VESSELPLANINGDetails B WITH(NOLOCK) ON A.Id=B.VESSELPLANINGMasterRefId
+            INNER JOIN SaleOrderMaster S WITH(NOLOCK) ON S.Id=B.SaleOrderMasterRefId
+            INNER JOIN Customer C WITH(NOLOCK) ON C.Id=S.CustomerRefId
+            INNER JOIN JobTypeMaster JT WITH(NOLOCK) ON JT.Id=S.JobMasterRefId
+            LEFT JOIN JobStatusMaster J WITH(NOLOCK) ON J.Id=S.JStatus
+            LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id=ISNULL(S.LastEmployeeRefid,S.EmployeeRefId)
+            LEFT JOIN Agent Ag WITH(NOLOCK) ON Ag.Id=S.AgentMasterRefid
+            LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
+            LEFT JOIN EmployeeMaster EB WITH(NOLOCK) ON EB.Id=S.BoardingOfficerRefid
+            LEFT JOIN EmployeeMaster EB1 WITH(NOLOCK) ON EB1.Id=S.BoardingOfficer1Refid
             """;
 
     private static final String EDIT_MASTER_SQL = """
@@ -184,7 +257,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
     public VesselPlanningLegacyDtos.F5View selectVesselPlanning(VesselPlanningLegacyDtos.F5Request filter) {
         SelectionFilter selectionFilter = buildSelectionFilter(filter);
         List<VesselPlanningLegacyDtos.MasterViewModel> masters = jdbcTemplate.query(
-                SELECT_MASTER_SQL + selectionFilter.whereClause + " ORDER BY A.SaleDate DESC,A.Id DESC",
+                SELECT_MASTER_SQL + selectionFilter.whereClause + " ORDER BY A.SaleDate ASC",
                 selectionFilter.params,
                 (rs, rowNum) -> VesselPlanningLegacyDtos.MasterViewModel.builder()
                         .id(getInt(rs, "Id"))
@@ -192,20 +265,14 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                         .vesselPlanningNoDisplay(getString(rs, "VESSELPLANINGNoDisplay"))
                         .vesselPlanningDate(getString(rs, "VESSELPLANINGDate"))
                         .remarks(getString(rs, "Remarks"))
+                        .search(getString(rs, "Search"))
+                        .sFDate(getString(rs, "SFDate"))
+                        .sTDate(getString(rs, "STDate"))
                         .build());
         List<VesselPlanningLegacyDtos.DetailsModel> details = jdbcTemplate.query(
                 SELECT_DETAILS_SQL + selectionFilter.whereClause + " ORDER BY B.Id ASC",
                 selectionFilter.params,
-                (rs, rowNum) -> VesselPlanningLegacyDtos.DetailsModel.builder()
-                        .id(getInt(rs, "Id"))
-                        .sdId(getInt(rs, "SDId"))
-                        .vesselPlanningMasterRefId(getInt(rs, "VESSELPLANINGMasterRefId"))
-                        .saleOrderMasterRefId(getInt(rs, "SaleOrderMasterRefId"))
-                        .jobNo(getString(rs, "JobNo"))
-                        .jobDate(getString(rs, "JobDate"))
-                        .customerName(getString(rs, "CustomerName"))
-                        .remarks(getString(rs, "Remarks"))
-                        .build());
+                (rs, rowNum) -> mapDetail(rs));
         return VesselPlanningLegacyDtos.F5View.builder().salemaster(masters).saledetails(details).build();
     }
 

@@ -18,33 +18,41 @@ import java.time.LocalDateTime;
  * SaleOrderMaster Entity
  * JPA entity for SaleOrderMaster table
  * Represents a sale order with comprehensive order management fields
- * 
- * Performance Optimizations:
- * - Composite index on (CompanyRefId, Active) for main WHERE clause filtering
- * - Individual indexes on foreign key columns for JOIN operations
- * - Index on ETA/OETA columns for ORDER BY optimization
- * - Index on SaleDate for date range queries and sorting
+ *
+ * Performance Optimizations (see db/sql/optimize_saleorder_search_performance.sql):
+ *  - The script above is the source of truth for index DDL. Because
+ *    spring.jpa.hibernate.ddl-auto = none, JPA does NOT create these on startup;
+ *    they must be applied out-of-band by running the SQL file.
+ *  - The @Index annotations below mirror the SQL script so that entity
+ *    documentation and schema stay aligned.
  */
 @Entity
 @Table(name = "SaleOrderMaster", indexes = {
-    // Primary filter: Company + Active status (used in most queries)
-    @Index(name = "idx_company_active", columnList = "CompanyRefId,Active", unique = false),
-    
+    // Primary filter: Company + Active + date columns for the search endpoint
+    @Index(name = "IX_SaleOrderMaster_Company_Active_Dates",
+           columnList = "CompanyRefId,Active,ETA,OETA,SaleDate", unique = false),
+    // Search by job number (LIKE lower(CNumberDisplay))
+    @Index(name = "IX_SaleOrderMaster_Company_Display",
+           columnList = "CompanyRefId,CNumberDisplay", unique = false),
+    // Customer drill-down
+    @Index(name = "IX_SaleOrderMaster_Customer_Company_Active",
+           columnList = "CustomerRefId,CompanyRefId,Active", unique = false),
+    // Status filter (statusList / single status)
+    @Index(name = "IX_SaleOrderMaster_Company_Active_JStatus",
+           columnList = "CompanyRefId,Active,JStatus", unique = false),
+    // RTI lookup
+    @Index(name = "IX_SaleOrderMaster_RTI_Lookup",
+           columnList = "CompanyRefId,CNumberDisplay,Active", unique = false),
     // Foreign key joins
     @Index(name = "idx_customer_ref", columnList = "CustomerRefId", unique = false),
     @Index(name = "idx_employee_ref", columnList = "EmployeeRefId", unique = false),
     @Index(name = "idx_job_status", columnList = "JStatus", unique = false),
     @Index(name = "idx_job_master_ref", columnList = "JobMasterRefId", unique = false),
     @Index(name = "idx_invoice_no", columnList = "InvoiceNo", unique = false),
-    
     // Sorting and filtering columns
     @Index(name = "idx_eta", columnList = "ETA", unique = false),
     @Index(name = "idx_oeta", columnList = "OETA", unique = false),
     @Index(name = "idx_sale_date", columnList = "SaleDate", unique = false),
-    
-    // Composite index for common filtering with sorting
-    @Index(name = "idx_company_active_eta", columnList = "CompanyRefId,Active,ETA", unique = false),
-    
     // Additional reference indexes
     @Index(name = "idx_truck_ref", columnList = "TruckRefid", unique = false),
     @Index(name = "idx_driver_ref", columnList = "DriverRefid", unique = false),

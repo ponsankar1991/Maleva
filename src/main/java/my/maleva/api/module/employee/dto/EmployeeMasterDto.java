@@ -115,6 +115,10 @@ public class EmployeeMasterDto {
         return role == null ? null : role.name();
     }
 
+    // permission id column from DB (int, NOT NULL, default 0)
+    @JsonProperty("permisionId")
+    private Integer permisionId;
+
     @Size(max = 100)
     private String tinNo;
 

@@ -176,6 +176,16 @@ public final class VesselPlanningLegacyDtos {
 
         @JsonProperty("Remarks")
         private String remarks;
+
+        @JsonProperty("Search")
+        private String search;
+
+
+        @JsonProperty("SFDate")
+        private String sFDate;
+
+        @JsonProperty("STDate")
+        private String sTDate;
     }
 
     @Data

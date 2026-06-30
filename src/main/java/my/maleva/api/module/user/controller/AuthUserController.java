@@ -50,13 +50,14 @@ public class AuthUserController {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
         }
 
-        // fetch user to obtain roleId
+        // fetch user to obtain roleId + permisionId
         var dto = employeeMasterService.findByUserName(userName);
         Integer roleId = dto == null ? null : dto.getRoleId();
+        Integer permisionId = dto == null ? null : dto.getPermisionId();
         String token = jwtService.generateToken(userName, roleId);
         storeAccessToken(token);
 
-        return ResponseEntity.ok(buildAuthResponse(token, dto, roleId));
+        return ResponseEntity.ok(buildAuthResponse(token, dto, roleId, permisionId));
     }
 
     @PostMapping("/refresh-token")
@@ -92,7 +93,8 @@ public class AuthUserController {
         tokenStore.revoke(currentToken);
         storeAccessToken(refreshedToken);
 
-        return ResponseEntity.ok(buildAuthResponse(refreshedToken, dto, roleId));
+        Integer permisionId = dto == null ? null : dto.getPermisionId();
+        return ResponseEntity.ok(buildAuthResponse(refreshedToken, dto, roleId, permisionId));
     }
 
     private void storeAccessToken(String token) {
@@ -102,7 +104,7 @@ public class AuthUserController {
         tokenStore.storeToken(token, ttlSeconds);
     }
 
-    private Map<String, Object> buildAuthResponse(String token, EmployeeMasterDto dto, Integer roleId) {
+    private Map<String, Object> buildAuthResponse(String token, EmployeeMasterDto dto, Integer roleId, Integer permisionId) {
         var response = new LinkedHashMap<String, Object>();
         String roleName = roleId != null
                 ? UserRoles.fromId(roleId).map(Enum::name).orElse(null)
@@ -114,6 +116,7 @@ public class AuthUserController {
         response.put("UserId", dto != null ? dto.getId() : null);
         response.put("rolename", roleName);
         response.put("companyId", dto != null ? dto.getCompanyRefId() : null);
+        response.put("permisionId", permisionId);
         response.put("expiresAt", jwtService.getExpiresAtMillis(token));
         response.put("sessionExpiresAt", jwtService.getSessionExpiresAtMillis(token));
         return response;
