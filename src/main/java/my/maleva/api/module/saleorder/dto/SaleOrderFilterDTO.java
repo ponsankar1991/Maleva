@@ -28,6 +28,9 @@ public class SaleOrderFilterDTO {
     @JsonProperty("JId")
     private Integer jId;
 
+    @JsonProperty("TId")
+    private Integer tId;
+
     @JsonProperty("Employeeid")
     private Integer employeeid;
 
@@ -75,7 +78,9 @@ public class SaleOrderFilterDTO {
     @JsonProperty("Pickup")
     private Boolean pickup;
 
+    @JsonProperty("PortName")
+    private String portName;
+
     @JsonProperty("Invoicecheck")
     private Boolean invoicecheck;
 }
-

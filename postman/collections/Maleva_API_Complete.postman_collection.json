@@ -1128,6 +1128,201 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Get Sale Job View",
+          "id": "3ade00c2-206e-4ba9-93de-ba0985b990e3",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Comid\": 6,\n  \"Employeeid\": 0,\n  \"Fromdate\": \"2026/06/01\",\n  \"Todate\": \"2026/06/30\",\n  \"Remarks\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sale-orders/job-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sale-orders",
+                "job-view"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sale Currency View",
+          "id": "98cfc9c1-fc66-42e8-b8c4-fef643542b53",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Comid\": 6,\n  \"Employeeid\": 0,\n  \"TId\": 0,\n  \"Fromdate\": \"2026/06/01\",\n  \"Todate\": \"2026/06/30\",\n  \"Remarks\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sale-orders/currency-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sale-orders",
+                "currency-view"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sale Employee View",
+          "id": "b67226d5-d060-4427-88f4-bdafca8a2efa",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Comid\": 6,\n  \"Employeeid\": 0,\n  \"TId\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sale-orders/employee-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sale-orders",
+                "employee-view"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sale Port View",
+          "id": "1610b45a-95ed-49ee-9832-d4c8dbd331f7",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Comid\": 6,\n  \"Employeeid\": 0,\n  \"Remarks\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sale-orders/port-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sale-orders",
+                "port-view"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sale Customer View",
+          "id": "ab37c449-d725-4acd-bbaa-f9b35bd593f6",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Comid\": 6,\n  \"Employeeid\": 0,\n  \"TId\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sale-orders/customer-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sale-orders",
+                "customer-view"
+              ]
+            }
+          },
+          "response": []
         }
       ],
       "id": "268bd559-2bb1-4876-a94a-6283df74e1a3",
@@ -3007,6 +3202,42 @@
       ],
       "id": "914a212e-b068-4b80-85f7-5473707406a4",
       "description": "Endpoints for Pre-Alert reporting: search, pagination, export and health checks"
+    },
+    {
+      "name": "Get All Truck Detail Combo",
+      "id": "5cae97fa-771d-4b5d-806e-1b28fa2acff8",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/truck-masters/alltruckdetatilcombo?companyId=6",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "truck-masters",
+            "alltruckdetatilcombo"
+          ],
+          "query": [
+            {
+              "key": "companyId",
+              "value": "6"
+            }
+          ]
+        }
+      },
+      "response": []
     }
   ],
   "auth": {

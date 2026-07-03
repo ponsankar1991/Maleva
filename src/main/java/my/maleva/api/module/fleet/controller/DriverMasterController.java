@@ -39,9 +39,9 @@ public class DriverMasterController {
      * GET /api/driver-masters
      */
     @GetMapping
-    public List<DriverMasterDto> list() {
+    public ResponseEntity<ApiResponse<List<DriverMasterDto>>> list() {
         logger.info("Fetching all drivers");
-        return service.listAll();
+        return ResponseEntity.ok(ApiResponse.success(service.listAll(), "Success"));
     }
 
     /**

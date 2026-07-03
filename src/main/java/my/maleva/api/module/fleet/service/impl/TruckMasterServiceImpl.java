@@ -435,5 +435,62 @@ public class TruckMasterServiceImpl implements TruckMasterService {
 
         logger.info("Found {} trucks for company: {}", result.size(), companyId);
         return result;
+    }    @Override
+    public java.util.List<my.maleva.api.module.fleet.dto.TruckMasterDto> getAllTruckDetailCombo(Integer companyId, String keyword, String column, String type) {
+        logger.info("Getting all truck detail combo for company:{} keyword:{} column:{} type:{}", companyId, keyword, column, type);
+
+        if (companyId == null) {
+            throw new IllegalArgumentException("Company ID is required");
+        }
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<TruckMaster> cq = cb.createQuery(TruckMaster.class);
+        Root<TruckMaster> root = cq.from(TruckMaster.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.equal(root.get("companyRefId"), companyId));
+        predicates.add(cb.notEqual(root.get("active"), 2));
+
+        if (type != null && !type.trim().isEmpty()) {
+            predicates.add(cb.equal(root.get("truckType"), type));
+        }
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = "%" + keyword + "%";
+            if ("TruckName".equalsIgnoreCase(column)) {
+                predicates.add(cb.like(root.get("truckName"), kw));
+            } else if ("Id".equalsIgnoreCase(column)) {
+                try {
+                    Integer idVal = Integer.valueOf(keyword);
+                    predicates.add(cb.equal(root.get("id"), idVal));
+                } catch (NumberFormatException ex) {
+                    return java.util.Collections.emptyList();
+                }
+            } else if ("All".equalsIgnoreCase(column)) {
+                // no extra predicate
+            } else {
+                throw new IllegalArgumentException("Unsupported column filter: " + column);
+            }
+        }
+
+        cq.where(predicates.toArray(new Predicate[0]));
+        cq.orderBy(cb.asc(root.get("truckName"))); // Ordered by truck name for combo typically
+
+        TypedQuery<TruckMaster> typedQuery = entityManager.createQuery(cq);
+        
+        List<TruckMaster> results = typedQuery.getResultList();
+        List<my.maleva.api.module.fleet.dto.TruckMasterDto> dtos = results.stream().map(mapper::toDto).collect(java.util.stream.Collectors.toList());
+
+        for (int i = 0; i < results.size(); i++) {
+            TruckMaster t = results.get(i);
+            my.maleva.api.module.fleet.dto.TruckMasterDto dto = dtos.get(i);
+            if (t.getAccountRefid() != null) {
+                accountsGroupMasterRepository.findByIdAndCompanyRefId(t.getAccountRefid(), companyId)
+                        .ifPresent(ag -> dto.setAccountCode(ag.getAccountCode()));
+            }
+        }
+
+        return dtos;
     }
+
 }

@@ -9,6 +9,7 @@ import my.maleva.api.module.saleorder.dto.SaleOrderStatusUpdateDto;
 import my.maleva.api.module.saleorder.dto.JobNumberDto;
 import my.maleva.api.module.invoice.dto.SaleF5View;
 import my.maleva.api.module.saleorder.dto.UpdateJobStatusDto;
+import my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto;
 
 import java.util.List;
 
@@ -64,7 +65,21 @@ public interface SaleOrderMasterService {
      * @return List of job records with Id and billNoDisplay (CNumberDisplay)
      */
     List<JobNumberDto> getCustJobNumbers(Integer companyId, Integer customerId, Integer invoiceNo);
+    
     List<my.maleva.api.module.saleorder.dto.SaleOrderDTO> editMultiSaleOrder(my.maleva.api.module.invoice.dto.MultiInvoiceDto dto);
 
     Integer selectPortChargeCount(int companyId, int jobId);
+
+    /**
+     * Equivalent to .NET SaleJobView
+     */
+    List<SaleJobViewAggregateDto> getSaleJobView(SaleOrderFilterDTO filter);
+
+    List<SaleJobViewAggregateDto> getSaleCurrencyView(SaleOrderFilterDTO filter);
+
+    List<SaleJobViewAggregateDto> getSaleEmployeeView(SaleOrderFilterDTO filter);
+
+    java.util.List<java.util.Map<String, Object>> getSalePortView(SaleOrderFilterDTO filter);
+
+    List<SaleJobViewAggregateDto> getSaleCustomerView(SaleOrderFilterDTO filter);
 }

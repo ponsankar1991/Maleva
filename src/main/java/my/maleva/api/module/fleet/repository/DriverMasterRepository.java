@@ -43,4 +43,9 @@ public interface DriverMasterRepository extends JpaRepository<DriverMaster, Inte
      * Find driver by mobile number and company ID
      */
     Optional<DriverMaster> findByMobileNoAndCompanyRefId(String mobileNo, Integer companyRefId);
+
+    /**
+     * Find all active drivers
+     */
+    List<DriverMaster> findByActive(Integer active);
 }

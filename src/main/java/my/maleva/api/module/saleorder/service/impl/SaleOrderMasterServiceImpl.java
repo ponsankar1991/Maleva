@@ -1542,5 +1542,184 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         }
     }
 
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> getSaleJobView(SaleOrderFilterDTO filter) {
+        if (filter == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        Integer remarks = filter.getRemarks() != null ? filter.getRemarks() : 0;
+        Integer comId = filter.getComid() != null ? filter.getComid() : 0;
+        Integer empId = filter.getEmployeeid() != null ? filter.getEmployeeid() : 0;
+        
+        String fromDate = filter.getFromdate() != null ? filter.getFromdate().toString() : "1900-01-01";
+        String toDate = filter.getTodate() != null ? filter.getTodate().toString() : "2099-12-31";
+
+        List<my.maleva.api.module.saleorder.repository.SaleJobViewProjection> results;
+
+        switch (remarks) {
+            case 1:
+                results = repository.getJobViewByCurrency(comId, empId, fromDate, toDate);
+                break;
+            case 2:
+                results = repository.getJobViewByEmployee(comId, empId, fromDate, toDate);
+                break;
+            case 3:
+                results = repository.getJobViewByJobType(comId, empId, fromDate, toDate);
+                break;
+            case 4:
+                results = repository.getJobViewByJobStatus(comId, empId, fromDate, toDate);
+                break;
+            default:
+                return java.util.Collections.emptyList();
+        }
+
+        return results.stream().map(proj -> 
+            my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto.builder()
+                .currencyName(proj.getCurrencyName())
+                .countryName(proj.getCountryName())
+                .jobCount(proj.getJobCount())
+                .employeeName(proj.getEmployeeName())
+                .employeeCount(proj.getEmployeeCount())
+                .jobType(proj.getJobType())
+                .typeCount(proj.getTypeCount())
+                .jobStatus(proj.getJobStatus())
+                .statusCount(proj.getStatusCount())
+                .build()
+        ).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> getSaleCurrencyView(SaleOrderFilterDTO filter) {
+        if (filter == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        Integer comId = filter.getComid() != null ? filter.getComid() : 0;
+        Integer empId = filter.getEmployeeid() != null ? filter.getEmployeeid() : 0;
+        Integer tId = filter.getTId() != null ? filter.getTId() : 0;
+        
+        String fromDate = filter.getFromdate() != null ? filter.getFromdate().toString() : "1900-01-01";
+
+        List<my.maleva.api.module.saleorder.repository.SaleJobViewProjection> results = repository.getSaleCurrencyView(comId, empId, tId, fromDate);
+
+        return results.stream().map(proj -> 
+            my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto.builder()
+                .customerName(proj.getCustomerName())
+                .currencyName(proj.getCurrencyName())
+                .month1(proj.getMonth1())
+                .month2(proj.getMonth2())
+                .month3(proj.getMonth3())
+                .currentMonth(proj.getCurrentMonth())
+                .amount(proj.getAmount())
+                .companyRefId(proj.getCompanyRefId())
+                .build()
+        ).collect(java.util.stream.Collectors.toList());
+    }
+    @Override
+    public List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> getSaleEmployeeView(SaleOrderFilterDTO filter) {
+        if (filter == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        Integer comId = filter.getComid() != null ? filter.getComid() : 0;
+        Integer empId = filter.getEmployeeid() != null ? filter.getEmployeeid() : 0;
+        Integer tId = filter.getTId() != null ? filter.getTId() : 0;
+
+        List<my.maleva.api.module.saleorder.repository.SaleJobViewProjection> results = repository.getSaleEmployeeView(comId, empId, tId);
+
+        return results.stream().map(proj -> 
+            my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto.builder()
+                .customerName(proj.getCustomerName())
+                .countryName(proj.getCountryName())
+                .month1(proj.getMonth1())
+                .month2(proj.getMonth2())
+                .month3(proj.getMonth3())
+                .currentMonth(proj.getCurrentMonth())
+                .amount(proj.getAmount())
+                .companyRefId(proj.getCompanyRefId())
+                .build()
+        ).collect(java.util.stream.Collectors.toList());
+    }
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getSalePortView(SaleOrderFilterDTO filter) {
+        if (filter == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        if (filter.getRemarks() == null || filter.getRemarks() != 5) {
+            throw new InvalidRequestException("Invalid Remarks value");
+        }
+
+        Integer comId = filter.getComid() != null ? filter.getComid() : 0;
+        Integer empId = filter.getEmployeeid() != null ? filter.getEmployeeid() : 0;
+        String portName = filter.getPortName();
+
+        java.time.LocalDate toDate = filter.getTodate() != null ? filter.getTodate() : java.time.LocalDate.now();
+        java.time.LocalDate fromDate = toDate.withDayOfMonth(1).minusMonths(3);
+
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd");
+        String fromDateStr = fromDate.format(dtf);
+        String toDateStr = toDate.format(dtf);
+
+        List<my.maleva.api.module.saleorder.repository.SalePortViewProjection> results = repository.getSalePortViewRaw(
+                comId, empId, portName, fromDateStr, toDateStr);
+
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.ENGLISH);
+        List<String> monthList = results.stream()
+                .map(my.maleva.api.module.saleorder.repository.SalePortViewProjection::getSaleMonth)
+                .distinct()
+                .sorted((m1, m2) -> {
+                    try {
+                        return java.time.YearMonth.parse(m1, formatter).compareTo(java.time.YearMonth.parse(m2, formatter));
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                })
+                .collect(Collectors.toList());
+
+        Map<String, List<my.maleva.api.module.saleorder.repository.SalePortViewProjection>> grouped = results.stream()
+                .collect(Collectors.groupingBy(my.maleva.api.module.saleorder.repository.SalePortViewProjection::getPortName));
+
+        List<Map<String, Object>> pivotedList = new ArrayList<>();
+        for (Map.Entry<String, List<my.maleva.api.module.saleorder.repository.SalePortViewProjection>> entry : grouped.entrySet()) {
+            Map<String, Object> dict = new java.util.LinkedHashMap<>();
+            dict.put("PortName", entry.getKey());
+            for (String month : monthList) {
+                my.maleva.api.module.saleorder.repository.SalePortViewProjection data = entry.getValue().stream()
+                        .filter(x -> month.equals(x.getSaleMonth()))
+                        .findFirst()
+                        .orElse(null);
+                dict.put(month + "_Count", data != null ? data.getJobCount() : 0);
+                dict.put(month + "_Amount", data != null ? data.getTotalAmount() : 0.0);
+            }
+            pivotedList.add(dict);
+        }
+
+        return pivotedList;
+    }
+    @Override
+    public List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> getSaleCustomerView(SaleOrderFilterDTO filter) {
+        if (filter == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        Integer comId = filter.getComid() != null ? filter.getComid() : 0;
+        Integer empId = filter.getEmployeeid() != null ? filter.getEmployeeid() : 0;
+        Integer tId = filter.getTId() != null ? filter.getTId() : 0;
+
+        List<my.maleva.api.module.saleorder.repository.SaleJobViewProjection> results = repository.getSaleCustomerView(comId, empId, tId);
+
+        return results.stream().map(proj -> 
+            my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto.builder()
+                .customerName(proj.getCustomerName())
+                .month1(proj.getMonth1())
+                .month2(proj.getMonth2())
+                .month3(proj.getMonth3())
+                .currentMonth(proj.getCurrentMonth())
+                .build()
+        ).collect(java.util.stream.Collectors.toList());
+    }
 
 }

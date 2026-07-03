@@ -46,8 +46,8 @@ public class DriverMasterServiceImpl implements DriverMasterService {
 
     @Override
     public List<DriverMasterDto> listAll() {
-        logger.info("Fetching all drivers");
-        return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
+        logger.info("Fetching all active drivers (active=1)");
+        return repository.findByActive(1).stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
     @Override

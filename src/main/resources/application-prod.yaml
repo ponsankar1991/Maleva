@@ -54,7 +54,7 @@ spring:
           provider_disables_autocommit: true
 
 server:
-  port: 8083
+  port: 8082
 
   servlet:
     multipart:
@@ -75,8 +75,8 @@ file:
 
 jwt:
   secret: changeit
-  expiration: 3600
-  session-max-age: 28800
+  expiration: 86400
+  session-max-age: 86400
 security:
   password-encoding:
     enabled: false

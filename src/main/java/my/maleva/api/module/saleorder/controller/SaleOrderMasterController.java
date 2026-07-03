@@ -1,5 +1,6 @@
 package my.maleva.api.module.saleorder.controller;
 
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -294,5 +295,77 @@ public class SaleOrderMasterController {
     }
 
 
-}
+    @PostMapping("/job-view")
+    @Operation(summary = "Get aggregated Sale Job View", description = "Mirrors .NET SaleJobView endpoint")
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto>>> getSaleJobView(
+            @RequestBody my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO filter) {
+        try {
+            List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> result = service.getSaleJobView(filter);
+            return ResponseEntity.ok(ApiResponse.success(result, "Success"));
+        } catch (Exception ex) {
+            logger.error("Error retrieving sale job view", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error retrieving sale job view: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
 
+    @PostMapping("/currency-view")
+    @Operation(summary = "Get aggregated Sale Currency View", description = "Mirrors .NET SaleCurrencyView endpoint")
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto>>> getSaleCurrencyView(
+            @RequestBody my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO filter) {
+        try {
+            List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> result = service.getSaleCurrencyView(filter);
+            return ResponseEntity.ok(ApiResponse.success(result, "Success"));
+        } catch (Exception ex) {
+            logger.error("Error retrieving sale currency view", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error retrieving sale currency view: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+    @PostMapping("/employee-view")
+    @Operation(summary = "Get aggregated Sale Employee View", description = "Mirrors .NET SaleEmployeeView endpoint")
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto>>> getSaleEmployeeView(
+            @RequestBody my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO filter) {
+        try {
+            List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> result = service.getSaleEmployeeView(filter);
+            return ResponseEntity.ok(ApiResponse.success(result, "Success"));
+        } catch (Exception ex) {
+            logger.error("Error retrieving sale employee view", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error retrieving sale employee view: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+    @PostMapping("/port-view")
+    @Operation(summary = "Get aggregated Sale Port View", description = "Mirrors .NET SalePortView endpoint with dynamic pivoting")
+    public ResponseEntity<ApiResponse<java.util.List<java.util.Map<String, Object>>>> getSalePortView(
+            @RequestBody my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO filter) {
+        try {
+            java.util.List<java.util.Map<String, Object>> result = service.getSalePortView(filter);
+            return ResponseEntity.ok(ApiResponse.success(result, "Success"));
+        } catch (my.maleva.api.common.exception.InvalidRequestException ex) {
+            logger.error("Invalid request for sale port view", ex);
+
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value()));
+        } catch (Exception ex) {
+            logger.error("Error retrieving sale port view", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error retrieving sale port view: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
+    @PostMapping("/customer-view")
+    @Operation(summary = "Get aggregated Sale Customer View", description = "Mirrors .NET SaleCustomerView endpoint")
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto>>> getSaleCustomerView(
+            @RequestBody my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO filter) {
+        try {
+            List<my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto> result = service.getSaleCustomerView(filter);
+            return ResponseEntity.ok(ApiResponse.success(result, "Success"));
+        } catch (Exception ex) {
+            logger.error("Error retrieving sale customer view", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error retrieving sale customer view: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+}

@@ -230,5 +230,171 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             @Param("companyId") int companyId,
             @Param("jobId")     int jobId
     );
+    @Query(value = """
+            select s.SName as currencyName, s.CName as countryName, count(*) as jobCount 
+            from SaleOrderMaster sm with(nolock) 
+            inner join Customer j with(nolock) on sm.CustomerRefId=j.Id 
+            inner join SymbolMaster s with(nolock) on j.SymbolRefid=s.Id 
+            where sm.Active=1 
+              and sm.SaleDate between :fromDate and :toDate 
+              and sm.CompanyRefId = :comId 
+              and (:empId = 0 OR sm.EmployeeRefId = :empId)
+            group by s.SName, s.CName
+            """, nativeQuery = true)
+    List<SaleJobViewProjection> getJobViewByCurrency(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("fromDate") String fromDate,
+            @Param("toDate") String toDate);
+
+    @Query(value = """
+            select j.EmployeeName as employeeName, count(*) as employeeCount 
+            from SaleOrderMaster sm with(nolock) 
+            left join EmployeeMaster j with(nolock) on sm.EmployeeRefId=j.Id 
+            where sm.Active=1 
+              and sm.SaleDate between :fromDate and :toDate 
+              and sm.CompanyRefId = :comId 
+              and (:empId = 0 OR sm.EmployeeRefId = :empId)
+            group by j.EmployeeName
+            """, nativeQuery = true)
+    List<SaleJobViewProjection> getJobViewByEmployee(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("fromDate") String fromDate,
+            @Param("toDate") String toDate);
+
+    @Query(value = """
+            select IsNull(j.Name, 'UnKnown') as jobType, count(*) as typeCount 
+            from SaleOrderMaster sm with(nolock) 
+            left join JobTypeMaster j with(nolock) on sm.JobMasterRefId=j.Id 
+            where sm.Active=1 
+              and sm.SaleDate between :fromDate and :toDate 
+              and sm.CompanyRefId = :comId 
+              and (:empId = 0 OR sm.EmployeeRefId = :empId)
+            group by j.Name
+            """, nativeQuery = true)
+    List<SaleJobViewProjection> getJobViewByJobType(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("fromDate") String fromDate,
+            @Param("toDate") String toDate);
+
+    @Query(value = """
+            select IsNull(j.Name, 'UnKnown') as jobStatus, count(*) as statusCount 
+            from SaleOrderMaster sm with(nolock) 
+            left join JobStatusMaster j with(nolock) on sm.JStatus=j.Id 
+            where sm.Active=1 
+              and sm.SaleDate between :fromDate and :toDate 
+              and sm.CompanyRefId = :comId 
+              and (:empId = 0 OR sm.EmployeeRefId = :empId)
+            group by j.Name
+            """, nativeQuery = true)
+    List<SaleJobViewProjection> getJobViewByJobStatus(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("fromDate") String fromDate,
+            @Param("toDate") String toDate);
+
+    @Query(value = """
+            SELECT j.CustomerName as customerName, s.SName AS currencyName, 
+            SUM(CASE WHEN FORMAT(SI.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -3, CONVERT(date, :fromDate)), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month1, 
+            SUM(CASE WHEN FORMAT(SI.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -2,  CONVERT(date, :fromDate)), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month2, 
+            SUM(CASE WHEN FORMAT(SI.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -1,  CONVERT(date, :fromDate)), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month3, 
+            SUM(CASE WHEN FORMAT(SI.SaleDate, 'MM-yyyy') = FORMAT(GETDATE(), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS currentMonth 
+            FROM SaleOrderMaster sm WITH (NOLOCK) 
+            INNER JOIN Customer j WITH (NOLOCK) ON sm.CustomerRefId = j.Id 
+            INNER JOIN SymbolMaster s WITH (NOLOCK) ON j.SymbolRefid = s.Id 
+            inner join salemaster SI WITH (NOLOCK) on sm.id = SI.saleordermasterno  
+            WHERE sm.Active = 1 
+            AND SI.SaleDate >= DATEADD(MONTH, -3, DATEFROMPARTS(YEAR(CONVERT(date, :fromDate)), MONTH(CONVERT(date, :fromDate)), 1)) 
+            AND SI.SaleDate < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(CONVERT(date, :fromDate)), MONTH(CONVERT(date, :fromDate)), 1)) 
+            AND sm.CompanyRefId = :comId 
+            AND (:empId = 0 OR sm.EmployeeRefId = :empId) 
+            AND (:tId = 0 OR s.Id = :tId) 
+            GROUP BY j.CustomerName, s.SName 
+            ORDER BY j.CustomerName
+            """, nativeQuery = true)
+    List<SaleJobViewProjection> getSaleCurrencyView(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("tId") Integer tId,
+            @Param("fromDate") String fromDate);
+    @Query(value = """
+            SELECT j.CustomerName as customerName, s.CName AS countryName, 
+            SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -3, GETDATE()), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month1, 
+            SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -2, GETDATE()), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month2, 
+            SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -1, GETDATE()), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month3, 
+            SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(GETDATE(), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS currentMonth 
+            FROM SaleOrderMaster sm WITH (NOLOCK) 
+            INNER JOIN Customer j WITH (NOLOCK) ON sm.CustomerRefId = j.Id 
+            INNER JOIN SymbolMaster s WITH (NOLOCK) ON j.SymbolRefid = s.Id 
+            WHERE sm.Active = 1 
+            AND sm.SaleDate >= DATEADD(MONTH, -3, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)) 
+            AND sm.SaleDate < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)) 
+            AND sm.CompanyRefId = :comId 
+            AND (:empId = 0 OR sm.EmployeeRefId = :empId) 
+            AND (:tId = 0 OR j.Id = :tId) 
+            GROUP BY j.CustomerName, s.CName 
+            ORDER BY j.CustomerName
+            """, nativeQuery = true)
+    List<SaleJobViewProjection> getSaleEmployeeView(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("tId") Integer tId);
+
+    @Query(value = """
+            SELECT 
+                ISNULL(NULLIF(
+                    CASE 
+                        WHEN sm.OPort = sm.SPort AND sm.OPort IS NOT NULL AND sm.OPort != '' THEN sm.OPort 
+                        WHEN sm.OPort IS NOT NULL AND sm.OPort != '' THEN sm.OPort 
+                        ELSE sm.SPort 
+                    END, ''), 'Unknown') AS portName, 
+                FORMAT(SaleDate, 'MMMM yyyy') AS saleMonth, 
+                COUNT(*) AS jobCount, 
+                SUM(ISNULL(sm.Amount, 0)) AS totalAmount 
+            FROM SaleOrderMaster sm WITH(NOLOCK) 
+            WHERE sm.Active = 1 
+                AND sm.SaleDate BETWEEN :fromDate AND :toDate 
+                AND sm.CompanyRefId = :comId 
+                AND (:empId = 0 OR sm.EmployeeRefId = :empId) 
+                AND (:portName IS NULL OR :portName = '' OR sm.OPort LIKE '%' + :portName + '%' OR sm.SPort LIKE '%' + :portName + '%')
+            GROUP BY FORMAT(SaleDate, 'MMMM yyyy'), 
+                ISNULL(NULLIF(
+                    CASE 
+                        WHEN sm.OPort = sm.SPort AND sm.OPort IS NOT NULL AND sm.OPort != '' THEN sm.OPort 
+                        WHEN sm.OPort IS NOT NULL AND sm.OPort != '' THEN sm.OPort 
+                        ELSE sm.SPort 
+                    END, ''), 'Unknown') 
+            ORDER BY portName, saleMonth
+            """, nativeQuery = true)
+    List<SalePortViewProjection> getSalePortViewRaw(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("portName") String portName,
+            @Param("fromDate") String fromDate,
+            @Param("toDate") String toDate);
+
+    @Query(value = """
+            SELECT j.CustomerName AS customerName,
+                SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -3, GETDATE()), 'MM-yyyy') THEN 1 ELSE 0 END) AS month1,
+                SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -2, GETDATE()), 'MM-yyyy') THEN 1 ELSE 0 END) AS month2,
+                SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -1, GETDATE()), 'MM-yyyy') THEN 1 ELSE 0 END) AS month3,
+                SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(GETDATE(), 'MM-yyyy') THEN 1 ELSE 0 END) AS currentMonth 
+            FROM SaleOrderMaster sm WITH (NOLOCK) 
+            INNER JOIN Customer j WITH (NOLOCK) ON sm.CustomerRefId = j.Id 
+            WHERE sm.Active = 1   
+                AND sm.SaleDate >= DATEADD(MONTH, -3, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))   
+                AND sm.SaleDate < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+                AND sm.CompanyRefId = :comId 
+                AND (:empId = 0 OR sm.EmployeeRefId = :empId) 
+                AND (:tId = 0 OR j.Id = :tId)
+            GROUP BY j.CustomerName 
+            ORDER BY j.CustomerName
+            """, nativeQuery = true)
+    List<SaleJobViewProjection> getSaleCustomerView(
+            @Param("comId") Integer comId,
+            @Param("empId") Integer empId,
+            @Param("tId") Integer tId);
 
 }

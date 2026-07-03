@@ -70,4 +70,6 @@ public interface TruckMasterService {
      * @return SearchResultDto containing list and total count
      */
     my.maleva.api.module.fleet.dto.SearchResultDto searchTrucks(Integer companyId, Integer startIndex, Integer pageCount, String keyword, String column, String type);
+
+    java.util.List<my.maleva.api.module.fleet.dto.TruckMasterDto> getAllTruckDetailCombo(Integer companyId, String keyword, String column, String type);
 }

@@ -263,5 +263,16 @@ public class TruckMasterController {
         boolean exists = service.existsByTruckNumber(truckNumber, companyRefId);
         return ResponseEntity.ok("Exists: " + exists);
     }
+
+    @GetMapping("/alltruckdetatilcombo")
+    public ResponseEntity<ApiResponse<java.util.List<my.maleva.api.module.fleet.dto.TruckMasterDto>>> getAllTruckDetailCombo(
+            @RequestParam Integer companyId,
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @RequestParam(required = false, defaultValue = "All") String column,
+            @RequestParam(required = false) String type) {
+
+        java.util.List<my.maleva.api.module.fleet.dto.TruckMasterDto> result = service.getAllTruckDetailCombo(companyId, keyword, column, type);
+        return ResponseEntity.ok(ApiResponse.success(result, "Success"));
+    }
 }
 
