@@ -48,4 +48,9 @@ public interface DriverMasterRepository extends JpaRepository<DriverMaster, Inte
      * Find all active drivers
      */
     List<DriverMaster> findByActive(Integer active);
+
+    /**
+     * Find all drivers by company ID and active status
+     */
+    List<DriverMaster> findByCompanyRefIdAndActive(Integer companyRefId, Integer active);
 }

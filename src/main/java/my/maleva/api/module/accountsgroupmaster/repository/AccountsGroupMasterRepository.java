@@ -27,5 +27,7 @@ public interface AccountsGroupMasterRepository extends JpaRepository<AccountsGro
     List<AccountsGroupMaster> findByCompanyRefIdAndActiveNot(Integer companyRefId, Integer active);
 
     Optional<AccountsGroupMaster> findByIdAndCompanyRefId(Integer id, Integer companyRefId);
+
+    List<AccountsGroupMaster> findByIdInAndCompanyRefId(List<Integer> ids, Integer companyRefId);
 }
 

@@ -48,4 +48,9 @@ public interface DriverMasterService {
      * @return DriverSearchResultDto containing list and total count
      */
     DriverSearchResultDto searchDrivers(Integer companyId, Integer startIndex, Integer pageCount, String keyword, String column);
+
+    /**
+     * Get all active drivers by company ID without pagination
+     */
+    List<DriverMasterDto> getAllDriverDetails(Integer companyId);
 }

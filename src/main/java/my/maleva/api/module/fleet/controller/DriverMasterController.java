@@ -122,4 +122,10 @@ public class DriverMasterController {
             return ResponseEntity.status(500).body(ApiResponse.error("Internal server error: " + ex.getMessage(), 500));
         }
     }
+
+    @GetMapping("/selectalldriverDetails")
+    public ResponseEntity<ApiResponse<List<DriverMasterDto>>> selectalldriverDetails(@RequestParam Integer companyId) {
+        logger.info("Getting all driver details for companyId:{}", companyId);
+        return ResponseEntity.ok(ApiResponse.success(service.getAllDriverDetails(companyId), "Success"));
+    }
 }

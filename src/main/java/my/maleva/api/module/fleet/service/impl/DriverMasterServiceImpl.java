@@ -235,5 +235,37 @@ public class DriverMasterServiceImpl implements DriverMasterService {
                 .totalCount(total)
                 .build();
     }
-}
+    @Override
+    public List<DriverMasterDto> getAllDriverDetails(Integer companyId) {
+        logger.info("Fetching all driver details for company: {} with active = 1", companyId);
+        
+        if (companyId == null) {
+            throw new IllegalArgumentException("Company ID is required");
+        }
 
+        List<DriverMaster> results = repository.findByCompanyRefIdAndActive(companyId, 1);
+        List<DriverMasterDto> dtos = results.stream().map(mapper::toDto).collect(Collectors.toList());
+
+        // Optimize N+1 Query Problem: Collect all AccountRefid and fetch at once
+        List<Integer> accountRefIds = results.stream()
+                .map(DriverMaster::getAccountRefid)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (!accountRefIds.isEmpty()) {
+            java.util.Map<Integer, String> accountMap = accountsGroupMasterRepository.findByIdInAndCompanyRefId(accountRefIds, companyId)
+                    .stream()
+                    .collect(Collectors.toMap(my.maleva.api.module.accountsgroupmaster.entity.AccountsGroupMaster::getId, my.maleva.api.module.accountsgroupmaster.entity.AccountsGroupMaster::getAccountCode));
+
+            for (DriverMasterDto dto : dtos) {
+                if (dto.getAccountRefid() != null && accountMap.containsKey(dto.getAccountRefid())) {
+                    dto.setAccountCode(accountMap.get(dto.getAccountRefid()));
+                }
+            }
+        }
+
+        logger.info("Found {} active drivers for company {}", results.size(), companyId);
+        return dtos;
+    }
+}

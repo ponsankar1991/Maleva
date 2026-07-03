@@ -3238,6 +3238,42 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "Select All Driver Details",
+      "id": "675d9d36-21e7-41ea-ace6-a0c85f896c86",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/driver-masters/selectalldriverDetails?companyId=6",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "driver-masters",
+            "selectalldriverDetails"
+          ],
+          "query": [
+            {
+              "key": "companyId",
+              "value": "6"
+            }
+          ]
+        }
+      },
+      "response": []
     }
   ],
   "auth": {
