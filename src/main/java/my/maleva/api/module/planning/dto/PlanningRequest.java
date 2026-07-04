@@ -330,6 +330,10 @@ public class PlanningRequest {
          * driver name add  from the planning
          */
         private String driverName;
+        /**
+         * driver ID  add  from the planning
+         */
+        private Integer DriverRefId;
 
     }
 }

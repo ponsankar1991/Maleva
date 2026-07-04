@@ -74,5 +74,9 @@ public class PlanningDetails {
 
     @Column(name = "DriverName", length = 200)
     private String driverName;
+
+
+    @Column(name = "DriverRefId")
+    private Integer driverRefId;
 }
 

@@ -251,6 +251,7 @@ public class PlanningSaveService {
                     .pickupQuantityList(item.getPickupQuantitylist())
                     .deliveryQuantityList(item.getDeliveryQuantitylist())
                     .deliveryTimeList(item.getDelivertimelist())
+                    .driverRefId(item.getDriverRefId())
                     .createdDate(now)
                     .modifiedDate(now)
                     .driverName(item.getDriverName()) // SP saves DriverName same as DriverNameD
