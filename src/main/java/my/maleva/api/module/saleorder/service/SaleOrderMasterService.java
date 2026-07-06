@@ -1,15 +1,7 @@
 package my.maleva.api.module.saleorder.service;
 
-import my.maleva.api.module.saleorder.dto.SaleOrderDTO;
-import my.maleva.api.module.saleorder.dto.SaleOrderEditDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO;
-import my.maleva.api.module.saleorder.dto.SaleOrderMasterDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderQuickUpdateDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderStatusUpdateDto;
-import my.maleva.api.module.saleorder.dto.JobNumberDto;
+import my.maleva.api.module.saleorder.dto.*;
 import my.maleva.api.module.invoice.dto.SaleF5View;
-import my.maleva.api.module.saleorder.dto.UpdateJobStatusDto;
-import my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto;
 
 import java.util.List;
 
@@ -82,4 +74,7 @@ public interface SaleOrderMasterService {
     java.util.List<java.util.Map<String, Object>> getSalePortView(SaleOrderFilterDTO filter);
 
     List<SaleJobViewAggregateDto> getSaleCustomerView(SaleOrderFilterDTO filter);
+
+
+    List<VesselScheduleDto> getVesselSchedules(Integer companyId, String fromDate, String toDate);
 }

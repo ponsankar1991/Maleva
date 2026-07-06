@@ -62,7 +62,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"userName\": \"admin\",\n    \"password\": \"admin123\"\n}"
+              "raw": "{\n  \"userName\": \"admin\",\n  \"password\": \"5591\",\n  \"username\": \"mages\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/login",
@@ -1319,6 +1319,50 @@
                 "api",
                 "sale-orders",
                 "customer-view"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vessel Schedules",
+          "id": "0a46c3f5-7e22-44d6-aff9-c8a8b4f1a731",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sale-orders/vessel-schedules?companyId=6&fromDate=2026-07-04&toDate=2026-07-04",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sale-orders",
+                "vessel-schedules"
+              ],
+              "query": [
+                {
+                  "key": "companyId",
+                  "value": "6"
+                },
+                {
+                  "key": "fromDate",
+                  "value": "2026-07-04"
+                },
+                {
+                  "key": "toDate",
+                  "value": "2026-07-04"
+                }
               ]
             }
           },

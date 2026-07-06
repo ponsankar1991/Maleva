@@ -5,16 +5,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import my.maleva.api.module.invoice.dto.SaleF5View;
-import my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO;
-import my.maleva.api.module.saleorder.dto.SaleOrderDTO;
-import my.maleva.api.module.saleorder.dto.SaleOrderEditDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderMasterDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderQuickUpdateDto;
-import my.maleva.api.module.saleorder.dto.SaleOrderStatusUpdateDto;
+import my.maleva.api.module.saleorder.dto.*;
 import my.maleva.api.common.dto.ApiResponse;
 import my.maleva.api.module.saleorder.service.SaleOrderMasterService;
 import my.maleva.api.module.saleorder.util.SaleOrderApiConstants;
-import my.maleva.api.module.saleorder.dto.UpdateJobStatusDto;
 import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.common.exception.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -367,5 +361,19 @@ public class SaleOrderMasterController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error retrieving sale customer view: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
+    }
+
+
+
+    @GetMapping("/vessel-schedules")
+    public ResponseEntity<ApiResponse<List<VesselScheduleDto>>> getVesselSchedules(
+            @RequestParam Integer companyId,
+            @RequestParam(required = false, defaultValue = "") String fromDate,
+            @RequestParam(required = false, defaultValue = "") String toDate) {
+
+        logger.info("API Call: GET /vessel-schedules - companyId: {}", companyId);
+
+        List<VesselScheduleDto> results = service.getVesselSchedules(companyId, fromDate, toDate);
+        return ResponseEntity.ok(ApiResponse.success(results, "Vessel schedules retrieved successfully"));
     }
 }

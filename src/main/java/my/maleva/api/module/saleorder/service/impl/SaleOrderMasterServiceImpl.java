@@ -1642,7 +1642,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                 .build()
         ).collect(java.util.stream.Collectors.toList());
     }
-    @Override
+
+    @Override
     public java.util.List<java.util.Map<String, Object>> getSalePortView(SaleOrderFilterDTO filter) {
         if (filter == null) {
             return java.util.Collections.emptyList();
@@ -1721,5 +1722,26 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                 .build()
         ).collect(java.util.stream.Collectors.toList());
     }
+
+
+    @Override
+    public List<VesselScheduleDto> getVesselSchedules(Integer companyId, String fromDate, String toDate) {
+        logger.info("Fetching Vessel Schedules for company: {} from {} to {}", companyId, fromDate, toDate);
+
+        // 1. Business Logic / Validation
+        if (companyId == null || companyId <= 0) {
+            throw new IllegalArgumentException("Company ID is required and must be valid.");
+        }
+
+        // 2. Fetch from database
+        List<VesselScheduleDto> schedules = repository.getVesselSchedules(companyId, fromDate, toDate);
+
+        logger.info("Successfully fetched {} vessel schedules", schedules.size());
+        return schedules;
+    }
+
+
+
+
 
 }

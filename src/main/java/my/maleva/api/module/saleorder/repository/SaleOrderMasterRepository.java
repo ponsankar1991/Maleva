@@ -2,6 +2,7 @@ package my.maleva.api.module.saleorder.repository;
 
 import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.saleorder.dto.JobNumberDto;
+import my.maleva.api.module.saleorder.dto.VesselScheduleDto;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -319,7 +320,8 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             @Param("empId") Integer empId,
             @Param("tId") Integer tId,
             @Param("fromDate") String fromDate);
-    @Query(value = """
+
+    @Query(value = """
             SELECT j.CustomerName as customerName, s.CName AS countryName, 
             SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -3, GETDATE()), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month1, 
             SUM(CASE WHEN FORMAT(sm.SaleDate, 'MM-yyyy') = FORMAT(DATEADD(MONTH, -2, GETDATE()), 'MM-yyyy') THEN sm.ActualNetAmount ELSE 0 END) AS month2, 
@@ -396,5 +398,62 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             @Param("comId") Integer comId,
             @Param("empId") Integer empId,
             @Param("tId") Integer tId);
+
+
+
+
+    @Query(value = """
+            SELECT
+                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                A.Loadingvesselname AS vesselName,
+                'Loading Vessel' AS vesselType,
+                ISNULL(BO1.EmployeeName,'') AS boardingOfficer1,
+                ISNULL(BO2.EmployeeName,'') AS boardingOfficer2,
+                COUNT(*) AS totalJobs
+            FROM SaleOrderMaster A WITH (NOLOCK)
+            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK) ON BO1.Id = A.BoardingOfficerRefid
+            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK) ON BO2.Id = A.BoardingOfficer1Refid
+            WHERE
+                A.CompanyRefId = :companyRefId
+                AND A.Active = 1
+                AND A.JStatus <> 12
+                AND ISNULL(A.Loadingvesselname,'') <> ''
+                AND (CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate OR CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate)
+            GROUP BY
+                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE),
+                A.Loadingvesselname,
+                BO1.EmployeeName,
+                BO2.EmployeeName
+            
+            UNION ALL
+            
+            SELECT
+                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                A.Offvesselname AS vesselName,
+                'Off Vessel' AS vesselType,
+                ISNULL(BO1.EmployeeName,'') AS boardingOfficer1,
+                ISNULL(BO2.EmployeeName,'') AS boardingOfficer2,
+                COUNT(*) AS totalJobs
+            FROM SaleOrderMaster A WITH (NOLOCK)
+            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK) ON BO1.Id = A.BoardingOfficerRefid
+            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK) ON BO2.Id = A.BoardingOfficer1Refid
+            WHERE
+                A.CompanyRefId = :companyRefId
+                AND A.Active = 1
+                AND A.JStatus <> 12
+                AND ISNULL(A.Offvesselname,'') <> ''
+                AND (CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate OR CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate)
+            GROUP BY
+                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE),
+                A.Offvesselname,
+                BO1.EmployeeName,
+                BO2.EmployeeName
+            
+            ORDER BY etaDate, vesselName
+            """, nativeQuery = true)
+    List<VesselScheduleDto> getVesselSchedules(
+            @Param("companyRefId") Integer companyRefId,
+            @Param("fromDate") String fromDate,
+            @Param("toDate") String toDate);
 
 }
