@@ -20,6 +20,8 @@ import my.maleva.api.module.planning.dto.PlanningDetailsModel;
 import my.maleva.api.module.planning.dto.query.PlanningEditMasterRow;
 import my.maleva.api.module.planning.dto.query.PlanningSelectMasterRow;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,13 +29,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Service
 public class PlanningMasterService {
+
+    private static final Logger logger = LoggerFactory.getLogger(PlanningMasterService.class);
 
     private final PlanningMasterRepository planningMasterRepository;
     private final PlanningDetailsRepository planningDetailsRepository;
@@ -179,6 +187,7 @@ public class PlanningMasterService {
             LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = SM.EmployeeRefId
             WHERE A.Id = :planningId
               AND A.CompanyRefId = :companyId
+            ORDER BY B.Id ASC
             """;
 
     public PlanningMasterService(
@@ -471,11 +480,21 @@ public class PlanningMasterService {
         PlanningEditMasterRow masterRow = findPlanningEditMaster(resolvedPlanningId, companyId)
                 .orElseThrow(() -> new EntityNotFoundException("Planning not found: " + resolvedPlanningId));
 
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("planningId", resolvedPlanningId)
+                .addValue("companyId", companyId);
+
+        // Expand and log the full SQL with parameter values so it can be copied and executed in SQL Server
+        try {
+            String expanded = expandSql(EDIT_PLANNING_DETAILS_SQL, params);
+            logger.info("Expanded SQL for editPlanning (planningId={}, companyId={}):\n{}", resolvedPlanningId, companyId, expanded);
+        } catch (Exception ex) {
+            logger.warn("Failed to expand SQL for debug output: {}", ex.getMessage());
+        }
+
         List<PlanningDetailsModel> saleDetails = namedParameterJdbcTemplate.query(
                 EDIT_PLANNING_DETAILS_SQL,
-                new MapSqlParameterSource()
-                        .addValue("planningId", resolvedPlanningId)
-                        .addValue("companyId", companyId),
+                params,
                 (rs, rowNum) -> PlanningDetailsModel.builder()
                         .id(rs.getInt("Id"))
                         .sdId(rs.getInt("SDId"))
@@ -526,6 +545,44 @@ public class PlanningMasterService {
         );
 
         return planningQueryMapper.toPlanningEditResponse(masterRow, saleDetails);
+    }
+
+    private String expandSql(String sql, MapSqlParameterSource params) {
+        Map<String, Object> values = params.getValues();
+        String expanded = sql;
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        for (Map.Entry<String, Object> e : values.entrySet()) {
+            String name = e.getKey();
+            Object val = e.getValue();
+            String replacement = toSqlLiteral(val, dtf);
+            // Replace occurrences of :name with the replacement, using word boundary
+            expanded = Pattern.compile(":" + Pattern.quote(name) + "\\b").matcher(expanded).replaceAll(replacement);
+        }
+        return expanded;
+    }
+
+    private String toSqlLiteral(Object val, DateTimeFormatter dtf) {
+        if (val == null) return "NULL";
+        if (val instanceof Iterable<?>) {
+            StringJoiner sj = new StringJoiner(", ");
+            for (Object item : (Iterable<?>) val) {
+                sj.add(toSqlLiteral(item, dtf));
+            }
+            return sj.length() == 0 ? "(NULL)" : "(" + sj.toString() + ")";
+        }
+        if (val instanceof Object[]) {
+            StringJoiner sj = new StringJoiner(", ");
+            for (Object item : (Object[]) val) sj.add(toSqlLiteral(item, dtf));
+            return "(" + sj.toString() + ")";
+        }
+        if (val instanceof Number) return val.toString();
+        if (val instanceof Boolean) return ((Boolean) val) ? "1" : "0";
+        if (val instanceof java.time.LocalDate) return "'" + ((java.time.LocalDate) val).toString() + "'";
+        if (val instanceof java.time.LocalDateTime) return "'" + ((java.time.LocalDateTime) val).format(dtf) + "'";
+        // Fallback for other types (including String)
+        String s = val.toString().replace("'", "''");
+        return "'" + s + "'";
     }
 
     /**

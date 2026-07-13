@@ -1739,9 +1739,68 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         logger.info("Successfully fetched {} vessel schedules", schedules.size());
         return schedules;
     }
+    @Override
+    @Transactional
+    public SaleOrderMasterDto updateDoDescription(SaleOrderDoDescriptionUpdateDto dto) {
+        // Validate DTO is not null
+        if (dto == null) {
+            logger.error("DODescription update request received with null DTO");
+            throw new InvalidRequestException("Request body cannot be null");
+        }
 
+        Integer id = dto.getId();
+        String newDescription = dto.getDoDescription();
 
+        // CRITICAL: Validate ID is present and positive - NO UPDATE without valid ID
+        if (id == null) {
+            logger.error("DODescription update attempted WITHOUT ID - REJECTED");
+            throw new InvalidRequestException("SaleOrder ID is mandatory and cannot be null");
+        }
 
+        if (id <= 0) {
+            logger.error("DODescription update attempted with INVALID ID: {} - REJECTED", id);
+            throw new InvalidRequestException("SaleOrder ID must be a positive number (greater than 0), provided: " + id);
+        }
+
+        // Validate description is not empty
+        if (newDescription == null || newDescription.trim().isEmpty()) {
+            logger.error("DODescription update attempted with EMPTY/NULL description for ID: {} - REJECTED", id);
+            throw new InvalidRequestException("DODescription cannot be empty or blank");
+        }
+
+        logger.debug("Initiating DODescription update - SaleOrder ID: {} with description length: {}", id, newDescription.length());
+
+        // Verify entity exists in database - throw 404 if not found
+        SaleOrderMaster entity = repository.findById(id)
+                .orElseThrow(() -> {
+                    logger.warn("SaleOrderMaster NOT FOUND in database - ID: {}", id);
+                    return new EntityNotFoundException("SaleOrderMaster not found with id: " + id);
+                });
+
+        logger.debug("SaleOrderMaster found - ID: {}, Current Status: READY FOR UPDATE", id);
+
+        // Capture previous value for audit logging
+        String previousDescription = entity.getDoDescription();
+
+        // Check if value has actually changed to avoid unnecessary updates
+        if (Objects.equals(previousDescription, newDescription)) {
+            logger.info("NO CHANGE DETECTED - DODescription update skipped - SaleOrder ID: {}. Current value: '{}'", id, previousDescription);
+            return mapper.toDto(entity);
+        }
+
+        // Update the entity property with new value
+        entity.setDoDescription(newDescription);
+
+        // Persist the change (proper JPA methodology)
+        SaleOrderMaster updatedEntity = repository.save(entity);
+
+        // Log the successful update with before/after values for audit trail
+        logger.info("✓ DODescription updated SUCCESSFULLY - SaleOrder ID: {}. Previous: '{}' → New: '{}'",
+                id, previousDescription, newDescription);
+
+        // Return the updated entity as DTO for API response
+        return mapper.toDto(updatedEntity);
+    }
 
 
 }

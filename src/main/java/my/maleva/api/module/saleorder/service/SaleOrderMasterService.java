@@ -77,4 +77,14 @@ public interface SaleOrderMasterService {
 
 
     List<VesselScheduleDto> getVesselSchedules(Integer companyId, String fromDate, String toDate);
+
+    /**
+     * Update DODescription for a SaleOrder
+     *
+     * @param dto SaleOrderDoDescriptionUpdateDto containing id and new doDescription
+     * @return The updated SaleOrderMasterDto with the new DODescription
+     * @throws EntityNotFoundException if SaleOrderMaster not found with given id
+     */
+    @org.springframework.transaction.annotation.Transactional
+    SaleOrderMasterDto updateDoDescription(SaleOrderDoDescriptionUpdateDto dto);
 }

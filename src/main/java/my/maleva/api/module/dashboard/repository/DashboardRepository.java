@@ -9,6 +9,8 @@ import my.maleva.api.module.dashboard.dto.SaleOrderInvoiceCheckModel;
 import my.maleva.api.module.dashboard.dto.DashBoardMonthWiseModel;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ import java.time.format.DateTimeFormatter;
 public class DashboardRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final NamedParameterJdbcTemplate namedJdbcTemplate;
 
     // ========== SALES DATA QUERIES ==========
 
@@ -1602,5 +1605,107 @@ public class DashboardRepository {
         public Double TotalSales;
         public Integer SalesCount;
         public Integer Rank;          // ROW_NUMBER for each month
+    }
+
+    /**
+     * Search planning details with dynamic filters.
+     * Matches C# GetPlaningSearchDbDetails with GroupBy/OrderByDescending in service layer.
+     *
+     * @param request search filters (company, dates, ports, employee)
+     * @return list of planning detail rows
+     */
+    public List<my.maleva.api.module.planning.dto.PlanningDetailsModel> getPlaningSearchDbDetails(
+            my.maleva.api.module.planning.dto.request.PLANINGSearchRequestDto request) {
+
+        // Base query using Java 17 text block for readability
+        String baseQuery = """
+                SELECT S.Id,
+                       ISNULL(E.EmployeeName, '') AS EmployeeName,
+                       S.PickupDate,
+                       S.CNumberDisplay AS JobNo,
+                       ISNULL(CONVERT(VARCHAR(26), S.PickupDate, 20), '')   AS SPickupDate,
+                       ISNULL(CONVERT(VARCHAR(26), S.DeliveryDate, 20), '') AS SDeliveryDate,
+                       S.WareHouseEnterDate,
+                       S.WareHouseExitDate,
+                       ISNULL(CONVERT(VARCHAR(26), S.WareHouseEnterDate, 20), '') AS SWareHouseEnterDate,
+                       ISNULL(CONVERT(VARCHAR(26), S.WareHouseExitDate, 20), '')  AS SWareHouseExitDate,
+                       S.WareHouseAddress,
+                       S.Origin,
+                       S.Destination,
+                       (S.Quantity + '/' + S.TotalWeight) AS Pkg,
+                       S.LoadingVesselName AS VesselName,
+                       FORMAT(ISNULL(S.SaleDate, '1900-01-01'), 'dd/MM/yyyy') AS JobDate,
+                       C.CustomerName,
+                       (0)  AS TruckRefid,
+                       ('')  AS Remarks,
+                       ISNULL(J.Name, '') AS JobStatus,
+                       S.PickupAddress,
+                       S.DeliveryAddress,
+                       ISNULL(CONVERT(VARCHAR(26), S.ETA, 20), '')  AS LETA,
+                       ISNULL(CONVERT(VARCHAR(26), S.OETA, 20), '') AS OETA,
+                       JT.Name AS JobName,
+                       S.AWBNo,
+                       S.BLCopy,
+                       S.SPort,
+                       S.OPort,
+                       S.TruckSize,
+                       S.DODescription,
+                       CASE WHEN CAST(S.PickupDate AS DATE) = :fromDate THEN 0 ELSE 1 END AS SDId,
+                       TM.TruckName
+                FROM SaleOrderMaster S WITH (NOLOCK)
+                INNER JOIN Customer C WITH (NOLOCK) ON C.Id = S.CustomerRefId
+                INNER JOIN JobTypeMaster JT WITH (NOLOCK) ON JT.Id = S.JobMasterRefId
+                LEFT JOIN JobStatusMaster J WITH (NOLOCK) ON J.Id = S.JStatus
+                LEFT JOIN EmployeeMaster E WITH (NOLOCK) ON E.Id = S.EmployeeRefId
+                LEFT JOIN PlaningDetails PD WITH (NOLOCK) ON PD.SaleOrderMasterRefId = S.Id
+                LEFT JOIN TruckMaster TM WITH (NOLOCK) ON PD.TruckRefid = TM.Id
+                WHERE S.CompanyRefId = :comId
+                  AND S.Active != 2
+                  AND CAST(S.PickupDate AS DATE) BETWEEN :fromDate AND :toDate
+                  AND S.JStatus NOT IN (5, 6, 8, 12, 15,19)
+                """;
+
+        // Build dynamic WHERE clauses
+        StringBuilder query = new StringBuilder(baseQuery);
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("comId", request.getComid());
+
+        // Defensive checks to prevent SQL Server conversion errors for empty dates
+        String fromDateStr = request.getFromdate();
+        if (fromDateStr == null || fromDateStr.trim().isEmpty()) {
+            fromDateStr = "1900-01-01"; // SQL Server safe min date
+        }
+        
+        String toDateStr = request.getTodate();
+        if (toDateStr == null || toDateStr.trim().isEmpty()) {
+            toDateStr = "2099-12-31"; // SQL Server safe max date
+        }
+        
+        params.addValue("fromDate", fromDateStr);
+        params.addValue("toDate", toDateStr);
+
+        // Optional: filter by ports (SPort / OPort)
+        if (request.getSearch() != null && !request.getSearch().isEmpty()) {
+            List<String> portsList = Arrays.asList(request.getSearch().split(","));
+            query.append("AND (S.SPort IN (:ports) OR S.OPort IN (:ports)) ");
+            params.addValue("ports", portsList);
+        }
+
+        // Optional: filter by employee
+        if (request.getEmployeeid() != null && !request.getEmployeeid().isEmpty()
+                && !"0".equals(request.getEmployeeid())) {
+            try {
+                params.addValue("empId", Integer.parseInt(request.getEmployeeid()));
+                query.append("AND S.EmployeeRefId = :empId ");
+            } catch (NumberFormatException e) {
+                log.warn("Invalid employeeId '{}', skipping employee filter", request.getEmployeeid());
+            }
+        }
+
+        return namedJdbcTemplate.query(
+                query.toString(),
+                params,
+                new BeanPropertyRowMapper<>(my.maleva.api.module.planning.dto.PlanningDetailsModel.class)
+        );
     }
 }

@@ -27,9 +27,11 @@ public class PLANINGSearchRequestDto {
     private String employeeid;  // empty, 0 or null for all employees
 
     @NotBlank(message = "From date is required")
+    @jakarta.validation.constraints.Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "From date must be in format YYYY-MM-DD")
     private String fromdate;  // Format: YYYY-MM-DD
 
     @NotBlank(message = "To date is required")
+    @jakarta.validation.constraints.Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "To date must be in format YYYY-MM-DD")
     private String todate;    // Format: YYYY-MM-DD
 }
 

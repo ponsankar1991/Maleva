@@ -433,7 +433,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             sql.append(" AND (CAST(S.ETA as DATE) BETWEEN :fromDate AND :toDate OR CAST(S.OETA as DATE) BETWEEN :fromDate AND :toDate)");
         }
 
-        sql.append(" ORDER BY DETA ASC, S.Id ASC");
+        sql.append(" ORDER BY CASE WHEN S.ETA IS NOT NULL AND CAST(S.ETA AS DATE) <> '1900-01-01' AND S.OETA IS NOT NULL AND CAST(S.OETA AS DATE) <> '1900-01-01' THEN CASE WHEN S.ETA <= S.OETA THEN S.ETA ELSE S.OETA END WHEN S.ETA IS NOT NULL AND CAST(S.ETA AS DATE) <> '1900-01-01' THEN S.ETA WHEN S.OETA IS NOT NULL AND CAST(S.OETA AS DATE) <> '1900-01-01' THEN S.OETA ELSE '9999-12-31' END ASC, ISNULL(S.Loadingvesselname, S.Offvesselname) ASC");
         return jdbcTemplate.query(sql.toString(), params, (rs, rowNum) -> mapDetail(rs));
     }
 

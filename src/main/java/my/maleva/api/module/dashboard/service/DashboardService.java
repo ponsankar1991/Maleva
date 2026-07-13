@@ -148,4 +148,9 @@ public interface DashboardService {
      * @return Response wrapper with top performers and metrics for both months
      */
     TopPerformerDto.TopPerformersResponseDto getTopPerformers(Integer comId, String baseDate);
+
+    /**
+     * Get planning search DB details for the dashboard
+     */
+    List<my.maleva.api.module.planning.dto.PlanningDetailsModel> getPlaningSearchDbDetails(my.maleva.api.module.planning.dto.request.PLANINGSearchRequestDto searchModel);
 }

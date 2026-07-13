@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.dashboard.dto.*;
+import my.maleva.api.module.planning.dto.PlanningDetailsModel;
+import my.maleva.api.module.planning.dto.request.PLANINGSearchRequestDto;
 import my.maleva.api.module.dashboard.service.DashboardService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -489,6 +491,33 @@ public class DashboardController {
         } catch (Exception e) {
             log.error("Error fetching top performers for comId={}, baseDate={}: {}", comId, baseDate, e.getMessage(), e);
             return ResponseEntity.status(500).body(ApiResponse.error("Failed to fetch top performers data. Please try again later."));
+        }
+    }
+
+    /**
+     * Get planning search DB details
+     */
+    @PostMapping("/planing-search")
+    @PermitAll
+    public ResponseEntity<ApiResponse<List<PlanningDetailsModel>>> getPlaningSearchDbDetails(@RequestBody @jakarta.validation.Valid PLANINGSearchRequestDto searchModel) {
+        log.info("POST /api/dashboard/planing-search");
+
+        if (searchModel.getComid() == null || searchModel.getComid() <= 0) {
+            log.warn("Invalid comId provided in searchModel: {}", searchModel.getComid());
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid company ID. Must be a positive number"));
+        }
+
+        try {
+            List<PlanningDetailsModel> result = dashboardService.getPlaningSearchDbDetails(searchModel);
+            
+            if (result == null || result.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.success("No records found", result));
+            }
+            
+            return ResponseEntity.ok(ApiResponse.success("Success", result));
+        } catch (Exception e) {
+            log.error("Error fetching planing search db details: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to fetch planing search details. Please try again later."));
         }
     }
 }

@@ -376,4 +376,66 @@ public class SaleOrderMasterController {
         List<VesselScheduleDto> results = service.getVesselSchedules(companyId, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success(results, "Vessel schedules retrieved successfully"));
     }
+
+    @PostMapping("/do-description")
+    @PermitAll
+    @Operation(summary = "Update DODescription for a SaleOrder",
+               description = "Updates only the DODescription field based on ID in body. "
+                           + "ID is MANDATORY and must be positive. "
+                           + "Returns the updated SaleOrder.")
+    public ResponseEntity<ApiResponse<SaleOrderMasterDto>> updateDoDescription(
+            @RequestBody @Valid SaleOrderDoDescriptionUpdateDto dto) {
+        Integer dtoId = dto != null ? dto.getId() : null;
+        logger.info("API Call: POST /api/sale-orders/do-description - ID: {}", dtoId);
+
+        try {
+            // Null check
+            if (dto == null) {
+                logger.error("Request body is null - VALIDATION FAILED");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                        ApiResponse.error("Request body cannot be null", HttpStatus.BAD_REQUEST.value())
+                );
+            }
+
+            // Call service
+            SaleOrderMasterDto updatedDto = service.updateDoDescription(dto);
+            logger.info("✓ DODescription update SUCCESS - SaleOrder ID: {}", dtoId);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    updatedDto,
+                    "DODescription updated successfully"
+            ));
+
+        } catch (InvalidRequestException ex) {
+            // Validation error - ID missing, ID invalid, or description empty
+            logger.warn("VALIDATION FAILED for DODescription update - ID: {}, Reason: {}", dtoId, ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value())
+            );
+
+        } catch (EntityNotFoundException ex) {
+            // SaleOrder not found
+            logger.warn("SaleOrder NOT FOUND during DODescription update - ID: {}", dtoId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.NOT_FOUND.value())
+            );
+
+        } catch (Exception ex) {
+            // Unexpected error
+            logger.error("ERROR updating DODescription for SaleOrder ID: {}", dtoId, ex);
+            Throwable rootCause = ex;
+            while (rootCause.getCause() != null) {
+                rootCause = rootCause.getCause();
+            }
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResponse.error(
+                            "Error updating DODescription: " + rootCause.getMessage(),
+                            HttpStatus.INTERNAL_SERVER_ERROR.value()
+                    )
+            );
+        }
+    }
 }
+
+

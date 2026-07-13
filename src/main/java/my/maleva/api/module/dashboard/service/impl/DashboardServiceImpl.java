@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.module.dashboard.dto.*;
 import my.maleva.api.module.dashboard.repository.DashboardRepository;
 import my.maleva.api.module.dashboard.service.DashboardService;
+import my.maleva.api.module.planning.dto.PlanningDetailsModel;
+import my.maleva.api.module.planning.dto.request.PLANINGSearchRequestDto;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -604,6 +606,31 @@ public class DashboardServiceImpl implements DashboardService {
                         .build())
                 .period(baseDate)
                 .build();
+    }
+
+    @Override
+    public List<PlanningDetailsModel> getPlaningSearchDbDetails(PLANINGSearchRequestDto searchModel) {
+        List<PlanningDetailsModel> rawResults = dashboardRepository.getPlaningSearchDbDetails(searchModel);
+
+        if (rawResults == null || rawResults.isEmpty()) {
+            return rawResults;
+        }
+
+        // GroupBy Id -> keep first occurrence per Id -> OrderByDescending SDId
+        // Uses LinkedHashMap to preserve the original SQL ordering during deduplication
+        return rawResults.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        PlanningDetailsModel::getId,
+                        p -> p,
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new
+                ))
+                .values().stream()
+                .sorted(java.util.Comparator.comparing(
+                        PlanningDetailsModel::getSdId,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())
+                ))
+                .collect(java.util.stream.Collectors.toList());
     }
 
 }

@@ -159,5 +159,33 @@ public class PlanningDetailsModel {
     @JsonProperty("Delivertimelist")
     private String deliveryTimeList;
 
+    @JsonProperty("OffVesselName")
+    private String offVesselName;
 
+    @JsonProperty("Package")
+    private String packageSize; // Package is a reserved keyword in Java
+
+    @JsonProperty("Weight")
+    private String weight;
+
+    @JsonProperty("pickupdate")
+    private String pickupdate;
+
+    @JsonProperty("deliverydate")
+    private String deliverydate;
+
+    @JsonProperty("PickupWeightList")
+    private String pickupWeightList;
+
+    @JsonProperty("DeliveryWeightList")
+    private String deliveryWeightList;
+
+    @JsonProperty("PickupsList")
+    private java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderPickupDto> pickupsList;
+
+    @JsonProperty("DeliveriesList")
+    private java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderDeliveryDto> deliveriesList;
+
+    @JsonProperty("DODescription")
+    private String doDescription;
 }

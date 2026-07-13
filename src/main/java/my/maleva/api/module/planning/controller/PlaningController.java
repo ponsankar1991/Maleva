@@ -152,7 +152,7 @@ public class PlaningController {
     }
 
     @GetMapping("/edit")
-@PermitAll
+    @PermitAll
     public ResponseEntity<PlanningEditResponseDto> editPlanning(
             @RequestParam(required = false) @Positive Integer id,
             @RequestParam(required = false) @Positive Integer planningNo,
@@ -160,7 +160,6 @@ public class PlaningController {
         PlanningEditResponseDto result = planningMasterService.editPlanning(id, planningNo, companyId);
         return ResponseEntity.ok(result);
     }
-
     @PostMapping("/search")
     @PermitAll
     public ResponseEntity<List<PlanningDetailsModel>> planningSearch(

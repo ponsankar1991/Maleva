@@ -451,9 +451,8 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             
             ORDER BY etaDate, vesselName
             """, nativeQuery = true)
-    List<VesselScheduleDto> getVesselSchedules(
+    List<my.maleva.api.module.saleorder.dto.VesselScheduleDto> getVesselSchedules(
             @Param("companyRefId") Integer companyRefId,
             @Param("fromDate") String fromDate,
             @Param("toDate") String toDate);
-
 }

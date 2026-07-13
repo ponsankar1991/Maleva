@@ -38,8 +38,13 @@ public interface PlanningMasterRepository extends JpaRepository<PlanningMaster, 
 
     /**
      * Find planning record by CNumber
+     *
+     * NOTE: use explicit @Query with the correct Java attribute name `cNumber` (lowercase 'c')
+     * because derived query generation can produce a JPQL path using `CNumber` which
+     * doesn't match the entity attribute name and causes UnknownPathException.
      */
-    Optional<PlanningMaster> findByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
+    @Query("SELECT p FROM PlanningMaster p WHERE p.companyRefId = :companyRefId AND p.cNumber = :cNumber")
+    Optional<PlanningMaster> findByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);
 
     /**
      * Find planning record by CNumberDisplay
