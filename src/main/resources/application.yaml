@@ -108,3 +108,8 @@ qne:
     customer: 700-0000
     supplier: 800-2000
 
+
+
+rti:
+  job-wise:
+    max-date-range-days: 90

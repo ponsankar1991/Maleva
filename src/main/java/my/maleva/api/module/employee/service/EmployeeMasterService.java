@@ -172,4 +172,25 @@ public class EmployeeMasterService {
                 .map(employeeAllMapper::toDto)
                 .collect(Collectors.toList());
     }
+    /**
+     * Search employees with dynamic filtering matching legacy SelectEmployee endpoint.
+     *
+     * @param request Search parameters
+     * @return Search response with data and total count (if applicable)
+     */
+    @Transactional(readOnly = true)
+    public my.maleva.api.module.employee.dto.EmployeeSearchResponse searchEmployees(my.maleva.api.module.employee.dto.EmployeeSearchRequest request) {
+        List<EmployeeAllDto> employees = repository.searchEmployees(request);
+        Integer totalCount = 0;
+        
+        String keyword = request.getKeyword();
+        if (keyword == null || keyword.isEmpty()) {
+            totalCount = repository.countSearchEmployees(request);
+        }
+        
+        return my.maleva.api.module.employee.dto.EmployeeSearchResponse.builder()
+                .data1(employees)
+                .data4(totalCount)
+                .build();
+    }
 }

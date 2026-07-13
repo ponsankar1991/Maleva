@@ -3491,6 +3491,96 @@
                     "response": []
                 }
             ]
+        },
+        {
+            "name": "RTI",
+            "item": [
+                {
+                    "name": "RTI Job Wise View",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"fromDate\": \"2026-05-01\",\n  \"toDate\": \"2026-05-30\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rti/job-wise-view",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "rti",
+                                "job-wise-view"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ],
+            "description": "RTI Module APIs"
+        },
+        {
+            "name": "Employees",
+            "item": [
+                {
+                    "name": "Employee Search (SelectEmployee)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"comid\": 1,\n  \"startindex\": -1,\n  \"pageCount\": 10,\n  \"keyword\": \"\",\n  \"column\": \"All\",\n  \"type\": \"ALL\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/employees/search",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employees",
+                                "search"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Employee Module APIs"
         }
     ],
     "auth": {

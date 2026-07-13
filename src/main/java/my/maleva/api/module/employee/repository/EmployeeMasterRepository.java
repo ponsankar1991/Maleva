@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface EmployeeMasterRepository extends JpaRepository<EmployeeMaster, Integer> {
+public interface EmployeeMasterRepository extends JpaRepository<EmployeeMaster, Integer>, EmployeeMasterRepositoryCustom {
     Page<EmployeeMaster> findByEmployeeNameContainingIgnoreCase(String name, Pageable pageable);
 
     // allow lookup by userName for authentication

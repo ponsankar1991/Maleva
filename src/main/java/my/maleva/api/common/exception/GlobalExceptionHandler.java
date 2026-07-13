@@ -14,6 +14,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import my.maleva.api.common.exception.InvalidDateRangeException;
+import my.maleva.api.common.exception.DateRangeTooLargeException;
+import my.maleva.api.common.exception.RtiJobWiseQueryException;
+
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -46,6 +50,20 @@ public class GlobalExceptionHandler {
         ApiError err = new ApiError(Instant.now(), HttpStatus.BAD_REQUEST.value(), "Validation Failed",
                 "Request validation failed", ((ServletWebRequest) request).getRequest().getRequestURI(), details);
         return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({InvalidDateRangeException.class, DateRangeTooLargeException.class})
+    public ResponseEntity<ApiError> handleValidationExceptions(RuntimeException ex, WebRequest request) {
+        ApiError err = new ApiError(Instant.now(), HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(),
+                ((ServletWebRequest) request).getRequest().getRequestURI(), null);
+        return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RtiJobWiseQueryException.class)
+    public ResponseEntity<ApiError> handleQueryException(RtiJobWiseQueryException ex, WebRequest request) {
+        ApiError err = new ApiError(Instant.now(), HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error",
+                "An internal error occurred while fetching data.", ((ServletWebRequest) request).getRequest().getRequestURI(), null);
+        return new ResponseEntity<>(err, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

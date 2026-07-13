@@ -3,6 +3,9 @@ package my.maleva.api.module.employee.controller;
 import jakarta.validation.Valid;
 import my.maleva.api.module.employee.dto.EmployeeMasterDto;
 import my.maleva.api.module.employee.dto.EmployeeAllDto;
+import my.maleva.api.module.employee.dto.EmployeeSearchRequest;
+import my.maleva.api.module.employee.dto.EmployeeSearchResponse;
+import my.maleva.api.common.dto.ApiResponse;
 import my.maleva.api.module.employee.service.EmployeeMasterService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -84,5 +87,17 @@ public class EmployeeMasterController {
             @RequestParam(value = "type", required = false, defaultValue = "ALL") String type) {
         List<EmployeeAllDto> employees = service.selectEmployeeAll(companyRefId, type);
         return ResponseEntity.ok(employees);
+    }
+
+    /**
+     * Search employees with dynamic filtering matching legacy SelectEmployee endpoint.
+     *
+     * @param request The search parameters
+     * @return ApiResponse containing the list of employees and total count
+     */
+    @PostMapping("/search")
+    public ResponseEntity<ApiResponse<EmployeeSearchResponse>> searchEmployees(@RequestBody EmployeeSearchRequest request) {
+        EmployeeSearchResponse response = service.searchEmployees(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Employees fetched successfully"));
     }
 }

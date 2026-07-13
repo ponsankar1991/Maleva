@@ -33,6 +33,9 @@ public class ApiResponse<T> {
     @JsonProperty("Data3")
     private String data3;
 
+    @JsonProperty("Data4")
+    private Object data4;
+
     @JsonProperty("ErrorDetails")
     private String errorDetails;
     

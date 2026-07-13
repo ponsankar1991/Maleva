@@ -120,7 +120,7 @@ public class EmployeeMaster {
     @Column(name = "AccountRefid", nullable = false)
     private Integer accountRefid;
 
-    @Column(name = "role_id", nullable = false, columnDefinition = "numeric(4) default 100")
+    @Column(name = "role_id")
     private Integer roleId;
 
     @Column(name = "PermisionId", nullable = false)

@@ -45,9 +45,23 @@ public class EmployeeAllDto {
     private String personId;
     private Integer accountRefId;
     private String appPassword;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private Integer roleId;
+    
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private Integer permisionId;
 
     // Additional field from AccountsGroupMaster
     private String accountCode;
+
+    // Automatically resolve the textual role name based on the roleId
+    public String getRoleName() {
+        if (this.roleId != null) {
+            return my.maleva.api.common.constant.UserRoles.fromId(this.roleId)
+                    .map(Enum::name)
+                    .orElse(null);
+        }
+        return null;
+    }
 }
 
