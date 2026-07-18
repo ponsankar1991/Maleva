@@ -29,5 +29,9 @@ public interface AccountsGroupMasterRepository extends JpaRepository<AccountsGro
     Optional<AccountsGroupMaster> findByIdAndCompanyRefId(Integer id, Integer companyRefId);
 
     List<AccountsGroupMaster> findByIdInAndCompanyRefId(List<Integer> ids, Integer companyRefId);
+
+    Optional<AccountsGroupMaster> findFirstByAccountNameAndAccountCodeAndCompanyRefIdAndActive(String accountName, String accountCode, Integer companyRefId, Integer active);
+
+    int countByParentIdAndCompanyRefId(Integer parentId, Integer companyRefId);
 }
 

@@ -45,6 +45,19 @@ public class EmployeeAllDto {
     private String personId;
     private Integer accountRefId;
     private String appPassword;
+    private String tinNo;
+    private String sstNo;
+    private String msicCode;
+    private String serviceTaxType;
+    private String bankName;
+    private String accountNo;
+    private String rulesType;
+    private String qneCode;
+    private String qneId;
+    private java.time.LocalDate joiningDate;
+    private java.time.LocalDate leavingDate;
+    private String emergencyNo;
+    private String employeecurrency;
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private Integer roleId;
     
@@ -55,6 +68,8 @@ public class EmployeeAllDto {
     private String accountCode;
 
     // Automatically resolve the textual role name based on the roleId
+    @com.fasterxml.jackson.annotation.JsonProperty("roleName")
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
     public String getRoleName() {
         if (this.roleId != null) {
             return my.maleva.api.common.constant.UserRoles.fromId(this.roleId)

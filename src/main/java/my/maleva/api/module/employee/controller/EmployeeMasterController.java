@@ -5,13 +5,17 @@ import my.maleva.api.module.employee.dto.EmployeeMasterDto;
 import my.maleva.api.module.employee.dto.EmployeeAllDto;
 import my.maleva.api.module.employee.dto.EmployeeSearchRequest;
 import my.maleva.api.module.employee.dto.EmployeeSearchResponse;
+import my.maleva.api.module.employee.dto.EmployeeTypeDto;
 import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.common.constant.UserRoles;
 import my.maleva.api.module.employee.service.EmployeeMasterService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -82,13 +86,10 @@ public class EmployeeMasterController {
      * @return List of all employees matching the criteria with their account information
      */
     @GetMapping("/company/{companyRefId}/all")
-    public ResponseEntity<List<EmployeeAllDto>> selectEmployeeAll(
-            @PathVariable Integer companyRefId,
-            @RequestParam(value = "type", required = false, defaultValue = "ALL") String type) {
+    public ResponseEntity<List<EmployeeAllDto>> selectEmployeeAll( @PathVariable Integer companyRefId, @RequestParam(value = "type", required = false, defaultValue = "ALL") String type) {
         List<EmployeeAllDto> employees = service.selectEmployeeAll(companyRefId, type);
         return ResponseEntity.ok(employees);
     }
-
     /**
      * Search employees with dynamic filtering matching legacy SelectEmployee endpoint.
      *
@@ -99,5 +100,56 @@ public class EmployeeMasterController {
     public ResponseEntity<ApiResponse<EmployeeSearchResponse>> searchEmployees(@RequestBody EmployeeSearchRequest request) {
         EmployeeSearchResponse response = service.searchEmployees(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Employees fetched successfully"));
+    }
+
+    /**
+     * Get a list of available employee types (roles) matching the legacy SelectEmployeeType endpoint.
+     * Maps to the application's UserRoles enum.
+     *
+     * @param includeAll Whether to include the "ALL" option with ID 0
+     * @return ApiResponse containing the list of roles
+     */
+    @GetMapping("/types")
+    public ResponseEntity<ApiResponse<List<EmployeeTypeDto>>> getEmployeeTypes(
+            @RequestParam(value = "all", defaultValue = "false") boolean includeAll) {
+        
+        List<EmployeeTypeDto> types = new ArrayList<>();
+        
+        if (includeAll) {
+            types.add(new EmployeeTypeDto(0, "ALL"));
+        }
+        
+        for (UserRoles role : UserRoles.values()) {
+            types.add(new EmployeeTypeDto(role.getRoleId(), getLegacyRoleName(role)));
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(types, "Employee types fetched successfully"));
+    }
+
+    private String getLegacyRoleName(UserRoles role) {
+        switch (role) {
+            case CUSTOMERSERVICE:
+                return "CustomerServiceAdmin";
+            case BOARDINGOFFICER:
+                return "BOARDING";
+            default:
+                return role.name();
+        }
+    }
+
+    /**
+     * Bulk insert/update employees. Replicates the legacy SP_Employee logic.
+     * Maps to the .NET InsertEmployee endpoint.
+     *
+     * @param companyRefId The company ID
+     * @param employees    List of employees to upsert
+     * @return ApiResponse containing status and last processed ID
+     */
+    @PostMapping("/bulk/{companyRefId}")
+    public ResponseEntity<ApiResponse<String>> bulkUpsertEmployees(
+            @PathVariable Integer companyRefId,
+            @RequestBody List<EmployeeMasterDto> employees) {
+        ApiResponse<String> response = service.bulkUpsertEmployees(employees, companyRefId);
+        return ResponseEntity.ok(response);
     }
 }

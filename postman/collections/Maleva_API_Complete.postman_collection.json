@@ -1411,6 +1411,49 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Check Sale Order Invoice",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"comid\": 6,\n  \"invoice\": false,\n  \"fromdate\": \"2024-01-01\",\n  \"todate\": \"2024-12-31\",\n  \"remarks\": 1\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/sale-orders/check-invoice",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "sale-orders",
+                                "check-invoice"
+                            ]
+                        }
+                    },
+                    "response": []
                 }
             ],
             "id": "268bd559-2bb1-4876-a94a-6283df74e1a3",
@@ -3578,9 +3621,229 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Get Employee Types (Roles)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/employees/types?all=true",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employees",
+                                "types"
+                            ],
+                            "query": [
+                                {
+                                    "key": "all",
+                                    "value": "true"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Bulk Upsert Employees",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\n    {\n        \"id\": 0,\n        \"employeeName\": \"TEST EMPLOYEE NEW\",\n        \"employeeType\": \"SALES\",\n        \"active\": 1,\n        \"roleId\": 200,\n        \"personId\": \"PERS-001\",\n        \"email\": \"test@maleva.com\"\n    }\n]"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/employees/bulk/6",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employees",
+                                "bulk",
+                                "6"
+                            ]
+                        }
+                    },
+                    "response": []
                 }
             ],
             "description": "Employee Module APIs"
+        },
+        {
+            "name": "Employee",
+            "item": [
+                {
+                    "name": "Assign Employee Port",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"companyRefId\": 6,\r\n    \"employeeRefId\": 161,\r\n    \"portRefId\": 1,\r\n    \"assignedBy\": 55\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/employee-ports",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employee-ports"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Assign Employee Ports (Bulk)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\r\n    {\r\n        \"companyRefId\": 6,\r\n        \"employeeRefId\": 161,\r\n        \"portRefId\": 3,\r\n        \"assignedBy\": 55\r\n    },\r\n    {\r\n        \"companyRefId\": 6,\r\n        \"employeeRefId\": 161,\r\n        \"portRefId\": 4,\r\n        \"assignedBy\": 55\r\n    },\r\n    {\r\n        \"companyRefId\": 6,\r\n        \"employeeRefId\": 161,\r\n        \"portRefId\": 13,\r\n        \"assignedBy\": 55\r\n    }\r\n]",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/employee-ports/bulk",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employee-ports",
+                                "bulk"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Employee Ports",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/employee-ports/company/6/employee/161",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employee-ports",
+                                "company",
+                                "6",
+                                "employee",
+                                "161"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Search Employee By ID",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\r\n    \"comid\": 6,\r\n    \"startindex\": 0,\r\n    \"pageCount\": 10,\r\n    \"keyword\": \"161\",\r\n    \"column\": \"Id\",\r\n    \"type\": \"ALL\"\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/employees/search",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employees",
+                                "search"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Employees (Bulk Upsert)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\r\n    {\r\n        \"id\": 161,\r\n        \"employeeName\": \"KARTHICK UPDATED\",\r\n        \"employeeType\": \"BOARDINGOFFICERADMIN\",\r\n        \"active\": 1,\r\n        \"roleId\": 200,\r\n        \"personId\": \"PERS-001\",\r\n        \"email\": \"karthick123svks@gmail.com\",\r\n        \"address1\": \"200 FEET RADIAL RD\"\r\n    }\r\n]",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/employees/bulk/6",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employees",
+                                "bulk",
+                                "6"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Employee related endpoints"
         }
     ],
     "auth": {

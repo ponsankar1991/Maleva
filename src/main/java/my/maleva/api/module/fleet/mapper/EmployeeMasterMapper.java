@@ -12,11 +12,15 @@ public interface EmployeeMasterMapper {
     @Mapping(target = "role", expression = "java(idToRole(entity.getRoleId()))")
     EmployeeMasterDto toDto(EmployeeMaster entity);
 
-    @Mappings({
-            @Mapping(target = "roleId", expression = "java(roleToId(dto.getRole()))")
-    })
     EmployeeMaster toEntity(EmployeeMasterDto dto);
 
+    // Prevent MapStruct from copying the identifier from DTO to the managed entity
+    // Also protect critical internal system fields (cNumber, accountRefid) from being 
+    // accidentally wiped out if the frontend sends 0 or empty strings during updates.
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "CNumber", ignore = true)
+    @Mapping(target = "CNumberDisplay", ignore = true)
+    @Mapping(target = "accountRefid", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @InheritConfiguration(name = "toEntity")
     void updateFromDto(EmployeeMasterDto dto, @MappingTarget EmployeeMaster entity);

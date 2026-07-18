@@ -436,6 +436,35 @@ public class SaleOrderMasterController {
             );
         }
     }
+    /**
+     * Check sale order invoices dynamically based on multiple parameters.
+     * Equivalent to ASP.NET CheckSaleOrderInvoice endpoint.
+     */
+    @PostMapping("/check-invoice")
+    public ResponseEntity<ApiResponse<java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderInvoiceCheckDto>>> checkSaleOrderInvoice(
+            @RequestBody my.maleva.api.module.saleorder.dto.SaleOrderInvoiceCheckRequest request) {
+        
+        logger.info("Check sale order invoice request received for company: {}", request.getComid());
+
+        try {
+            java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderInvoiceCheckDto> result = service.checkSaleOrderInvoice(request);
+            
+            return ResponseEntity.ok(ApiResponse.success(
+                    result,
+                    "Sale order invoices fetched successfully"
+            ));
+        } catch (my.maleva.api.common.exception.InvalidRequestException ex) {
+            logger.warn("Invalid request - {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value())
+            );
+        } catch (Exception ex) {
+            logger.error("Error checking sale order invoices", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResponse.error("Error checking sale order invoices: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value())
+            );
+        }
+    }
 }
 
 

@@ -1802,5 +1802,12 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         return mapper.toDto(updatedEntity);
     }
 
-
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderInvoiceCheckDto> checkSaleOrderInvoice(my.maleva.api.module.saleorder.dto.SaleOrderInvoiceCheckRequest request) {
+        if (request.getComid() == null) {
+            throw new my.maleva.api.common.exception.InvalidRequestException("Company ID is required");
+        }
+        return repository.checkSaleOrderInvoice(request);
+    }
 }

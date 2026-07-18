@@ -137,6 +137,9 @@ public class EmployeeMasterDto {
     @Size(max = 100)
     private String accountNo;
 
+    @Size(max = 100)
+    private String accountCode;
+
     @Size(max = 50)
     private String rulesType;
 

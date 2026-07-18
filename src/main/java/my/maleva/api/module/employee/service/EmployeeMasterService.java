@@ -7,6 +7,9 @@ import my.maleva.api.module.employee.entity.EmployeeMaster;
 import my.maleva.api.module.employee.repository.EmployeeMasterRepository;
 import my.maleva.api.module.fleet.mapper.EmployeeMasterMapper;
 import my.maleva.api.module.employee.mapper.EmployeeAllMapper;
+import my.maleva.api.module.accountsgroupmaster.repository.AccountsGroupMasterRepository;
+import my.maleva.api.module.accountsgroupmaster.entity.AccountsGroupMaster;
+import my.maleva.api.common.dto.ApiResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,12 +30,14 @@ public class EmployeeMasterService {
     private final EmployeeMasterMapper mapper;
     private final EmployeeAllMapper employeeAllMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AccountsGroupMasterRepository accountsGroupMasterRepository;
 
-    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, EmployeeAllMapper employeeAllMapper, PasswordEncoder passwordEncoder) {
+    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, EmployeeAllMapper employeeAllMapper, PasswordEncoder passwordEncoder, AccountsGroupMasterRepository accountsGroupMasterRepository) {
         this.repository = repository;
         this.mapper = mapper;
         this.employeeAllMapper = employeeAllMapper;
         this.passwordEncoder = passwordEncoder;
+        this.accountsGroupMasterRepository = accountsGroupMasterRepository;
     }
 
     @CacheEvict(value = "employees", allEntries = true)
@@ -76,10 +81,16 @@ public class EmployeeMasterService {
         return list.stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
+    @Transactional
     @CacheEvict(value = "employees", allEntries = true)
     public void delete(Integer id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("Employee not found: " + id);
-        repository.deleteById(id);
+        EmployeeMaster employee = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Employee not found: " + id));
+        
+        // Soft delete: set Active = 2
+        employee.setActive(2);
+        employee.setModifiedDate(LocalDateTime.now());
+        repository.save(employee);
     }
 
     @Transactional(readOnly = true)
@@ -192,5 +203,136 @@ public class EmployeeMasterService {
                 .data1(employees)
                 .data4(totalCount)
                 .build();
+    }
+
+    /**
+     * Bulk upsert employees matching the legacy SP_Employee stored procedure logic.
+     * Manages AccountsGroupMaster creation and synchronization automatically.
+     *
+     * @param employees    List of employees to insert or update
+     * @param companyRefId The company ID
+     * @return ApiResponse containing the name and ID of the last processed employee (matching legacy .NET return format)
+     */
+    @Transactional
+    @CacheEvict(value = "employees", allEntries = true)
+    public ApiResponse<String> bulkUpsertEmployees(List<EmployeeMasterDto> employees, Integer companyRefId) {
+        String lastProcessedName = "";
+        Integer lastProcessedId = 0;
+
+        // Fetch parent AccountsGroupMaster ID for EMPLOYEES
+        AccountsGroupMaster parentGroup = accountsGroupMasterRepository
+                .findFirstByAccountNameAndAccountCodeAndCompanyRefIdAndActive("EMPLOYEES", "EMP", companyRefId, 1)
+                .orElseThrow(() -> new EntityNotFoundException("Parent AccountsGroupMaster EMPLOYEES not found for company " + companyRefId));
+
+        Integer parentId = parentGroup.getId();
+
+        // Get max CNumber to start incrementing for new inserts
+        Integer currentMaxCNumber = repository.findMaxCNumberByCompanyRefId(companyRefId);
+        if (currentMaxCNumber == null) currentMaxCNumber = 0;
+
+        for (EmployeeMasterDto dto : employees) {
+            String empName = dto.getEmployeeName() != null ? dto.getEmployeeName().toUpperCase() : "";
+            Integer id = dto.getId() != null ? dto.getId() : 0;
+
+            // PREVENT DOUBLE-CLICKS (DUPLICATES)
+            // If the frontend sends id=0 but the exact same employee name already exists in this company,
+            // we safely switch to UPDATE mode to prevent database duplication.
+            if (id == 0 && !empName.isEmpty()) {
+                Optional<EmployeeMaster> existingByName = repository.findFirstByCompanyRefIdAndEmployeeNameIgnoreCase(companyRefId, empName);
+                if (existingByName.isPresent()) {
+                    id = existingByName.get().getId();
+                }
+            }
+
+            final Integer targetId = id;
+            EmployeeMaster entity;
+
+            if (targetId == 0) {
+                // INSERT LOGIC
+                currentMaxCNumber++;
+                String paddedCode = String.format("E%09d", currentMaxCNumber);
+
+                // Calculate RowNumber (AccountCode) for new account group
+                int childCount = accountsGroupMasterRepository.countByParentIdAndCompanyRefId(parentId, companyRefId);
+                String rowNumber = "EMP-" + (childCount + 1);
+
+                // 1. Insert into AccountsGroupMaster
+                AccountsGroupMaster newAccount = AccountsGroupMaster.builder()
+                        .companyRefId(companyRefId)
+                        .accountName(empName)
+                        .parentId(parentId)
+                        .editmode(1)
+                        .noChild(1)
+                        .createdDate(LocalDateTime.now())
+                        .modifiedDate(LocalDateTime.now())
+                        .modifiedBy("SA")
+                        .active(1)
+                        .accountCode(rowNumber)
+                        .build();
+
+                AccountsGroupMaster savedAccount = accountsGroupMasterRepository.save(newAccount);
+
+                // 2. Map and Insert into EmployeeMaster
+                entity = mapper.toEntity(dto);
+                entity.setId(null); // IMPORTANT: Force ID to null so JPA knows to use IDENTITY generation
+                entity.setCompanyRefId(companyRefId);
+                entity.setAccountRefid(savedAccount.getId());
+                entity.setCNumber(currentMaxCNumber);
+                entity.setCNumberDisplay(paddedCode);
+                entity.setCreatedDate(LocalDateTime.now());
+                entity.setModifiedDate(LocalDateTime.now());
+                entity.setModifiedBy("SA");
+                
+                // Fallback for role defaults if empty
+                if (entity.getRoleId() == null) entity.setRoleId(100);
+                if (entity.getPermisionId() == null) entity.setPermisionId(0);
+
+            } else {
+                // UPDATE LOGIC
+                entity = repository.findById(targetId)
+                        .orElseThrow(() -> new EntityNotFoundException("Employee not found: " + targetId));
+
+                // Map updates from DTO
+                mapper.updateFromDto(dto, entity);
+                
+                entity.setCompanyRefId(companyRefId); // Ensure company ID integrity
+                entity.setModifiedDate(LocalDateTime.now());
+
+                // Update associated AccountsGroupMaster
+                Integer accountRefid = entity.getAccountRefid();
+                if (accountRefid != null) {
+                    accountsGroupMasterRepository.findByIdAndCompanyRefId(accountRefid, companyRefId)
+                            .ifPresent(account -> {
+                                account.setAccountName(empName);
+                                accountsGroupMasterRepository.save(account);
+                            });
+                }
+            }
+
+            // Apply strict formatting / uppercasing consistent with legacy SP
+            entity.setEmployeeName(empName);
+            if (entity.getEmployeeType() != null) entity.setEmployeeType(entity.getEmployeeType().toUpperCase());
+            if (entity.getAddress1() != null) entity.setAddress1(entity.getAddress1().toUpperCase());
+            if (entity.getAddress2() != null) entity.setAddress2(entity.getAddress2().toUpperCase());
+            if (entity.getAddress3() != null) entity.setAddress3(entity.getAddress3().toUpperCase());
+            if (entity.getCity() != null) entity.setCity(entity.getCity().toUpperCase());
+            if (entity.getState() != null) entity.setState(entity.getState().toUpperCase());
+            if (entity.getZipcode() != null) entity.setZipcode(entity.getZipcode().toUpperCase());
+            if (entity.getCountry() != null) entity.setCountry(entity.getCountry().toUpperCase());
+            if (entity.getGstNo() != null) entity.setGstNo(entity.getGstNo().toUpperCase());
+            if (entity.getPersonId() != null) entity.setPersonId(entity.getPersonId().toUpperCase());
+            
+            // Ensure Active is set
+            if (entity.getActive() == null) entity.setActive(1);
+
+            EmployeeMaster savedEntity = repository.save(entity);
+            lastProcessedId = savedEntity.getId();
+            lastProcessedName = empName;
+        }
+
+        // Return format to match legacy C# response: Data1 = AccountName, Data2 = Id
+        ApiResponse<String> response = ApiResponse.success(lastProcessedName, "Employee successfully created/updated.");
+        response.setData2(lastProcessedId);
+        return response;
     }
 }

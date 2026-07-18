@@ -41,6 +41,13 @@ public interface EmployeeMasterRepository extends JpaRepository<EmployeeMaster, 
      * Used for SP validation: EmployeeMaster with CompanyRefId and Active=1
      */
     boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
+
+    // Get max CNumber for a company to generate sequential Employee codes
+    @Query("SELECT COALESCE(MAX(e.cNumber), 0) FROM EmployeeMaster e WHERE e.companyRefId = :companyRefId")
+    Integer findMaxCNumberByCompanyRefId(@Param("companyRefId") Integer companyRefId);
+
+    // Prevent duplicates by checking if employee name already exists in the company
+    Optional<EmployeeMaster> findFirstByCompanyRefIdAndEmployeeNameIgnoreCase(Integer companyRefId, String employeeName);
 }
 
 

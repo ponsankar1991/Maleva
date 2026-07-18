@@ -19,7 +19,7 @@ import java.util.Optional;
  */
 @Repository
 public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster, Integer>,
-        JpaSpecificationExecutor<SaleOrderMaster> {
+        JpaSpecificationExecutor<SaleOrderMaster>, SaleOrderMasterRepositoryCustom {
 
     @Query("""
             select new my.maleva.api.module.rti.dto.RTIJobLookupDto(

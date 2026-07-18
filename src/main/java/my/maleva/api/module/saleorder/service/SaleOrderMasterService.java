@@ -87,4 +87,10 @@ public interface SaleOrderMasterService {
      */
     @org.springframework.transaction.annotation.Transactional
     SaleOrderMasterDto updateDoDescription(SaleOrderDoDescriptionUpdateDto dto);
+
+    /**
+     * Check sale order invoices dynamically based on multiple parameters.
+     * Equivalent to ASP.NET CheckSaleOrderInvoice endpoint.
+     */
+    java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderInvoiceCheckDto> checkSaleOrderInvoice(my.maleva.api.module.saleorder.dto.SaleOrderInvoiceCheckRequest request);
 }
