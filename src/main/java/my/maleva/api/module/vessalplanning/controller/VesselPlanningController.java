@@ -116,7 +116,9 @@ public class VesselPlanningController {
     public ResponseEntity<VesselPlanningLegacyDtos.EditResponse> editVesselPlanning(@RequestParam(required = false) Integer id, @RequestParam(required = false) Integer vesselPlanningNo, @RequestParam Integer companyId) { return ResponseEntity.ok(vesselPlanningMasterService.editVesselPlanning(id, vesselPlanningNo, companyId)); }
 
     @PostMapping("/search")
-    public ResponseEntity<List<VesselPlanningLegacyDtos.DetailsModel>> search(@RequestBody @Valid VesselPlanningLegacyDtos.SearchRequest filter) { return ResponseEntity.ok(vesselPlanningMasterService.vesselPlanningSearch(filter)); }
+    public ResponseEntity<List<VesselPlanningLegacyDtos.DetailsModel>> search(@RequestBody @Valid VesselPlanningLegacyDtos.SearchRequest filter) {
+        return ResponseEntity.ok(vesselPlanningMasterService.vesselPlanningSearch(filter));
+    }
 
     @PostMapping("/save")
     public ResponseEntity<List<VesselPlanningLegacyDtos.SaveResponse>> save(@RequestBody @Valid List<VesselPlanningLegacyDtos.SaveRequest> requests, @RequestHeader(value = "Comid", required = false) Integer companyIdHeader) {

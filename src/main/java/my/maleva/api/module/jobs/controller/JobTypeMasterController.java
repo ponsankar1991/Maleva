@@ -142,14 +142,14 @@ public class JobTypeMasterController {
      * @return ApiResponse containing JobTypeAllDataDto with both job details and job status details lists
      */
     @PostMapping("/select-all-data")
-    public ResponseEntity<ApiResponse<JobTypeAllDataDto>> selectJobAllData(
+    public ResponseEntity<my.maleva.api.common.dto.ApiResponse<java.util.List<JobTypeAllDataDto>>> selectJobAllData(
             @RequestParam @NotNull Integer companyId,
             @RequestParam @NotNull Integer jobId) {
         try {
             // Validate inputs
             if (companyId <= 0 || jobId <= 0) {
                 return ResponseEntity.badRequest()
-                        .body(ApiResponse.failure(HttpStatus.BAD_REQUEST, "Company ID and Job ID must be greater than 0"));
+                        .body(my.maleva.api.common.dto.ApiResponse.error("Company ID and Job ID must be greater than 0", HttpStatus.BAD_REQUEST.value()));
             }
 
             // Fetch combined job data
@@ -159,18 +159,18 @@ public class JobTypeMasterController {
             if ((data.getJobTypeDetails() == null || data.getJobTypeDetails().isEmpty()) &&
                 (data.getJobStatusDetails() == null || data.getJobStatusDetails().isEmpty())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.failure(HttpStatus.NOT_FOUND, "No Job Data Found"));
+                        .body(my.maleva.api.common.dto.ApiResponse.error("No Job Data Found", HttpStatus.NOT_FOUND.value()));
             }
 
             return ResponseEntity.ok(
-                    ApiResponse.success("Job Data Retrieved Successfully", data));
+                    my.maleva.api.common.dto.ApiResponse.success(java.util.Collections.singletonList(data), "Success"));
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.failure(HttpStatus.BAD_REQUEST, e.getMessage()));
+                    .body(my.maleva.api.common.dto.ApiResponse.error(e.getMessage(), HttpStatus.BAD_REQUEST.value()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.failure(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to retrieve job data"));
+                    .body(my.maleva.api.common.dto.ApiResponse.error(e.getCause() != null ? e.getCause().getMessage() : e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
 }

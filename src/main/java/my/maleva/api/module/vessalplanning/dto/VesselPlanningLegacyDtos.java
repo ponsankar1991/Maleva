@@ -376,6 +376,30 @@ public final class VesselPlanningLegacyDtos {
         @JsonProperty("BoardingOfficerName1")
         private String boardingOfficerName1;
 
+        @JsonProperty("LBoardingOfficerRefid")
+        private Integer lBoardingOfficerRefid;
+
+        @JsonProperty("LBoardingOfficerName")
+        private String lBoardingOfficerName;
+
+        @JsonProperty("LBoardingOfficer1Refid")
+        private Integer lBoardingOfficer1Refid;
+
+        @JsonProperty("LBoardingOfficerName1")
+        private String lBoardingOfficerName1;
+
+        @JsonProperty("OBoardingOfficerRefid")
+        private Integer oBoardingOfficerRefid;
+
+        @JsonProperty("OBoardingOfficerName")
+        private String oBoardingOfficerName;
+
+        @JsonProperty("OBoardingOfficer1Refid")
+        private Integer oBoardingOfficer1Refid;
+
+        @JsonProperty("OBoardingOfficerName1")
+        private String oBoardingOfficerName1;
+
         @JsonProperty("BoardingAmount")
         private Double boardingAmount;
 

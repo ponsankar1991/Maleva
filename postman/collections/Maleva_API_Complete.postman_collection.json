@@ -3844,6 +3844,55 @@
                 }
             ],
             "description": "Employee related endpoints"
+        },
+        {
+            "name": "Jobs",
+            "item": [
+                {
+                    "name": "Select Job All Data",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/job-type-master/select-all-data?companyId=1&jobId=5",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "job-type-master",
+                                "select-all-data"
+                            ],
+                            "query": [
+                                {
+                                    "key": "companyId",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "jobId",
+                                    "value": "5"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
         }
     ],
     "auth": {

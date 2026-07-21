@@ -184,7 +184,7 @@ public class SaleOrderSpecification {
                 // Date range filters (only applied when search is empty)
                 if (fromDate != null && toDate != null) {
                     LocalDateTime startDateTime = LocalDateTime.of(fromDate, LocalTime.MIN);
-                    LocalDateTime endDateTime = LocalDateTime.of(toDate, LocalTime.MAX);
+                    LocalDateTime endDateTime = LocalDateTime.of(toDate, LocalTime.of(23, 59, 59));
 
                     if (eta != null && eta) {
                         // ETA filter with type selection

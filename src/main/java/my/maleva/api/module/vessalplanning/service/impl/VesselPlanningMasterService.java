@@ -382,6 +382,14 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                        ISNULL(EB.EmployeeName,'') as BoardingOfficerName,
                        ISNULL(S.BoardingOfficer1Refid,0) as BoardingOfficer1Refid,
                        ISNULL(EB1.EmployeeName,'') as BoardingOfficerName1,
+                       ISNULL(S.LBoardingOfficerRefid,0) as LBoardingOfficerRefid,
+                       ISNULL(LEB.EmployeeName,'') as LBoardingOfficerName,
+                       ISNULL(S.LBoardingOfficer1Refid,0) as LBoardingOfficer1Refid,
+                       ISNULL(LEB1.EmployeeName,'') as LBoardingOfficerName1,
+                       ISNULL(S.OBoardingOfficerRefid,0) as OBoardingOfficerRefid,
+                       ISNULL(OEB.EmployeeName,'') as OBoardingOfficerName,
+                       ISNULL(S.OBoardingOfficer1Refid,0) as OBoardingOfficer1Refid,
+                       ISNULL(OEB1.EmployeeName,'') as OBoardingOfficerName1,
                        ISNULL(S.BoardingAmount,0) as BoardingAmount,
                        ISNULL(S.BoardingAmount1,0) as BoardingAmount1,
                        ISNULL(C.CustomerName,'') as CustomerName,
@@ -398,6 +406,10 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                 LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
                 LEFT JOIN EmployeeMaster EB WITH(NOLOCK) ON EB.Id=S.BoardingOfficerRefid
                 LEFT JOIN EmployeeMaster EB1 WITH(NOLOCK) ON EB1.Id=S.BoardingOfficer1Refid
+                LEFT JOIN EmployeeMaster LEB WITH(NOLOCK) ON LEB.Id=S.LBoardingOfficerRefid
+                LEFT JOIN EmployeeMaster LEB1 WITH(NOLOCK) ON LEB1.Id=S.LBoardingOfficer1Refid
+                LEFT JOIN EmployeeMaster OEB WITH(NOLOCK) ON OEB.Id=S.OBoardingOfficerRefid
+                LEFT JOIN EmployeeMaster OEB1 WITH(NOLOCK) ON OEB1.Id=S.OBoardingOfficer1Refid
                 WHERE S.CompanyRefId=:companyId AND S.Active!=2
                 """);
 
@@ -535,6 +547,14 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                     .boardingOfficerName(getString(rs, "BoardingOfficerName"))
                     .boardingOfficer1Refid(getInt(rs, "BoardingOfficer1Refid"))
                     .boardingOfficerName1(getString(rs, "BoardingOfficerName1"))
+                    .lBoardingOfficerRefid(getInt(rs, "LBoardingOfficerRefid"))
+                    .lBoardingOfficerName(getString(rs, "LBoardingOfficerName"))
+                    .lBoardingOfficer1Refid(getInt(rs, "LBoardingOfficer1Refid"))
+                    .lBoardingOfficerName1(getString(rs, "LBoardingOfficerName1"))
+                    .oBoardingOfficerRefid(getInt(rs, "OBoardingOfficerRefid"))
+                    .oBoardingOfficerName(getString(rs, "OBoardingOfficerName"))
+                    .oBoardingOfficer1Refid(getInt(rs, "OBoardingOfficer1Refid"))
+                    .oBoardingOfficerName1(getString(rs, "OBoardingOfficerName1"))
                     .boardingAmount(getDouble(rs, "BoardingAmount"))
                     .boardingAmount1(getDouble(rs, "BoardingAmount1"))
                     .customerName(getString(rs, "CustomerName"))

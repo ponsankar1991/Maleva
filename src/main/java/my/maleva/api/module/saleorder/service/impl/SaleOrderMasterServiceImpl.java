@@ -1608,12 +1608,12 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
             my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto.builder()
                 .customerName(proj.getCustomerName())
                 .currencyName(proj.getCurrencyName())
-                .month1(proj.getMonth1())
-                .month2(proj.getMonth2())
-                .month3(proj.getMonth3())
-                .currentMonth(proj.getCurrentMonth())
-                .amount(proj.getAmount())
-                .companyRefId(proj.getCompanyRefId())
+                .month1(proj.getMonth1() != null ? String.valueOf(proj.getMonth1()) : "0")
+                .month2(proj.getMonth2() != null ? String.valueOf(proj.getMonth2()) : "0")
+                .month3(proj.getMonth3() != null ? String.valueOf(proj.getMonth3()) : "0")
+                .currentMonth(proj.getCurrentMonth() != null ? String.valueOf(proj.getCurrentMonth()) : "0")
+                .amount(proj.getAmount() != null ? proj.getAmount().intValue() : 0)
+                .companyRefId(proj.getCompanyRefId() != null ? proj.getCompanyRefId() : 0)
                 .build()
         ).collect(java.util.stream.Collectors.toList());
     }
@@ -1633,12 +1633,12 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
             my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto.builder()
                 .customerName(proj.getCustomerName())
                 .countryName(proj.getCountryName())
-                .month1(proj.getMonth1())
-                .month2(proj.getMonth2())
-                .month3(proj.getMonth3())
-                .currentMonth(proj.getCurrentMonth())
-                .amount(proj.getAmount())
-                .companyRefId(proj.getCompanyRefId())
+                .month1(proj.getMonth1() != null ? String.valueOf(proj.getMonth1()) : "0")
+                .month2(proj.getMonth2() != null ? String.valueOf(proj.getMonth2()) : "0")
+                .month3(proj.getMonth3() != null ? String.valueOf(proj.getMonth3()) : "0")
+                .currentMonth(proj.getCurrentMonth() != null ? String.valueOf(proj.getCurrentMonth()) : "0")
+                .amount(proj.getAmount() != null ? proj.getAmount().intValue() : 0)
+                .companyRefId(proj.getCompanyRefId() != null ? proj.getCompanyRefId() : 0)
                 .build()
         ).collect(java.util.stream.Collectors.toList());
     }
@@ -1715,10 +1715,10 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         return results.stream().map(proj -> 
             my.maleva.api.module.saleorder.dto.SaleJobViewAggregateDto.builder()
                 .customerName(proj.getCustomerName())
-                .month1(proj.getMonth1())
-                .month2(proj.getMonth2())
-                .month3(proj.getMonth3())
-                .currentMonth(proj.getCurrentMonth())
+                .month1(proj.getMonth1() != null ? String.valueOf(proj.getMonth1()) : "0")
+                .month2(proj.getMonth2() != null ? String.valueOf(proj.getMonth2()) : "0")
+                .month3(proj.getMonth3() != null ? String.valueOf(proj.getMonth3()) : "0")
+                .currentMonth(proj.getCurrentMonth() != null ? String.valueOf(proj.getCurrentMonth()) : "0")
                 .build()
         ).collect(java.util.stream.Collectors.toList());
     }
