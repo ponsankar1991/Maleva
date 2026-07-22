@@ -1708,4 +1708,42 @@ public class DashboardRepository {
                 new BeanPropertyRowMapper<>(my.maleva.api.module.planning.dto.PlanningDetailsModel.class)
         );
     }
+
+    public List<my.maleva.api.module.dashboard.dto.PendingPaymentDto.UnreleasedNumberDto> getUnreleasedNumbers(Integer comId) {
+        String sql = """
+                SELECT * FROM (
+                    SELECT Id, ForwardingSMKNo AS BillNoDisplay, DATEDIFF(day, ForwardingDate, GETDATE()) AS DayCount
+                    FROM SaleOrderMaster WITH(NOLOCK)
+                    WHERE ISNULL(ForwardingSMKNo, '') != '' 
+                      AND ISNULL(ForwardingExitRef, '') = '' 
+                      AND Active = 1 
+                      AND CompanyRefId = :comId 
+                      AND Forwarding != 'K8' 
+                      AND ForwardingDate >= '2026-02-01'
+                    UNION ALL
+                    SELECT Id, ForwardingSMKNo2 AS BillNoDisplay, DATEDIFF(day, Forwarding2Date, GETDATE()) AS DayCount
+                    FROM SaleOrderMaster WITH(NOLOCK)
+                    WHERE ISNULL(ForwardingSMKNo2, '') != '' 
+                      AND ISNULL(ForwardingExitRef2, '') = '' 
+                      AND Active = 1 
+                      AND CompanyRefId = :comId 
+                      AND Forwarding2 != 'K8' 
+                      AND ForwardingDate >= '2026-02-01'
+                    UNION ALL
+                    SELECT Id, ForwardingSMKNo3 AS BillNoDisplay, DATEDIFF(day, Forwarding3Date, GETDATE()) AS DayCount
+                    FROM SaleOrderMaster WITH(NOLOCK)
+                    WHERE ISNULL(ForwardingSMKNo3, '') != '' 
+                      AND ISNULL(ForwardingExitRef3, '') = '' 
+                      AND Active = 1 
+                      AND CompanyRefId = :comId 
+                      AND Forwarding3 != 'K8' 
+                      AND ForwardingDate >= '2026-02-01'
+                ) AS Result
+                ORDER BY DayCount DESC
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("comId", comId);
+
+        return namedJdbcTemplate.query(sql, params, new BeanPropertyRowMapper<>(my.maleva.api.module.dashboard.dto.PendingPaymentDto.UnreleasedNumberDto.class));
+    }
 }

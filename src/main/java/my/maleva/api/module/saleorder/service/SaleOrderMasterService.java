@@ -76,7 +76,7 @@ public interface SaleOrderMasterService {
     List<SaleJobViewAggregateDto> getSaleCustomerView(SaleOrderFilterDTO filter);
 
 
-    List<VesselScheduleDto> getVesselSchedules(Integer companyId, String fromDate, String toDate);
+    List<VesselScheduleResponseDto> getVesselSchedules(Integer companyId, String fromDate, String toDate);
 
     /**
      * Update DODescription for a SaleOrder

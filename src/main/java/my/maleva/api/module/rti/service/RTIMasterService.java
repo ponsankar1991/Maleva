@@ -138,4 +138,12 @@ public interface RTIMasterService {
      */
     RTIMasterDto getForRevise(Integer id, Integer sourceCNumber, Integer companyRefId);
 
+    /**
+     * Get high performance joined RTI View details
+     */
+    java.util.List<my.maleva.api.module.rti.dto.RTIViewDto> getRtiViewDetails(
+            java.time.LocalDate fromDate, 
+            java.time.LocalDate toDate, 
+            Integer employeeId);
+
 }

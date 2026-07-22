@@ -63,7 +63,7 @@ public class EmployeeMasterController {
      *
      * @param companyRefId The company ID to filter by (required)
      * @param roleId First role ID filter (optional)
-     * @param roleId1 Second role ID filter (optional)
+     * @param roleId1 Second role ID filter (optional)a
      * @return List of active employees matching the criteria
      */
     @GetMapping("/company/{companyRefId}/roles")

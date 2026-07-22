@@ -654,5 +654,17 @@ public class RTIMasterServiceImpl implements RTIMasterService {
         masterDto.setRtiDetails(detailDtos);
         return masterDto;
     }
-}
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<my.maleva.api.module.rti.dto.RTIViewDto> getRtiViewDetails(
+            java.time.LocalDate fromDate, 
+            java.time.LocalDate toDate, 
+            Integer employeeId) {
+        
+        logger.info("Executing getRtiViewDetails for EmployeeId: {}, FromDate: {}, ToDate: {}", 
+                    employeeId, fromDate, toDate);
+                    
+        return rtiMasterRepository.findRtiViewDetails(fromDate, toDate, employeeId);
+    }
+}

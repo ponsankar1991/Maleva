@@ -404,23 +404,44 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
 
     @Query(value = """
             SELECT
-                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                CAST(
+                    CASE
+                        WHEN A.ETA IS NOT NULL
+                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
+                        THEN A.ETA
+                        ELSE A.OETA
+                    END AS DATE
+                ) AS etaDate,
                 A.Loadingvesselname AS vesselName,
                 'Loading Vessel' AS vesselType,
-                ISNULL(BO1.EmployeeName,'') AS boardingOfficer1,
-                ISNULL(BO2.EmployeeName,'') AS boardingOfficer2,
+                STRING_AGG(A.CNumberDisplay, ', ') AS jobNumbers,
+                ISNULL(BO1.EmployeeName, '') AS boardingOfficer1Name,
+                ISNULL(BO2.EmployeeName, '') AS boardingOfficer2Name,
+                MAX(A.LBoardingAmount) AS boardingOfficer1Amount,
+                MAX(A.LBoardingAmount1) AS boardingOfficer2Amount,
+                (MAX(A.LBoardingAmount) + MAX(A.LBoardingAmount1)) AS totalBoardingAmount,
                 COUNT(*) AS totalJobs
             FROM SaleOrderMaster A WITH (NOLOCK)
-            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK) ON BO1.Id = A.BoardingOfficerRefid
-            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK) ON BO2.Id = A.BoardingOfficer1Refid
+            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK)
+                ON BO1.Id = A.LBoardingOfficerRefid
+            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK)
+                ON BO2.Id = A.LBoardingOfficer1Refid
             WHERE
                 A.CompanyRefId = :companyRefId
                 AND A.Active = 1
                 AND A.JStatus <> 12
-                AND ISNULL(A.Loadingvesselname,'') <> ''
-                AND (CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate OR CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate)
+                AND ISNULL(A.Loadingvesselname, '') <> ''
+                AND A.ETA IS NOT NULL
+                AND CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate
             GROUP BY
-                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE),
+                CAST(
+                    CASE
+                        WHEN A.ETA IS NOT NULL
+                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
+                        THEN A.ETA
+                        ELSE A.OETA
+                    END AS DATE
+                ),
                 A.Loadingvesselname,
                 BO1.EmployeeName,
                 BO2.EmployeeName
@@ -428,28 +449,51 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             UNION ALL
             
             SELECT
-                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                CAST(
+                    CASE
+                        WHEN A.ETA IS NOT NULL
+                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
+                        THEN A.ETA
+                        ELSE A.OETA
+                    END AS DATE
+                ) AS etaDate,
                 A.Offvesselname AS vesselName,
                 'Off Vessel' AS vesselType,
-                ISNULL(BO1.EmployeeName,'') AS boardingOfficer1,
-                ISNULL(BO2.EmployeeName,'') AS boardingOfficer2,
+                STRING_AGG(A.CNumberDisplay, ', ') AS jobNumbers,
+                ISNULL(BO1.EmployeeName, '') AS boardingOfficer1Name,
+                ISNULL(BO2.EmployeeName, '') AS boardingOfficer2Name,
+                MAX(A.OBoardingAmount) AS boardingOfficer1Amount,
+                MAX(A.OBoardingAmount1) AS boardingOfficer2Amount,
+                (MAX(A.OBoardingAmount) + MAX(A.OBoardingAmount1)) AS totalBoardingAmount,
                 COUNT(*) AS totalJobs
             FROM SaleOrderMaster A WITH (NOLOCK)
-            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK) ON BO1.Id = A.BoardingOfficerRefid
-            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK) ON BO2.Id = A.BoardingOfficer1Refid
+            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK)
+                ON BO1.Id = A.OBoardingOfficerRefid
+            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK)
+                ON BO2.Id = A.OBoardingOfficer1Refid
             WHERE
                 A.CompanyRefId = :companyRefId
                 AND A.Active = 1
                 AND A.JStatus <> 12
-                AND ISNULL(A.Offvesselname,'') <> ''
-                AND (CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate OR CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate)
+                AND ISNULL(A.Offvesselname, '') <> ''
+                AND A.OETA IS NOT NULL
+                AND CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate
             GROUP BY
-                CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE),
+                CAST(
+                    CASE
+                        WHEN A.ETA IS NOT NULL
+                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
+                        THEN A.ETA
+                        ELSE A.OETA
+                    END AS DATE
+                ),
                 A.Offvesselname,
                 BO1.EmployeeName,
                 BO2.EmployeeName
             
-            ORDER BY etaDate, vesselName
+            ORDER BY
+                etaDate,
+                vesselName
             """, nativeQuery = true)
     List<my.maleva.api.module.saleorder.dto.VesselScheduleDto> getVesselSchedules(
             @Param("companyRefId") Integer companyRefId,

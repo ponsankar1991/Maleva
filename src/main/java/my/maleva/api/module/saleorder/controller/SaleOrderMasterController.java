@@ -92,7 +92,6 @@ public class SaleOrderMasterController {
         return ResponseEntity.ok(ApiResponse.success(service.update(id, dto), SaleOrderApiConstants.MESSAGE_UPDATE_SUCCESS
         ));
     }
-
     @PutMapping("/{id}/master")
     public ResponseEntity<SaleOrderMasterDto> updateMaster(@PathVariable @Positive Integer id,
                                                            @Valid @RequestBody SaleOrderMasterDto dto) {
@@ -366,14 +365,14 @@ public class SaleOrderMasterController {
 
 
     @GetMapping("/vessel-schedules")
-    public ResponseEntity<ApiResponse<List<VesselScheduleDto>>> getVesselSchedules(
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.saleorder.dto.VesselScheduleResponseDto>>> getVesselSchedules(
             @RequestParam Integer companyId,
             @RequestParam(required = false, defaultValue = "") String fromDate,
             @RequestParam(required = false, defaultValue = "") String toDate) {
 
         logger.info("API Call: GET /vessel-schedules - companyId: {}", companyId);
 
-        List<VesselScheduleDto> results = service.getVesselSchedules(companyId, fromDate, toDate);
+        List<my.maleva.api.module.saleorder.dto.VesselScheduleResponseDto> results = service.getVesselSchedules(companyId, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success(results, "Vessel schedules retrieved successfully"));
     }
 

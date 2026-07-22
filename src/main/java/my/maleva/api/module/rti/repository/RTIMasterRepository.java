@@ -69,6 +69,32 @@ public interface RTIMasterRepository extends JpaRepository<RTIMaster, Integer> {
 
 
     /**
+     * Delete RTIMaster by id
+     */
+    void deleteById(Integer id);
+
+    /**
+     * High performance RTI View Query matching complex SQL requirement
+     */
+    @Query("SELECT new my.maleva.api.module.rti.dto.RTIViewDto(" +
+           "rm.id, rm.CNumberDisplay, rm.CNumber, rm.saleDate, rm.sealBy, rm.breakSealBy, " +
+           "sm.cNumberDisplay, em.employeeName, dm.driverName, tm.truckName) " +
+           "FROM RTIMaster rm " +
+           "JOIN RTIDetails rd ON rm.id = rd.rtiMasterRefId " +
+           "JOIN my.maleva.api.module.saleorder.entity.SaleOrderMaster sm ON sm.id = rd.saleOrderMasterRefId " +
+           "JOIN my.maleva.api.module.employee.entity.EmployeeMaster em ON em.id = sm.employeeRefId " +
+           "JOIN my.maleva.api.module.fleet.entity.DriverMaster dm ON dm.id = rm.driverRefId " +
+           "JOIN my.maleva.api.module.fleet.entity.TruckMaster tm ON tm.id = rm.truckRefId " +
+           "WHERE (:fromDate IS NULL OR CAST(rm.saleDate AS date) >= :fromDate) " +
+           "AND (:toDate IS NULL OR CAST(rm.saleDate AS date) <= :toDate) " +
+           "AND (:employeeId IS NULL OR :employeeId = 0 OR sm.employeeRefId = :employeeId) " +
+           "ORDER BY rm.id ASC")
+    List<my.maleva.api.module.rti.dto.RTIViewDto> findRtiViewDetails(
+            @Param("fromDate") java.time.LocalDate fromDate,
+            @Param("toDate") java.time.LocalDate toDate,
+            @Param("employeeId") Integer employeeId);
+
+    /**
      * Find RTIMaster by ID
      */
 

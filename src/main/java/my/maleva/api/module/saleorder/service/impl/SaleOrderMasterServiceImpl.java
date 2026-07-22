@@ -1725,7 +1725,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
 
     @Override
-    public List<VesselScheduleDto> getVesselSchedules(Integer companyId, String fromDate, String toDate) {
+    public List<VesselScheduleResponseDto> getVesselSchedules(Integer companyId, String fromDate, String toDate) {
         logger.info("Fetching Vessel Schedules for company: {} from {} to {}", companyId, fromDate, toDate);
 
         // 1. Business Logic / Validation
@@ -1737,7 +1737,20 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         List<VesselScheduleDto> schedules = repository.getVesselSchedules(companyId, fromDate, toDate);
 
         logger.info("Successfully fetched {} vessel schedules", schedules.size());
-        return schedules;
+        
+        // 3. Map interface projection to concrete DTO for robust JSON serialization
+        return schedules.stream().map(s -> VesselScheduleResponseDto.builder()
+                .etaDate(s.getEtaDate() != null ? s.getEtaDate().toString() : null)
+                .vesselName(s.getVesselName())
+                .vesselType(s.getVesselType())
+                .jobNumbers(s.getJobNumbers())
+                .boardingOfficer1Name(s.getBoardingOfficer1Name())
+                .boardingOfficer2Name(s.getBoardingOfficer2Name())
+                .boardingOfficer1Amount(s.getBoardingOfficer1Amount())
+                .boardingOfficer2Amount(s.getBoardingOfficer2Amount())
+                .totalBoardingAmount(s.getTotalBoardingAmount())
+                .totalJobs(s.getTotalJobs())
+                .build()).collect(java.util.stream.Collectors.toList());
     }
     @Override
     @Transactional

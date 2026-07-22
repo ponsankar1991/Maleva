@@ -370,8 +370,13 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public List<PendingPaymentDto.UnreleasedNumberDto> getUnreleasedNumbers(Integer comId) {
-        // This needs separate query
-        return Collections.emptyList();
+        log.info("Fetching unreleased numbers for comId={}", comId);
+        try {
+            return dashboardRepository.getUnreleasedNumbers(comId);
+        } catch (Exception e) {
+            log.error("Error fetching unreleased numbers: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     @Override

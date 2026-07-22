@@ -271,6 +271,24 @@ public class RTIMasterController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deactivating RTIMaster: " + e.getMessage());
         }
     }
+
+    @GetMapping("/view-details")
+    @PermitAll
+    public ResponseEntity<ApiResponse<java.util.List<my.maleva.api.module.rti.dto.RTIViewDto>>> getRtiViewDetails(
+            @RequestParam(value = "fromDate", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fromDate,
+            @RequestParam(value = "toDate", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate toDate,
+            @RequestParam(value = "employeeId", required = false) Integer employeeId) {
+        
+        logger.info("Fetching RTI View Details for EmployeeId: {}, FromDate: {}, ToDate: {}", employeeId, fromDate, toDate);
+        try {
+            java.util.List<my.maleva.api.module.rti.dto.RTIViewDto> data = rtiMasterService.getRtiViewDetails(fromDate, toDate, employeeId);
+            return ResponseEntity.ok(ApiResponse.success(data, "RTI View Details fetched successfully"));
+        } catch (Exception e) {
+            logger.error("Error fetching RTI View Details", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch RTI View Details: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
+        }
+    }
 }
 
 
