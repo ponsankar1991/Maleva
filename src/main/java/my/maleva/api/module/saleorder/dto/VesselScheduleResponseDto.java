@@ -14,10 +14,16 @@ public class VesselScheduleResponseDto {
     private String vesselName;
     private String vesselType;
     private String jobNumbers;
-    private String boardingOfficer1Name;
-    private String boardingOfficer2Name;
-    private Double boardingOfficer1Amount;
-    private Double boardingOfficer2Amount;
-    private Double totalBoardingAmount;
-    private Integer totalJobs;
+    private Integer totalJob;
+    private String officer1Name;
+    private Double officer1Amount;
+    private String officer2Name;
+    private Double officer2Amount;
+    private String officer3Name;
+    private Double officer3Amount;
+    private String officer4Name;
+    private Double officer4Amount;
+    private String officer5Name;
+    private Double officer5Amount;
+    private Double totalAmount;
 }

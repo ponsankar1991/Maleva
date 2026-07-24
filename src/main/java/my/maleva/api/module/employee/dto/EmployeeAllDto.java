@@ -64,6 +64,8 @@ public class EmployeeAllDto {
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private Integer permisionId;
 
+    private java.util.List<Integer> capabilityIds;
+
     // Additional field from AccountsGroupMaster
     private String accountCode;
 

@@ -32,6 +32,14 @@ public interface EmployeeMasterRepository extends JpaRepository<EmployeeMaster, 
     @Query("SELECT e FROM EmployeeMaster e WHERE e.companyRefId = :companyRefId AND e.active != 2 ORDER BY e.employeeName ASC")
     List<EmployeeMaster> findAllActiveByCompanyRefId(@Param("companyRefId") Integer companyRefId);
 
+    // Get all boarding officers for a company
+    @Query("SELECT e FROM EmployeeMaster e " +
+           "WHERE e.companyRefId = :companyRefId AND e.active = 1 " +
+           "AND (e.roleId IN (500, 600) OR " +
+           "EXISTS (SELECT 1 FROM EmployeeCapability c WHERE c.employeeId = e.id AND c.capabilityId IN (5, 6) AND c.isActive = true)) " +
+           "ORDER BY e.employeeName ASC")
+    List<EmployeeMaster> findBoardingOfficers(@Param("companyRefId") Integer companyRefId);
+
     // Get all active employees by company and employee type
     @Query("SELECT e FROM EmployeeMaster e WHERE e.companyRefId = :companyRefId AND e.active != 2 AND e.employeeType = :employeeType ORDER BY e.employeeName ASC")
     List<EmployeeMaster> findAllActiveByCompanyRefIdAndEmployeeType(@Param("companyRefId") Integer companyRefId, @Param("employeeType") String employeeType);

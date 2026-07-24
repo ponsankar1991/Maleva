@@ -3601,7 +3601,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"comid\": 1,\n  \"startindex\": -1,\n  \"pageCount\": 10,\n  \"keyword\": \"\",\n  \"column\": \"All\",\n  \"type\": \"ALL\"\n}",
+                            "raw": "{\n  \"comid\": 6,\n  \"startindex\": 0,\n  \"pageCount\": 50,\n  \"keyword\": \"\",\n  \"column\": \"EmployeeName\",\n  \"type\": \"ALL\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -3665,7 +3665,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "[\n    {\n        \"id\": 0,\n        \"employeeName\": \"TEST EMPLOYEE NEW\",\n        \"employeeType\": \"SALES\",\n        \"active\": 1,\n        \"roleId\": 200,\n        \"personId\": \"PERS-001\",\n        \"email\": \"test@maleva.com\"\n    }\n]"
+                            "raw": "[\n  {\n    \"employeeName\": \"JOHN DOE\",\n    \"employeeType\": \"SALES\",\n    \"address1\": \"123 MAIN ST\",\n    \"address2\": \"APT 4B\",\n    \"address3\": \"BLOCK C\",\n    \"personId\": \"P12345\",\n    \"employeecurrency\": \"USD\",\n    \"city\": \"NEW YORK\",\n    \"state\": \"NY\",\n    \"zipcode\": \"10001\",\n    \"country\": \"USA\",\n    \"gstNo\": \"GST123456\",\n    \"email\": \"johndoe@example.com\",\n    \"mobileNo\": \"+1234567890\",\n    \"emergencyNo\": \"+0987654321\",\n    \"userName\": \"JOHNDOE\",\n    \"password\": \"securepassword123\",\n    \"latitude\": \"40.7128\",\n    \"longitude\": \"-74.0060\",\n    \"tokenId\": \"sample-token\",\n    \"active\": 1,\n    \"tinNo\": \"TIN987\",\n    \"sstNo\": \"SST654\",\n    \"msicCode\": \"MSIC321\",\n    \"serviceTaxType\": \"STANDARD\",\n    \"bankName\": \"CHASE\",\n    \"accountNo\": \"00012345678\",\n    \"rulesType\": \"RULE1\",\n    \"joiningDate\": \"2023-01-15\",\n    \"leavingDate\": null,\n    \"companyRefId\": 6,\n    \"accountRefid\": 0,\n    \"roleId\": 100,\n    \"permisionId\": 0,\n    \"accountMasterAdd\": true,\n    \"capabilityIds\": [\n      100,\n      200\n    ]\n  }\n]"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/employees/bulk/6",
@@ -3677,6 +3677,41 @@
                                 "employees",
                                 "bulk",
                                 "6"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Active Capabilities",
+                    "id": "c443efc8-e4f9-4183-9116-11d3b72d0955",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/capabilities/active",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "capabilities",
+                                "active"
                             ]
                         }
                     },
@@ -3787,7 +3822,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\r\n    \"comid\": 6,\r\n    \"startindex\": 0,\r\n    \"pageCount\": 10,\r\n    \"keyword\": \"161\",\r\n    \"column\": \"Id\",\r\n    \"type\": \"ALL\"\r\n}",
+                            "raw": "{\n  \"comid\": 6,\n  \"startindex\": 0,\n  \"pageCount\": 50,\n  \"keyword\": \"\",\n  \"column\": \"EmployeeName\",\n  \"type\": \"ALL\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -3820,7 +3855,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "[\r\n    {\r\n        \"id\": 161,\r\n        \"employeeName\": \"KARTHICK UPDATED\",\r\n        \"employeeType\": \"BOARDINGOFFICERADMIN\",\r\n        \"active\": 1,\r\n        \"roleId\": 200,\r\n        \"personId\": \"PERS-001\",\r\n        \"email\": \"karthick123svks@gmail.com\",\r\n        \"address1\": \"200 FEET RADIAL RD\"\r\n    }\r\n]",
+                            "raw": "[\n  {\n    \"employeeName\": \"JOHN DOE\",\n    \"employeeType\": \"SALES\",\n    \"address1\": \"123 MAIN ST\",\n    \"address2\": \"APT 4B\",\n    \"address3\": \"BLOCK C\",\n    \"personId\": \"P12345\",\n    \"employeecurrency\": \"USD\",\n    \"city\": \"NEW YORK\",\n    \"state\": \"NY\",\n    \"zipcode\": \"10001\",\n    \"country\": \"USA\",\n    \"gstNo\": \"GST123456\",\n    \"email\": \"johndoe@example.com\",\n    \"mobileNo\": \"+1234567890\",\n    \"emergencyNo\": \"+0987654321\",\n    \"userName\": \"JOHNDOE\",\n    \"password\": \"securepassword123\",\n    \"latitude\": \"40.7128\",\n    \"longitude\": \"-74.0060\",\n    \"tokenId\": \"sample-token\",\n    \"active\": 1,\n    \"tinNo\": \"TIN987\",\n    \"sstNo\": \"SST654\",\n    \"msicCode\": \"MSIC321\",\n    \"serviceTaxType\": \"STANDARD\",\n    \"bankName\": \"CHASE\",\n    \"accountNo\": \"00012345678\",\n    \"rulesType\": \"RULE1\",\n    \"joiningDate\": \"2023-01-15\",\n    \"leavingDate\": null,\n    \"companyRefId\": 6,\n    \"accountRefid\": 0,\n    \"roleId\": 100,\n    \"permisionId\": 0,\n    \"accountMasterAdd\": true,\n    \"capabilityIds\": [\n      100,\n      200\n    ]\n  }\n]",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -3837,6 +3872,27 @@
                                 "employees",
                                 "bulk",
                                 "6"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Boarding Officers",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/employees/company/6/boarding-officers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "employees",
+                                "company",
+                                "6",
+                                "boarding-officers"
                             ]
                         }
                     },

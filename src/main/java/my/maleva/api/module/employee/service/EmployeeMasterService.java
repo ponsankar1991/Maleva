@@ -22,6 +22,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import my.maleva.api.module.employee.repository.EmployeeCapabilityRepository;
+import my.maleva.api.module.employee.entity.EmployeeCapability;
+import java.util.Set;
+import java.util.HashSet;
+
 @Service
 @Transactional
 public class EmployeeMasterService {
@@ -31,42 +36,53 @@ public class EmployeeMasterService {
     private final EmployeeAllMapper employeeAllMapper;
     private final PasswordEncoder passwordEncoder;
     private final AccountsGroupMasterRepository accountsGroupMasterRepository;
+    private final EmployeeCapabilityRepository employeeCapabilityRepository;
 
-    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, EmployeeAllMapper employeeAllMapper, PasswordEncoder passwordEncoder, AccountsGroupMasterRepository accountsGroupMasterRepository) {
+    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, EmployeeAllMapper employeeAllMapper, PasswordEncoder passwordEncoder, AccountsGroupMasterRepository accountsGroupMasterRepository, EmployeeCapabilityRepository employeeCapabilityRepository) {
         this.repository = repository;
         this.mapper = mapper;
         this.employeeAllMapper = employeeAllMapper;
         this.passwordEncoder = passwordEncoder;
         this.accountsGroupMasterRepository = accountsGroupMasterRepository;
+        this.employeeCapabilityRepository = employeeCapabilityRepository;
     }
 
     @CacheEvict(value = "employees", allEntries = true)
     public EmployeeMasterDto create(EmployeeMasterDto dto) {
-        EmployeeMaster entity = mapper.toEntity(dto);
-        // If neither roleId nor role provided in DTO, apply DB default in entity to avoid null insertion
-        if (entity.getRoleId() == null) {
-            entity.setRoleId(100);
-        }
-        LocalDateTime now = LocalDateTime.now();
-        entity.setCreatedDate(now);
-        entity.setModifiedDate(now);
-        EmployeeMaster saved = repository.save(entity);
+        // Proxy to the robust SP-equivalent logic
+        bulkUpsertEmployees(List.of(dto), dto.getCompanyRefId());
+        
+        // Fetch the newly created entity by name to return it
+        EmployeeMaster saved = repository.findFirstByCompanyRefIdAndEmployeeNameIgnoreCase(dto.getCompanyRefId(), dto.getEmployeeName())
+                .orElseThrow(() -> new EntityNotFoundException("Employee creation failed"));
+        
         return mapper.toDto(saved);
     }
 
     @CacheEvict(value = "employees", allEntries = true)
     public EmployeeMasterDto update(Integer id, EmployeeMasterDto dto) {
-        EmployeeMaster existing = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Employee not found: " + id));
-        mapper.updateFromDto(dto, existing);
-        existing.setModifiedDate(LocalDateTime.now());
-        EmployeeMaster saved = repository.save(existing);
+        dto.setId(id); // Ensure the ID is set for update logic
+        // Proxy to the robust SP-equivalent logic
+        bulkUpsertEmployees(List.of(dto), dto.getCompanyRefId());
+        
+        EmployeeMaster saved = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Employee update failed"));
+                
         return mapper.toDto(saved);
     }
 
     @Transactional(readOnly = true)
     public EmployeeMasterDto getById(Integer id) {
         EmployeeMaster e = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Employee not found: " + id));
-        return mapper.toDto(e);
+        EmployeeMasterDto dto = mapper.toDto(e);
+        
+        List<Integer> capIds = employeeCapabilityRepository.findByEmployeeIdAndIsActiveTrue(id)
+                .stream()
+                .map(my.maleva.api.module.employee.entity.EmployeeCapability::getCapabilityId)
+                .collect(Collectors.toList());
+        dto.setCapabilityIds(capIds);
+        
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -183,6 +199,26 @@ public class EmployeeMasterService {
                 .map(employeeAllMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Get all boarding officers for a company.
+     * A boarding officer is defined as an employee with active status and either:
+     * - roleId is 500 or 600
+     * - has active capability ID 5 or 6
+     *
+     * @param companyRefId The company ID
+     * @return List of boarding officers
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(value = "employees", key = "'boarding_officers_' + #companyRefId")
+    public List<EmployeeAllDto> getBoardingOfficers(Integer companyRefId) {
+        List<EmployeeMaster> employees = repository.findBoardingOfficers(companyRefId);
+        
+        return employees.stream()
+                .map(employeeAllMapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
     /**
      * Search employees with dynamic filtering matching legacy SelectEmployee endpoint.
      *
@@ -192,6 +228,16 @@ public class EmployeeMasterService {
     @Transactional(readOnly = true)
     public my.maleva.api.module.employee.dto.EmployeeSearchResponse searchEmployees(my.maleva.api.module.employee.dto.EmployeeSearchRequest request) {
         List<EmployeeAllDto> employees = repository.searchEmployees(request);
+        
+        // Populate capabilityIds for each employee returned in the search
+        for (EmployeeAllDto emp : employees) {
+            List<Integer> capIds = employeeCapabilityRepository.findByEmployeeIdAndIsActiveTrue(emp.getId())
+                    .stream()
+                    .map(my.maleva.api.module.employee.entity.EmployeeCapability::getCapabilityId)
+                    .collect(Collectors.toList());
+            emp.setCapabilityIds(capIds);
+        }
+        
         Integer totalCount = 0;
         
         String keyword = request.getKeyword();
@@ -311,6 +357,8 @@ public class EmployeeMasterService {
 
             // Apply strict formatting / uppercasing consistent with legacy SP
             entity.setEmployeeName(empName);
+            if (entity.getEmployeecurrency() != null) entity.setEmployeecurrency(entity.getEmployeecurrency().toUpperCase());
+            if (entity.getUserName() != null) entity.setUserName(entity.getUserName().toUpperCase());
             if (entity.getEmployeeType() != null) entity.setEmployeeType(entity.getEmployeeType().toUpperCase());
             if (entity.getAddress1() != null) entity.setAddress1(entity.getAddress1().toUpperCase());
             if (entity.getAddress2() != null) entity.setAddress2(entity.getAddress2().toUpperCase());
@@ -328,11 +376,57 @@ public class EmployeeMasterService {
             EmployeeMaster savedEntity = repository.save(entity);
             lastProcessedId = savedEntity.getId();
             lastProcessedName = empName;
+
+            // --- CAPABILITY UPSERT LOGIC ---
+            upsertCapabilities(lastProcessedId, dto.getCapabilityIds());
+            // --- END CAPABILITY UPSERT LOGIC ---
         }
 
         // Return format to match legacy C# response: Data1 = AccountName, Data2 = Id
         ApiResponse<String> response = ApiResponse.success(lastProcessedName, "Employee successfully created/updated.");
         response.setData2(lastProcessedId);
         return response;
+    }
+
+    private void upsertCapabilities(Integer employeeId, List<Integer> capabilityIds) {
+        if (capabilityIds == null) {
+            return; // Null means do not touch capabilities
+        }
+
+        // Fetch ALL existing capabilities (both active and inactive) for this employee
+        List<EmployeeCapability> allCaps = employeeCapabilityRepository.findByEmployeeId(employeeId);
+        
+        Set<Integer> selectedCapIds = new HashSet<>(capabilityIds);
+
+        for (EmployeeCapability ec : allCaps) {
+            if (selectedCapIds.contains(ec.getCapabilityId())) {
+                // The capability is selected. If it was inactive, reactivate it and update granted date
+                if (!ec.getIsActive()) {
+                    ec.setIsActive(true);
+                    ec.setGrantedDate(LocalDateTime.now());
+                    employeeCapabilityRepository.save(ec);
+                }
+                // Remove from selected set so we know it's already handled
+                selectedCapIds.remove(ec.getCapabilityId());
+            } else {
+                // The capability is NOT selected. If it is currently active, soft-delete it
+                if (ec.getIsActive()) {
+                    ec.setIsActive(false);
+                    employeeCapabilityRepository.save(ec);
+                }
+            }
+        }
+
+        // Any IDs remaining in selectedCapIds are completely new and need inserting
+        for (Integer newCapId : selectedCapIds) {
+            EmployeeCapability ec = EmployeeCapability.builder()
+                    .employeeId(employeeId)
+                    .capabilityId(newCapId)
+                    .grantedDate(LocalDateTime.now())
+                    .grantedBy("SA")
+                    .isActive(true)
+                    .build();
+            employeeCapabilityRepository.save(ec);
+        }
     }
 }

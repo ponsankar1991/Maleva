@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import my.maleva.api.common.constant.UserRoles;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -96,6 +97,12 @@ public class EmployeeMasterDto {
 
     @Size(max = 100)
     private String personId;
+
+    @NotNull
+    private Boolean accountMasterAdd;
+
+    // List of capabilities for this employee
+    private List<Integer> capabilityIds;
 
     @NotNull
     private Integer accountRefid;

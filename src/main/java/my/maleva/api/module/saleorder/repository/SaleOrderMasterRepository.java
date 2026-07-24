@@ -403,97 +403,104 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
 
 
     @Query(value = """
+            WITH LoadingUnpivoted AS (
+                SELECT A.CNumberDisplay,
+                    CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                    A.Loadingvesselname AS vesselName, 'Loading Vessel' AS vesselType,
+                    A.LBoardingOfficerRefid AS OfficerId, A.LBoardingAmount AS OfficerAmount
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.CompanyRefId = :companyRefId AND A.Active = 1 AND A.JStatus <> 12
+                    AND ISNULL(A.Loadingvesselname,'') <> '' AND A.ETA IS NOT NULL
+                    AND CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate
+                    AND A.LBoardingOfficerRefid IS NOT NULL
+                UNION ALL
+                SELECT A.CNumberDisplay,
+                    CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                    A.Loadingvesselname AS vesselName, 'Loading Vessel' AS vesselType,
+                    A.LBoardingOfficer1Refid AS OfficerId, A.LBoardingAmount1 AS OfficerAmount
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.CompanyRefId = :companyRefId AND A.Active = 1 AND A.JStatus <> 12
+                    AND ISNULL(A.Loadingvesselname,'') <> '' AND A.ETA IS NOT NULL
+                    AND CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate
+                    AND A.LBoardingOfficer1Refid IS NOT NULL
+            ),
+            OffUnpivoted AS (
+                SELECT A.CNumberDisplay,
+                    CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                    A.Offvesselname AS vesselName, 'Off Vessel' AS vesselType,
+                    A.OBoardingOfficerRefid AS OfficerId, A.OBoardingAmount AS OfficerAmount
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.CompanyRefId = :companyRefId AND A.Active = 1 AND A.JStatus <> 12
+                    AND ISNULL(A.Offvesselname,'') <> '' AND A.OETA IS NOT NULL
+                    AND CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate
+                    AND A.OBoardingOfficerRefid IS NOT NULL
+                UNION ALL
+                SELECT A.CNumberDisplay,
+                    CAST(CASE WHEN A.ETA IS NOT NULL AND CAST(A.ETA AS DATE) <> '1900-01-01' THEN A.ETA ELSE A.OETA END AS DATE) AS etaDate,
+                    A.Offvesselname AS vesselName, 'Off Vessel' AS vesselType,
+                    A.OBoardingOfficer1Refid AS OfficerId, A.OBoardingAmount1 AS OfficerAmount
+                FROM SaleOrderMaster A WITH (NOLOCK)
+                WHERE A.CompanyRefId = :companyRefId AND A.Active = 1 AND A.JStatus <> 12
+                    AND ISNULL(A.Offvesselname,'') <> '' AND A.OETA IS NOT NULL
+                    AND CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate
+                    AND A.OBoardingOfficer1Refid IS NOT NULL
+            ),
+            AllUnpivoted AS (
+                SELECT * FROM LoadingUnpivoted
+                UNION ALL
+                SELECT * FROM OffUnpivoted
+            ),
+            OfficerPayOnce AS (
+                SELECT etaDate, vesselName, vesselType, OfficerId,
+                       MAX(OfficerAmount) AS OfficerAmount
+                FROM AllUnpivoted
+                GROUP BY etaDate, vesselName, vesselType, OfficerId
+            ),
+            OfficerNumbered AS (
+                SELECT
+                    P.etaDate, P.vesselName, P.vesselType,
+                    ISNULL(E.EmployeeName,'') AS OfficerName,
+                    P.OfficerAmount,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY P.etaDate, P.vesselName, P.vesselType
+                        ORDER BY P.OfficerAmount DESC, E.EmployeeName
+                    ) AS rn
+                FROM OfficerPayOnce P
+                LEFT JOIN EmployeeMaster E ON E.Id = P.OfficerId
+            ),
+            JobList AS (
+                SELECT DISTINCT etaDate, vesselName, vesselType, CNumberDisplay
+                FROM AllUnpivoted
+            ),
+            JobsAgg AS (
+                SELECT etaDate, vesselName, vesselType,
+                    COUNT(CNumberDisplay) AS totalJob,
+                    STRING_AGG(CNumberDisplay, ', ') AS jobNumbers
+                FROM JobList
+                GROUP BY etaDate, vesselName, vesselType
+            )
             SELECT
-                CAST(
-                    CASE
-                        WHEN A.ETA IS NOT NULL
-                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
-                        THEN A.ETA
-                        ELSE A.OETA
-                    END AS DATE
-                ) AS etaDate,
-                A.Loadingvesselname AS vesselName,
-                'Loading Vessel' AS vesselType,
-                STRING_AGG(A.CNumberDisplay, ', ') AS jobNumbers,
-                ISNULL(BO1.EmployeeName, '') AS boardingOfficer1Name,
-                ISNULL(BO2.EmployeeName, '') AS boardingOfficer2Name,
-                MAX(A.LBoardingAmount) AS boardingOfficer1Amount,
-                MAX(A.LBoardingAmount1) AS boardingOfficer2Amount,
-                (MAX(A.LBoardingAmount) + MAX(A.LBoardingAmount1)) AS totalBoardingAmount,
-                COUNT(*) AS totalJobs
-            FROM SaleOrderMaster A WITH (NOLOCK)
-            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK)
-                ON BO1.Id = A.LBoardingOfficerRefid
-            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK)
-                ON BO2.Id = A.LBoardingOfficer1Refid
-            WHERE
-                A.CompanyRefId = :companyRefId
-                AND A.Active = 1
-                AND A.JStatus <> 12
-                AND ISNULL(A.Loadingvesselname, '') <> ''
-                AND A.ETA IS NOT NULL
-                AND CAST(A.ETA AS DATE) BETWEEN :fromDate AND :toDate
-            GROUP BY
-                CAST(
-                    CASE
-                        WHEN A.ETA IS NOT NULL
-                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
-                        THEN A.ETA
-                        ELSE A.OETA
-                    END AS DATE
-                ),
-                A.Loadingvesselname,
-                BO1.EmployeeName,
-                BO2.EmployeeName
-            
-            UNION ALL
-            
-            SELECT
-                CAST(
-                    CASE
-                        WHEN A.ETA IS NOT NULL
-                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
-                        THEN A.ETA
-                        ELSE A.OETA
-                    END AS DATE
-                ) AS etaDate,
-                A.Offvesselname AS vesselName,
-                'Off Vessel' AS vesselType,
-                STRING_AGG(A.CNumberDisplay, ', ') AS jobNumbers,
-                ISNULL(BO1.EmployeeName, '') AS boardingOfficer1Name,
-                ISNULL(BO2.EmployeeName, '') AS boardingOfficer2Name,
-                MAX(A.OBoardingAmount) AS boardingOfficer1Amount,
-                MAX(A.OBoardingAmount1) AS boardingOfficer2Amount,
-                (MAX(A.OBoardingAmount) + MAX(A.OBoardingAmount1)) AS totalBoardingAmount,
-                COUNT(*) AS totalJobs
-            FROM SaleOrderMaster A WITH (NOLOCK)
-            LEFT JOIN EmployeeMaster BO1 WITH (NOLOCK)
-                ON BO1.Id = A.OBoardingOfficerRefid
-            LEFT JOIN EmployeeMaster BO2 WITH (NOLOCK)
-                ON BO2.Id = A.OBoardingOfficer1Refid
-            WHERE
-                A.CompanyRefId = :companyRefId
-                AND A.Active = 1
-                AND A.JStatus <> 12
-                AND ISNULL(A.Offvesselname, '') <> ''
-                AND A.OETA IS NOT NULL
-                AND CAST(A.OETA AS DATE) BETWEEN :fromDate AND :toDate
-            GROUP BY
-                CAST(
-                    CASE
-                        WHEN A.ETA IS NOT NULL
-                             AND CAST(A.ETA AS DATE) <> '1900-01-01'
-                        THEN A.ETA
-                        ELSE A.OETA
-                    END AS DATE
-                ),
-                A.Offvesselname,
-                BO1.EmployeeName,
-                BO2.EmployeeName
-            
-            ORDER BY
-                etaDate,
-                vesselName
+                J.etaDate,
+                J.vesselName,
+                J.vesselType,
+                J.totalJob,
+                J.jobNumbers,
+                MAX(CASE WHEN O.rn = 1 THEN O.OfficerName END) AS officer1Name,
+                MAX(CASE WHEN O.rn = 1 THEN O.OfficerAmount END) AS officer1Amount,
+                MAX(CASE WHEN O.rn = 2 THEN O.OfficerName END) AS officer2Name,
+                MAX(CASE WHEN O.rn = 2 THEN O.OfficerAmount END) AS officer2Amount,
+                MAX(CASE WHEN O.rn = 3 THEN O.OfficerName END) AS officer3Name,
+                MAX(CASE WHEN O.rn = 3 THEN O.OfficerAmount END) AS officer3Amount,
+                MAX(CASE WHEN O.rn = 4 THEN O.OfficerName END) AS officer4Name,
+                MAX(CASE WHEN O.rn = 4 THEN O.OfficerAmount END) AS officer4Amount,
+                MAX(CASE WHEN O.rn = 5 THEN O.OfficerName END) AS officer5Name,
+                MAX(CASE WHEN O.rn = 5 THEN O.OfficerAmount END) AS officer5Amount,
+                SUM(O.OfficerAmount) AS totalAmount
+            FROM JobsAgg J
+            LEFT JOIN OfficerNumbered O
+                ON O.etaDate = J.etaDate AND O.vesselName = J.vesselName AND O.vesselType = J.vesselType
+            GROUP BY J.etaDate, J.vesselName, J.vesselType, J.totalJob, J.jobNumbers
+            ORDER BY J.etaDate, J.vesselName
             """, nativeQuery = true)
     List<my.maleva.api.module.saleorder.dto.VesselScheduleDto> getVesselSchedules(
             @Param("companyRefId") Integer companyRefId,

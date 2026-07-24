@@ -6,10 +6,18 @@ public interface VesselScheduleDto {
     String getVesselName();
     String getVesselType();
     String getJobNumbers();
-    String getBoardingOfficer1Name();
-    String getBoardingOfficer2Name();
-    Double getBoardingOfficer1Amount();
-    Double getBoardingOfficer2Amount();
-    Double getTotalBoardingAmount();
-    Integer getTotalJobs();
+    Integer getTotalJob();
+    String getOfficer1Name();
+    Double getOfficer1Amount();
+    String getOfficer2Name();
+    Double getOfficer2Amount();
+    String getOfficer3Name();
+    Double getOfficer3Amount();
+    String getOfficer4Name();
+    Double getOfficer4Amount();
+    String getOfficer5Name();
+    Double getOfficer5Amount();
+    Double getOfficer6Name();
+    Double getOfficer6Amount();
+    Double getTotalAmount();
 }

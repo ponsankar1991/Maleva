@@ -90,6 +90,21 @@ public class EmployeeMasterController {
         List<EmployeeAllDto> employees = service.selectEmployeeAll(companyRefId, type);
         return ResponseEntity.ok(employees);
     }
+    
+    /**
+     * Get all boarding officers for a company.
+     * This returns employees with active status who either have roleId 500 or 600,
+     * or have active capability ID 5 or 6 (Boarding Officer / Admin).
+     *
+     * @param companyRefId The company ID to filter by (required)
+     * @return List of boarding officers
+     */
+    @GetMapping("/company/{companyRefId}/boarding-officers")
+    public ResponseEntity<List<EmployeeAllDto>> getBoardingOfficers(@PathVariable Integer companyRefId) {
+        List<EmployeeAllDto> employees = service.getBoardingOfficers(companyRefId);
+        return ResponseEntity.ok(employees);
+    }
+    
     /**
      * Search employees with dynamic filtering matching legacy SelectEmployee endpoint.
      *
