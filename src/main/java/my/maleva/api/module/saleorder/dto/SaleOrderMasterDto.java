@@ -1,5 +1,7 @@
 package my.maleva.api.module.saleorder.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -218,4 +220,28 @@ public class SaleOrderMasterDto {
     private String oiDateIn;
     private String odiDateOut;
     private Integer sportsaleorderid;
+
+    @JsonProperty("boardingOfficer2Refid")
+    @JsonAlias({"BoardingOfficer2Refid"})
+    private Integer boardingOfficer2Refid;
+
+    @JsonProperty("boardingAmount2")
+    @JsonAlias({"BoardingAmount2"})
+    private String boardingAmount2;
+
+    @JsonProperty("lBoardingOfficer2Refid")
+    @JsonAlias({"LBoardingOfficer2Refid"})
+    private Integer lBoardingOfficer2Refid;
+
+    @JsonProperty("lBoardingAmount2")
+    @JsonAlias({"LBoardingAmount2"})
+    private String lBoardingAmount2;
+
+    @JsonProperty("oBoardingOfficer2Refid")
+    @JsonAlias({"OBoardingOfficer2Refid"})
+    private Integer oBoardingOfficer2Refid;
+
+    @JsonProperty("oBoardingAmount2")
+    @JsonAlias({"OBoardingAmount2"})
+    private String oBoardingAmount2;
 }

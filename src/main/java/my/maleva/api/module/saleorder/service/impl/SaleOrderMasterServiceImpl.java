@@ -33,6 +33,7 @@ import my.maleva.api.module.saleorder.repository.SaleOrderDetailsRepository;
 import my.maleva.api.module.saleorder.repository.SaleOrderForwardingRepository;
 import my.maleva.api.module.saleorder.repository.SaleOrderMasterRepository;
 import my.maleva.api.module.saleorder.repository.SaleOrderPickupRepository;
+import my.maleva.api.module.boardingsettlement.service.BoardingEventSyncService;
 import my.maleva.api.module.saleorder.service.SaleOrderMasterService;
 import my.maleva.api.module.saleorder.specification.SaleOrderSpecification;
 import my.maleva.api.module.saleorder.util.SaleOrderApiConstants;
@@ -98,6 +99,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     private final SaleOrderFilterHelper filterHelper;
     private final SequenceNoMasterRepository sequenceNoMasterRepository;
     private final JobStatusMasterRepository jobStatusMasterRepository;
+    private final BoardingEventSyncService boardingEventSyncService;
 
     public SaleOrderMasterServiceImpl(SaleOrderMasterRepository repository,
                                       SaleOrderDetailsRepository saleOrderDetailsRepository,
@@ -117,7 +119,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                                       QueryResultMapper queryResultMapper,
                                       SaleOrderFilterHelper filterHelper,
                                       SequenceNoMasterRepository sequenceNoMasterRepository,
-                                      JobStatusMasterRepository jobStatusMasterRepository) {
+                                      JobStatusMasterRepository jobStatusMasterRepository,
+                                      BoardingEventSyncService boardingEventSyncService) {
         this.repository = repository;
         this.saleOrderDetailsRepository = saleOrderDetailsRepository;
         this.saleOrderPickupRepository = saleOrderPickupRepository;
@@ -137,6 +140,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         this.filterHelper = filterHelper;
         this.sequenceNoMasterRepository = sequenceNoMasterRepository;
         this.jobStatusMasterRepository = jobStatusMasterRepository;
+        this.boardingEventSyncService = boardingEventSyncService;
     }
 
     /**
@@ -162,6 +166,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
         SaleOrderMaster savedEntity = repository.saveAndFlush(entity);
         synchronizeChildRecords(savedEntity.getId(), dto, createOperation);
+        boardingEventSyncService.syncEventsForJob(savedEntity);
 
         logger.info("Sale order {} completed successfully - id: {}", operation, savedEntity.getId());
         return mapper.toDto(savedEntity);
@@ -235,6 +240,13 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         saleOrderMasterDto.setOBoardingAmount1(entity.getOBoardingAmount1());
         saleOrderMasterDto.setOPortChargesRef(entity.getOPortChargesRef());
         saleOrderMasterDto.setOPortCharges(entity.getOPortCharges());
+
+        saleOrderMasterDto.setBoardingOfficer2Refid(entity.getBoardingOfficer2Refid());
+        saleOrderMasterDto.setBoardingAmount2(entity.getBoardingAmount2());
+        saleOrderMasterDto.setLBoardingOfficer2Refid(entity.getLBoardingOfficer2Refid());
+        saleOrderMasterDto.setLBoardingAmount2(entity.getLBoardingAmount2());
+        saleOrderMasterDto.setOBoardingOfficer2Refid(entity.getOBoardingOfficer2Refid());
+        saleOrderMasterDto.setOBoardingAmount2(entity.getOBoardingAmount2());
     }
 
     private Integer resolveResponseCNumber(SaleOrderMaster entity) {
@@ -456,6 +468,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         validateCriticalIdentifiers(entity);
 
         SaleOrderMaster updatedEntity = repository.save(entity);
+        boardingEventSyncService.syncEventsForJob(updatedEntity);
+        
         logger.info("Sale order master updated successfully - id: {}", id);
         return mapper.toDto(updatedEntity);
     }

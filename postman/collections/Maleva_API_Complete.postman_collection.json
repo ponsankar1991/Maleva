@@ -3949,6 +3949,92 @@
                     "response": []
                 }
             ]
+        },
+        {
+            "name": "Boarding Settlement",
+            "item": [
+                {
+                    "name": "Get Monthly Salary Report (All Employees)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/boarding-settlement/monthly-salary?fromDate=2026-07-01&toDate=2026-07-31",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "boarding-settlement",
+                                "monthly-salary"
+                            ],
+                            "query": [
+                                {
+                                    "key": "fromDate",
+                                    "value": "2026-07-01"
+                                },
+                                {
+                                    "key": "toDate",
+                                    "value": "2026-07-31"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Monthly Salary Report (By Employee ID)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/boarding-settlement/monthly-salary?fromDate=2026-07-01&toDate=2026-07-31&employeeId=68",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "boarding-settlement",
+                                "monthly-salary"
+                            ],
+                            "query": [
+                                {
+                                    "key": "fromDate",
+                                    "value": "2026-07-01"
+                                },
+                                {
+                                    "key": "toDate",
+                                    "value": "2026-07-31"
+                                },
+                                {
+                                    "key": "employeeId",
+                                    "value": "68"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Sync All Historical Jobs (One-off)",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/boarding-settlement/sync-all-historical-jobs",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "boarding-settlement",
+                                "sync-all-historical-jobs"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
         }
     ],
     "auth": {

@@ -590,5 +590,23 @@ public class SaleOrderMaster {
 
     @Column(name = "sportsaleorderid")
     private Integer sportsaleorderid;
+
+    @Column(name = "BoardingOfficer2Refid")
+    private Integer boardingOfficer2Refid;
+
+    @Column(name = "BoardingAmount2")
+    private String boardingAmount2;
+
+    @Column(name = "LBoardingOfficer2Refid")
+    private Integer lBoardingOfficer2Refid;
+
+    @Column(name = "LBoardingAmount2")
+    private String lBoardingAmount2;
+
+    @Column(name = "OBoardingOfficer2Refid")
+    private Integer oBoardingOfficer2Refid;
+
+    @Column(name = "OBoardingAmount2")
+    private String oBoardingAmount2;
 }
 
