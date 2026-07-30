@@ -1,7 +1,10 @@
 package my.maleva.api.module.rti.repository.impl;
 
 import my.maleva.api.common.exception.RtiJobWiseQueryException;
+import my.maleva.api.module.rti.dto.RtiEmployeeAssignmentRequest;
+import my.maleva.api.module.rti.dto.RtiEmployeeAssignmentResponse;
 import my.maleva.api.module.rti.dto.RtiJobWiseViewResponse;
+import my.maleva.api.module.rti.mapper.RtiEmployeeAssignmentRowMapper;
 import my.maleva.api.module.rti.mapper.RtiJobWiseRowMapper;
 import my.maleva.api.module.rti.repository.RtiJobWiseRepository;
 import org.slf4j.Logger;
@@ -20,10 +23,14 @@ public class RtiJobWiseRepositoryImpl implements RtiJobWiseRepository {
     private static final Logger logger = LoggerFactory.getLogger(RtiJobWiseRepositoryImpl.class);
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final RtiJobWiseRowMapper rowMapper;
+    private final RtiEmployeeAssignmentRowMapper employeeRowMapper;
 
-    public RtiJobWiseRepositoryImpl(NamedParameterJdbcTemplate jdbcTemplate, RtiJobWiseRowMapper rowMapper) {
+    public RtiJobWiseRepositoryImpl(NamedParameterJdbcTemplate jdbcTemplate, 
+                                    RtiJobWiseRowMapper rowMapper,
+                                    RtiEmployeeAssignmentRowMapper employeeRowMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.rowMapper = rowMapper;
+        this.employeeRowMapper = employeeRowMapper;
     }
 
     @Override
@@ -99,6 +106,60 @@ public class RtiJobWiseRepositoryImpl implements RtiJobWiseRepository {
         } catch (DataAccessException e) {
             logger.error("Database error while fetching RTI Job Wise View", e);
             throw new RtiJobWiseQueryException("Failed to execute RTI Job Wise View query.", e);
+        }
+    }
+
+    @Override
+    public List<RtiEmployeeAssignmentResponse> findEmployeeAssignments(RtiEmployeeAssignmentRequest request) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT 
+                RD.Id, RD.RTIMasterRefId, RD.SaleOrderMasterRefId,
+                RD.PickupDateD, RD.DeliveryDateD, RD.OriginD, RD.DestinationD,
+                RM.CNumberDisplay     AS RTINumber,
+                RM.Remarks, RM.DriverRefid, RM.TruckRefid, RM.Active,
+                RM.PickupCount, RM.DropCount,
+                SM.CNumberDisplay     AS SaleOrderNumber,
+                SM.Loadingvesselname  AS VesselNameRaw,
+                CM.CustomerName,
+                SM.Commodity, SM.Quantity, SM.TruckSize,
+                EM.EmployeeName,
+                DM.DriverName,
+                TM.TruckNumber, TM.TruckType
+            FROM RTIDetails RD WITH (NOLOCK)
+            INNER JOIN RTIMaster RM WITH (NOLOCK)        ON RM.Id = RD.RTIMasterRefId
+            INNER JOIN SaleOrderMaster SM WITH (NOLOCK)  ON SM.Id = RD.SaleOrderMasterRefId
+            LEFT JOIN EmployeeMaster EM WITH (NOLOCK)    ON SM.EmployeeRefId = EM.Id
+            LEFT JOIN Customer CM WITH (NOLOCK)          ON SM.CustomerRefId = CM.Id
+            LEFT JOIN DriverMaster DM WITH (NOLOCK)      ON DM.Id = RM.DriverRefid
+            LEFT JOIN TruckMaster TM WITH (NOLOCK)       ON TM.Id = RM.TruckRefid
+            WHERE RD.PickupDateD >= :fromDate
+              AND RD.PickupDateD <  DATEADD(DAY, 1, :toDate)
+              AND RM.Active = 1
+        """);
+
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("fromDate", java.sql.Date.valueOf(request.fromDate()));
+        params.addValue("toDate", java.sql.Date.valueOf(request.toDate()));
+
+        if (request.companyId() != null && request.companyId() > 0) {
+            sql.append(" AND SM.CompanyRefId = :companyId ");
+            params.addValue("companyId", request.companyId());
+        }
+
+        if (request.employeeId() != null && request.employeeId() > 0) {
+            sql.append(" AND SM.EmployeeRefId = :employeeId ");
+            params.addValue("employeeId", request.employeeId());
+        }
+
+        long startTime = System.currentTimeMillis();
+        try {
+            List<RtiEmployeeAssignmentResponse> results = jdbcTemplate.query(sql.toString(), params, employeeRowMapper);
+            long duration = System.currentTimeMillis() - startTime;
+            logger.debug("Employee assignment query completed in {} ms. Returned {} rows.", duration, results.size());
+            return results;
+        } catch (DataAccessException e) {
+            logger.error("Database error while fetching RTI Employee Assignments", e);
+            throw new RtiJobWiseQueryException("Failed to execute RTI Employee Assignment query.", e);
         }
     }
 }

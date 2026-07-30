@@ -3581,6 +3581,50 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "RTI Employee Assignments",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"fromDate\": \"2026-05-02\",\n  \"toDate\": \"2026-05-02\",\n  \"companyId\": 0,\n  \"employeeId\": 13\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/rti/employee-assignments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "rti",
+                                "employee-assignments"
+                            ]
+                        }
+                    },
+                    "response": []
                 }
             ],
             "description": "RTI Module APIs"

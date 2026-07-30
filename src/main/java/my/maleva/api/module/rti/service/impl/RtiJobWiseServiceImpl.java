@@ -2,6 +2,8 @@ package my.maleva.api.module.rti.service.impl;
 
 import my.maleva.api.common.exception.DateRangeTooLargeException;
 import my.maleva.api.common.exception.InvalidDateRangeException;
+import my.maleva.api.module.rti.dto.RtiEmployeeAssignmentRequest;
+import my.maleva.api.module.rti.dto.RtiEmployeeAssignmentResponse;
 import my.maleva.api.module.rti.dto.RtiJobWiseViewRequest;
 import my.maleva.api.module.rti.dto.RtiJobWiseViewResponse;
 import my.maleva.api.module.rti.repository.RtiJobWiseRepository;
@@ -42,5 +44,23 @@ public class RtiJobWiseServiceImpl implements RtiJobWiseService {
         }
 
         return repository.findJobWiseView(from, to);
+    }
+
+    @Override
+    public List<RtiEmployeeAssignmentResponse> getEmployeeAssignments(RtiEmployeeAssignmentRequest request) {
+        LocalDate from = request.fromDate();
+        LocalDate to = request.toDate();
+
+        if (from.isAfter(to)) {
+            throw new InvalidDateRangeException("fromDate cannot be after toDate.");
+        }
+
+        long daysBetween = ChronoUnit.DAYS.between(from, to);
+        if (daysBetween > maxDateRangeDays) {
+            throw new DateRangeTooLargeException(
+                    String.format("Date range exceeds the maximum allowed limit of %d days.", maxDateRangeDays));
+        }
+
+        return repository.findEmployeeAssignments(request);
     }
 }
