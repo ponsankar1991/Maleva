@@ -1843,4 +1843,12 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         }
         return repository.checkSaleOrderInvoice(request);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public List<VesselActivityReportProjection> getVesselActivityReport(Integer companyId, String fromDate, String toDate, String portName) {
+        if (companyId == null || companyId <= 0) {
+            throw new InvalidRequestException("Company ID is required");
+        }
+        return repository.getVesselActivityReport(companyId, fromDate, toDate, portName);
+    }
 }

@@ -3,6 +3,7 @@ package my.maleva.api.module.saleorder.repository;
 import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.saleorder.dto.JobNumberDto;
 import my.maleva.api.module.saleorder.dto.VesselScheduleDto;
+import my.maleva.api.module.saleorder.dto.VesselActivityReportProjection;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -37,6 +38,70 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             order by s.id desc
             """)
     List<RTIJobLookupDto> findRTIJobLookupByCompanyRefIdAndJobNo(@Param("companyRefId") Integer companyRefId, @Param("jobNo") String jobNo);
+
+    @Query(value = """
+        SELECT 
+            CAST(COALESCE(ETA, ETB) AS DATE) AS activityDate,
+            Loadingvesselname AS vesselName,
+            'LOADING' AS activityType,
+            COUNT(Id) AS jobCount,
+            STRING_AGG(CNumberDisplay, ', ') AS cNumbers,
+            SPort AS portName,
+            MAX(ETA) AS eta,
+            MAX(ETB) AS etb,
+            CAST(NULL AS DATETIME) AS oeta,
+            CAST(NULL AS DATETIME) AS oetb
+        FROM 
+            SaleOrderMaster
+        WHERE 
+            CompanyRefId = :companyRefId
+            AND Loadingvesselname IS NOT NULL 
+            AND Loadingvesselname != ''
+            AND COALESCE(ETA, ETB) >= :fromDate 
+            AND COALESCE(ETA, ETB) <= :toDate
+            AND Active != 2
+            AND (:portName IS NULL OR :portName = '' OR SPort = :portName)
+            AND (ETA IS NOT NULL OR ETB IS NOT NULL)
+        GROUP BY 
+            CAST(COALESCE(ETA, ETB) AS DATE),
+            Loadingvesselname,
+            SPort
+
+        UNION ALL
+
+        SELECT 
+            CAST(COALESCE(OETA, OETB) AS DATE) AS activityDate,
+            Offvesselname AS vesselName,
+            'OFFLOADING' AS activityType,
+            COUNT(Id) AS jobCount,
+            STRING_AGG(CNumberDisplay, ', ') AS cNumbers,
+            OPort AS portName,
+            CAST(NULL AS DATETIME) AS eta,
+            CAST(NULL AS DATETIME) AS etb,
+            MAX(OETA) AS oeta,
+            MAX(OETB) AS oetb
+        FROM 
+            SaleOrderMaster
+        WHERE 
+            CompanyRefId = :companyRefId
+            AND Offvesselname IS NOT NULL 
+            AND Offvesselname != ''
+            AND COALESCE(OETA, OETB) >= :fromDate 
+            AND COALESCE(OETA, OETB) <= :toDate
+            AND Active != 2
+            AND (:portName IS NULL OR :portName = '' OR OPort = :portName)
+            AND (OETA IS NOT NULL OR OETB IS NOT NULL)
+        GROUP BY 
+            CAST(COALESCE(OETA, OETB) AS DATE),
+            Offvesselname,
+            OPort
+
+        ORDER BY 
+            activityDate ASC, 
+            vesselName ASC,
+            activityType ASC
+        """, nativeQuery = true)
+    List<VesselActivityReportProjection> getVesselActivityReport(@Param("companyRefId") Integer companyRefId, @Param("fromDate") String fromDate, @Param("toDate") String toDate, @Param("portName") String portName);
 
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN TRUE ELSE FALSE END FROM SaleOrderMaster s WHERE s.companyRefId = :companyRefId AND s.cNumber = :cNumber")
     boolean existsByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);

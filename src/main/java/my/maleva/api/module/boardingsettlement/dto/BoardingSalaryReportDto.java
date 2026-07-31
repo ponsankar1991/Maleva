@@ -29,4 +29,7 @@ public class BoardingSalaryReportDto {
 
     @JsonProperty("tagTypes")
     private String tagTypes;
+
+    @JsonProperty("portName")
+    private String portName;
 }

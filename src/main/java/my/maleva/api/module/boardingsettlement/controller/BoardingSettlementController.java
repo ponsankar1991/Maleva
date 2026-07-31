@@ -29,11 +29,12 @@ public class BoardingSettlementController {
     public ResponseEntity<ApiResponse<List<BoardingSalaryReportDto>>> getMonthlySalaryReport(
             @RequestParam(value = "fromDate", required = false) String fromDate,
             @RequestParam(value = "toDate", required = false) String toDate,
-            @RequestParam(value = "employeeId", required = false) Integer employeeId) {
+            @RequestParam(value = "employeeId", required = false) Integer employeeId,
+            @RequestParam(value = "portName", required = false) String portName) {
 
-        log.info("REST request to get Monthly Salary Report - fromDate: {}, toDate: {}, employeeId: {}", fromDate, toDate, employeeId);
+        log.info("REST request to get Monthly Salary Report - fromDate: {}, toDate: {}, employeeId: {}, portName: {}", fromDate, toDate, employeeId, portName);
 
-        List<BoardingSalaryReportDto> report = boardingSalaryService.calculateMonthlySalary(fromDate, toDate, employeeId);
+        List<BoardingSalaryReportDto> report = boardingSalaryService.calculateMonthlySalary(fromDate, toDate, employeeId, portName);
 
         return ResponseEntity.ok(ApiResponse.success(report, "Successfully calculated boarding salary report"));
     }

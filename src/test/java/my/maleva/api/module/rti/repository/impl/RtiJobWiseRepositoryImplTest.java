@@ -2,6 +2,7 @@ package my.maleva.api.module.rti.repository.impl;
 
 import my.maleva.api.common.exception.RtiJobWiseQueryException;
 import my.maleva.api.module.rti.dto.RtiJobWiseViewResponse;
+import my.maleva.api.module.rti.mapper.RtiEmployeeAssignmentRowMapper;
 import my.maleva.api.module.rti.mapper.RtiJobWiseRowMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,12 +31,15 @@ class RtiJobWiseRepositoryImplTest {
 
     @Mock
     private RtiJobWiseRowMapper rowMapper;
+    
+    @Mock
+    private RtiEmployeeAssignmentRowMapper employeeRowMapper;
 
     private RtiJobWiseRepositoryImpl repository;
 
     @BeforeEach
     void setUp() {
-        repository = new RtiJobWiseRepositoryImpl(jdbcTemplate, rowMapper);
+        repository = new RtiJobWiseRepositoryImpl(jdbcTemplate, rowMapper, employeeRowMapper);
     }
 
     @Test

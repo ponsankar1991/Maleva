@@ -27,6 +27,9 @@ public interface SaleOrderMasterService {
     SaleOrderStatusUpdateDto updateStatus(Integer id, Integer companyId, Integer jobStatusId);
 
 
+    List<VesselActivityReportProjection> getVesselActivityReport(Integer companyId, String fromDate, String toDate, String portName);
+
+
     SaleOrderQuickUpdateDto updateQuickFields(Integer id, SaleOrderQuickUpdateDto dto);
 
 

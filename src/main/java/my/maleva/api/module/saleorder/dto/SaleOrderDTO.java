@@ -236,9 +236,8 @@ public class SaleOrderDTO {
     @Size(max = 100)
     private String lBoardingAmount1;
 
-    private Integer oBoardingOfficerRefid;
 
-    private Integer oBoardingOfficer1Refid;
+
 
     @Size(max = 100)
     private String oBoardingAmount;

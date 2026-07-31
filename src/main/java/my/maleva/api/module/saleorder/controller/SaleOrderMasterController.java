@@ -464,6 +464,31 @@ public class SaleOrderMasterController {
             );
         }
     }
+
+    @GetMapping("/vessel-activity-report")
+    public ResponseEntity<ApiResponse<java.util.List<my.maleva.api.module.saleorder.dto.VesselActivityReportProjection>>> getVesselActivityReport(
+            @RequestParam Integer companyId,
+            @RequestParam String fromDate,
+            @RequestParam String toDate,
+            @RequestParam(required = false, defaultValue = "") String portName) {
+        
+        logger.info("REST request to get Vessel Activity Report - companyId: {}, fromDate: {}, toDate: {}, portName: {}", companyId, fromDate, toDate, portName);
+        
+        try {
+            java.util.List<my.maleva.api.module.saleorder.dto.VesselActivityReportProjection> report = service.getVesselActivityReport(companyId, fromDate, toDate, portName);
+            return ResponseEntity.ok(ApiResponse.success(report, "Successfully fetched vessel activity report"));
+        } catch (my.maleva.api.common.exception.InvalidRequestException ex) {
+            logger.warn("Invalid request - {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value())
+            );
+        } catch (Exception ex) {
+            logger.error("Error fetching vessel activity report", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResponse.error("Error fetching vessel activity report: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value())
+            );
+        }
+    }
 }
 
 

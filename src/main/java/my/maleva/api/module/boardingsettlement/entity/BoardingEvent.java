@@ -39,4 +39,7 @@ public class BoardingEvent {
 
     @Column(name = "CreatedDate")
     private LocalDateTime createdDate;
+
+    @Column(name = "PortName", length = 200)
+    private String portName;
 }

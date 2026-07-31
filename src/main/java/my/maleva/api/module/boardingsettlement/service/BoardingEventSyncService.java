@@ -64,23 +64,42 @@ public class BoardingEventSyncService {
         // ONLY sync Loading and Offloading officers. General officers are excluded as per requirements.
 
         // 2. Create Loading Boarding Officers
-        createEventIfPresent(job.getId(), job.getLBoardingOfficerRefid(), job.getLBoardingAmount(), "LOADING", loadingVessel, loadingDate, now);
-        createEventIfPresent(job.getId(), job.getLBoardingOfficer1Refid(), job.getLBoardingAmount1(), "LOADING", loadingVessel, loadingDate, now);
-        createEventIfPresent(job.getId(), job.getLBoardingOfficer2Refid(), job.getLBoardingAmount2(), "LOADING", loadingVessel, loadingDate, now);
+        String loadingPort = job.getSPort();
+        boolean hasLoadingOfficer = (job.getLBoardingOfficerRefid() != null && job.getLBoardingOfficerRefid() > 0) ||
+                                    (job.getLBoardingOfficer1Refid() != null && job.getLBoardingOfficer1Refid() > 0) ||
+                                    (job.getLBoardingOfficer2Refid() != null && job.getLBoardingOfficer2Refid() > 0);
+        
+        if (!hasLoadingOfficer) {
+            createEventIfPresent(job.getId(), 0, "0", "LOADING", loadingVessel, loadingDate, now, loadingPort);
+        } else {
+            createEventIfPresent(job.getId(), job.getLBoardingOfficerRefid(), job.getLBoardingAmount(), "LOADING", loadingVessel, loadingDate, now, loadingPort);
+            createEventIfPresent(job.getId(), job.getLBoardingOfficer1Refid(), job.getLBoardingAmount1(), "LOADING", loadingVessel, loadingDate, now, loadingPort);
+            createEventIfPresent(job.getId(), job.getLBoardingOfficer2Refid(), job.getLBoardingAmount2(), "LOADING", loadingVessel, loadingDate, now, loadingPort);
+        }
 
         // 3. Create Offloading Boarding Officers
-        createEventIfPresent(job.getId(), job.getOBoardingOfficerRefid(), job.getOBoardingAmount(), "OFFLOADING", offloadingVessel, offloadingDate, now);
-        createEventIfPresent(job.getId(), job.getOBoardingOfficer1Refid(), job.getOBoardingAmount1(), "OFFLOADING", offloadingVessel, offloadingDate, now);
-        createEventIfPresent(job.getId(), job.getOBoardingOfficer2Refid(), job.getOBoardingAmount2(), "OFFLOADING", offloadingVessel, offloadingDate, now);
+        String offloadingPort = job.getOPort();
+        boolean hasOffloadingOfficer = (job.getOBoardingOfficerRefid() != null && job.getOBoardingOfficerRefid() > 0) ||
+                                       (job.getOBoardingOfficer1Refid() != null && job.getOBoardingOfficer1Refid() > 0) ||
+                                       (job.getOBoardingOfficer2Refid() != null && job.getOBoardingOfficer2Refid() > 0);
+        
+        if (!hasOffloadingOfficer) {
+            createEventIfPresent(job.getId(), 0, "0", "OFFLOADING", offloadingVessel, offloadingDate, now, offloadingPort);
+        } else {
+            createEventIfPresent(job.getId(), job.getOBoardingOfficerRefid(), job.getOBoardingAmount(), "OFFLOADING", offloadingVessel, offloadingDate, now, offloadingPort);
+            createEventIfPresent(job.getId(), job.getOBoardingOfficer1Refid(), job.getOBoardingAmount1(), "OFFLOADING", offloadingVessel, offloadingDate, now, offloadingPort);
+            createEventIfPresent(job.getId(), job.getOBoardingOfficer2Refid(), job.getOBoardingAmount2(), "OFFLOADING", offloadingVessel, offloadingDate, now, offloadingPort);
+        }
     }
 
-    private void createEventIfPresent(Integer jobId, Integer employeeRefId, Double amount, String tagType, String vesselName, LocalDateTime boardingDate, LocalDateTime now) {
+    private void createEventIfPresent(Integer jobId, Integer employeeRefId, Double amount, String tagType, String vesselName, LocalDateTime boardingDate, LocalDateTime now, String portName) {
         String amountStr = (amount != null) ? String.valueOf(amount) : null;
-        createEventIfPresent(jobId, employeeRefId, amountStr, tagType, vesselName, boardingDate, now);
+        createEventIfPresent(jobId, employeeRefId, amountStr, tagType, vesselName, boardingDate, now, portName);
     }
 
-    private void createEventIfPresent(Integer jobId, Integer employeeRefId, String amount, String tagType, String vesselName, LocalDateTime boardingDate, LocalDateTime now) {
-        if (employeeRefId == null || employeeRefId <= 0) {
+    private void createEventIfPresent(Integer jobId, Integer employeeRefId, String amount, String tagType, String vesselName, LocalDateTime boardingDate, LocalDateTime now, String portName) {
+        // Change <= 0 to < 0 so we can intentionally pass employeeRefId = 0
+        if (employeeRefId == null || employeeRefId < 0) {
             return;
         }
         if (vesselName == null || vesselName.trim().isEmpty()) {
@@ -99,6 +118,7 @@ public class BoardingEventSyncService {
                 .vesselName(vesselName)
                 .boardingDate(boardingDate)
                 .createdDate(now)
+                .portName(portName)
                 .build();
         boardingEventRepository.save(event);
     }

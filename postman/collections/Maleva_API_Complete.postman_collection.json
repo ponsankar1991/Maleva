@@ -1454,6 +1454,80 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Get Vessel Activity Report (All Ports)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/sale-orders/vessel-activity-report?companyId=6&fromDate=2026-07-01&toDate=2026-07-31&portName=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "sale-orders",
+                                "vessel-activity-report"
+                            ],
+                            "query": [
+                                {
+                                    "key": "companyId",
+                                    "value": "6"
+                                },
+                                {
+                                    "key": "fromDate",
+                                    "value": "2026-07-01"
+                                },
+                                {
+                                    "key": "toDate",
+                                    "value": "2026-07-31"
+                                },
+                                {
+                                    "key": "portName",
+                                    "value": ""
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Vessel Activity Report (Filtered by Port)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/sale-orders/vessel-activity-report?companyId=6&fromDate=2026-07-01&toDate=2026-07-31&portName=PORT KLANG",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "sale-orders",
+                                "vessel-activity-report"
+                            ],
+                            "query": [
+                                {
+                                    "key": "companyId",
+                                    "value": "6"
+                                },
+                                {
+                                    "key": "fromDate",
+                                    "value": "2026-07-01"
+                                },
+                                {
+                                    "key": "toDate",
+                                    "value": "2026-07-31"
+                                },
+                                {
+                                    "key": "portName",
+                                    "value": "PORT KLANG"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
                 }
             ],
             "id": "268bd559-2bb1-4876-a94a-6283df74e1a3",
@@ -4073,6 +4147,252 @@
                                 "api",
                                 "boarding-settlement",
                                 "sync-all-historical-jobs"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "AgentMaster",
+            "item": [
+                {
+                    "name": "Create Agent",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"companyRefId\": 1,\n  \"agentName\": \"Test Agent\",\n  \"locationCode\": \"LOC-A\",\n  \"phoneNumber\": \"1234567890\",\n  \"agentRole\": \"BOTH\",\n  \"active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agent-masters",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agent-masters"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Agent",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"id\": 1,\n  \"companyRefId\": 1,\n  \"agentName\": \"Test Agent Updated\",\n  \"locationCode\": \"LOC-A\",\n  \"phoneNumber\": \"1234567890\",\n  \"agentRole\": \"LOADING\",\n  \"active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agent-masters/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agent-masters",
+                                "1"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get All Agents",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agent-masters?page=0&size=10&search=&active=true",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agent-masters"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "search",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "active",
+                                    "value": "true"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Agent By ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agent-masters/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agent-masters",
+                                "1"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Soft Delete Agent",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/agent-masters/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "agent-masters",
+                                "1"
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Agent Master CRUD APIs"
+        },
+        {
+            "name": "ZbEntry",
+            "item": [
+                {
+                    "name": "Search ZbEntries",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/zb-entries?companyRefId=6&fromDate=2024-01-01&toDate=2026-12-31&keyword=KURT&page=0&size=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "zb-entries"
+                            ],
+                            "query": [
+                                {
+                                    "key": "companyRefId",
+                                    "value": "6"
+                                },
+                                {
+                                    "key": "fromDate",
+                                    "value": "2024-01-01"
+                                },
+                                {
+                                    "key": "toDate",
+                                    "value": "2026-12-31"
+                                },
+                                {
+                                    "key": "keyword",
+                                    "value": "KURT"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "10"
+                                }
                             ]
                         }
                     },

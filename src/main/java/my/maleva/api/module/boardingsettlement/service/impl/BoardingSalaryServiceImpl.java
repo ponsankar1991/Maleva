@@ -34,8 +34,8 @@ public class BoardingSalaryServiceImpl implements BoardingSalaryService {
     private static final DateTimeFormatter YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Override
-    public List<BoardingSalaryReportDto> calculateMonthlySalary(String fromDateStr, String toDateStr, Integer employeeId) {
-        log.info("Calculating Boarding Salary Report - fromDate: {}, toDate: {}, employeeId: {}", fromDateStr, toDateStr, employeeId);
+    public List<BoardingSalaryReportDto> calculateMonthlySalary(String fromDateStr, String toDateStr, Integer employeeId, String portName) {
+        log.info("Calculating Boarding Salary Report - fromDate: {}, toDate: {}, employeeId: {}, portName: {}", fromDateStr, toDateStr, employeeId, portName);
 
         LocalDateTime fromDate = parseDateStartOfDay(fromDateStr);
         LocalDateTime toDate = parseDateEndOfDay(toDateStr);
@@ -45,6 +45,14 @@ public class BoardingSalaryServiceImpl implements BoardingSalaryService {
             events = boardingEventRepository.findByBoardingDateBetweenOrderByBoardingDateAsc(fromDate, toDate);
         } else {
             events = boardingEventRepository.findAllByOrderByBoardingDateAsc();
+        }
+
+        // Apply portName filter if provided
+        if (portName != null && !portName.trim().isEmpty()) {
+            final String filterPort = portName.trim().toLowerCase();
+            events = events.stream()
+                    .filter(e -> e.getPortName() != null && e.getPortName().toLowerCase().contains(filterPort))
+                    .collect(Collectors.toList());
         }
 
         if (events.isEmpty()) {
@@ -147,6 +155,15 @@ public class BoardingSalaryServiceImpl implements BoardingSalaryService {
                         .distinct()
                         .collect(Collectors.joining(", "));
 
+                // Combine port names
+                String portNames = officerEvents.stream()
+                        .map(BoardingEvent::getPortName)
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(p -> !p.isEmpty())
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+
                 BoardingSalaryReportDto row = BoardingSalaryReportDto.builder()
                         .employeeRefId(empRefId)
                         .employeeName(employeeName)
@@ -155,6 +172,7 @@ public class BoardingSalaryServiceImpl implements BoardingSalaryService {
                         .calculatedRate(calculatedRate)
                         .relatedJobs(relatedJobs)
                         .tagTypes(tagTypes)
+                        .portName(portNames)
                         .build();
 
                 reportList.add(row);
