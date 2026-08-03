@@ -22,6 +22,7 @@ public interface SaleOrderMasterService {
 
 
     SaleOrderMasterDto updateMaster(Integer id, SaleOrderMasterDto dto);
+    void updateRemarks(my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto request);
 
 
     SaleOrderStatusUpdateDto updateStatus(Integer id, Integer companyId, Integer jobStatusId);
@@ -75,6 +76,8 @@ public interface SaleOrderMasterService {
     List<SaleJobViewAggregateDto> getSaleEmployeeView(SaleOrderFilterDTO filter);
 
     java.util.List<java.util.Map<String, Object>> getSalePortView(SaleOrderFilterDTO filter);
+
+    List<SaleOrderMasterDto> getJobsWithMissingRemarks(Integer companyId, String fromDateStr, String toDateStr, Integer customerRefId, Integer referenceStatus);
 
     List<SaleJobViewAggregateDto> getSaleCustomerView(SaleOrderFilterDTO filter);
 

@@ -154,6 +154,47 @@ public class SaleOrderMasterController {
     }
 
     /**
+     * Update Remarks for a Sale Order
+     * PUT /api/sale-orders/{id}/remarks
+     *
+     * Updates the remarks field of a SaleOrderMaster record.
+     *
+     * @param id Sale Order Master ID (path variable)
+     * @param updateDto SaleOrderRemarksUpdateDto containing new remarks and companyRefId
+     * @return ApiResponse with success status and message
+     */
+    @Operation(
+            summary = "Update Remarks for a Sale Order",
+            description = "Updates the remarks field of a SaleOrderMaster record for a specific company."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Remarks updated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation error in request body"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Sale order not found")
+    })
+    @PutMapping("/{id}/remarks")
+    public ResponseEntity<ApiResponse<Void>> updateRemarks(
+            @Parameter(description = "Sale Order Master ID", required = true, example = "15460")
+            @PathVariable @Positive Integer id, 
+            @Parameter(description = "Payload containing new remarks and company ID", required = true)
+            @Valid @RequestBody my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto updateDto) {
+        
+        logger.info("Update remarks request received - Sale Order ID: {}", id);
+        
+        try {
+            updateDto.setId(id);
+            service.updateRemarks(updateDto);
+            
+            logger.info("Remarks updated successfully - Sale Order ID: {}", id);
+            return ResponseEntity.ok(ApiResponse.success(null, "Remarks updated successfully"));
+        } catch (EntityNotFoundException ex) {
+            logger.error("Error updating remarks: {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(ex.getMessage(), HttpStatus.NOT_FOUND.value()));
+        }
+    }
+
+    /**
      * Update Job Status for a Sale Order
      * PUT /api/sale-orders/{id}/job-status
      * POST /api/sale-orders/update-job-status?id={id}
@@ -166,9 +207,7 @@ public class SaleOrderMasterController {
      * @return ApiResponse with success status and message
      */
     @PutMapping("/{id}/job-status")
-    public ResponseEntity<ApiResponse<Void>> updateJobStatus(
-            @PathVariable @Positive Integer id,
-            @Valid @RequestBody UpdateJobStatusDto updateDto) {
+    public ResponseEntity<ApiResponse<Void>> updateJobStatus(@PathVariable @Positive Integer id, @Valid @RequestBody UpdateJobStatusDto updateDto) {
         logger.info("Update job status request received - Sale Order ID: {}, New Job Status ID: {}",
                 id, updateDto.getJobStatusId());
 
@@ -486,6 +525,48 @@ public class SaleOrderMasterController {
             logger.error("Error fetching vessel activity report", ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     ApiResponse.error("Error fetching vessel activity report: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value())
+            );
+        }
+    }
+
+    @GetMapping("/missing-remarks")
+    @Operation(
+            summary = "Get jobs filtered by remarks status",
+            description = "Returns a list of sale orders based on the reference status within a given date range."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully fetched jobs"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.saleorder.dto.SaleOrderMasterDto>>> getJobsWithMissingRemarks(
+            @Parameter(description = "Company reference ID", required = true, example = "6")
+            @RequestParam @Positive Integer companyId,
+            @Parameter(description = "Start date in yyyy-MM-dd format", required = true, example = "2024-01-01")
+            @RequestParam String fromDate,
+            @Parameter(description = "End date in yyyy-MM-dd format", required = true, example = "2026-12-31")
+            @RequestParam String toDate,
+            @Parameter(description = "Customer reference ID to filter by. Pass 0 or leave empty for all customers.", required = false, example = "144")
+            @RequestParam(required = false) Integer customerRefId,
+            @Parameter(description = "0 = Without Remarks, 1 = All, 2 = With Remarks", required = false, example = "0")
+            @RequestParam(required = false, defaultValue = "0") Integer referenceStatus) {
+        logger.info("Request to get jobs with missing remarks. CompanyId: {}, fromDate: {}, toDate: {}, customerRefId: {}, referenceStatus: {}", 
+                companyId, fromDate, toDate, customerRefId, referenceStatus);
+
+        try {
+            List<my.maleva.api.module.saleorder.dto.SaleOrderMasterDto> response = 
+                    service.getJobsWithMissingRemarks(companyId, fromDate, toDate, customerRefId, referenceStatus);
+            return ResponseEntity.ok(ApiResponse.success(response, "Successfully fetched jobs with missing remarks"));
+            
+        } catch (InvalidRequestException ex) {
+            logger.warn("Invalid request - {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value())
+            );
+        } catch (Exception ex) {
+            logger.error("Error fetching jobs with missing remarks", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResponse.error("Error fetching jobs with missing remarks: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value())
             );
         }
     }

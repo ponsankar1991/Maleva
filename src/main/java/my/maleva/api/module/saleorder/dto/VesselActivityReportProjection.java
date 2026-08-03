@@ -13,4 +13,5 @@ public interface VesselActivityReportProjection {
     java.util.Date getEtb();
     java.util.Date getOeta();
     java.util.Date getOetb();
+    String getBoardingOfficers();
 }

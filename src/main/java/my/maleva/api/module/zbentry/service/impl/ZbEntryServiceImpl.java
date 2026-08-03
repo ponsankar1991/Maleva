@@ -2,7 +2,9 @@ package my.maleva.api.module.zbentry.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import my.maleva.api.module.zbentry.dto.ZbEntryBulkSaveRequest;
 import my.maleva.api.module.zbentry.dto.ZbEntryResponse;
+import my.maleva.api.module.zbentry.dto.ZbEntrySaveRequest;
 import my.maleva.api.module.zbentry.dto.ZbEntrySearchRequest;
 import my.maleva.api.module.zbentry.entity.ZbEntry;
 import my.maleva.api.module.zbentry.mapper.ZbEntryMapper;
@@ -45,5 +47,31 @@ public class ZbEntryServiceImpl implements ZbEntryService {
         log.info("Found {} records for ZbEntry search.", entityPage.getTotalElements());
 
         return entityPage.map(zbEntryMapper::toDto);
+    }
+
+    @Override
+    @Transactional
+    public void bulkSaveZbEntries(ZbEntryBulkSaveRequest request) {
+        log.info("Starting bulk save for ZbEntry, companyRefId={}, count={}", 
+                 request.getCompanyRefId(), request.getDetails().size());
+
+        for (ZbEntrySaveRequest detail : request.getDetails()) {
+            if (detail.getId() == null || detail.getId() == 0) {
+                // Insert
+                ZbEntry newEntity = zbEntryMapper.toEntity(detail);
+                newEntity.setCompanyRefId(request.getCompanyRefId());
+                zbEntryRepository.save(newEntity);
+            } else {
+                // Update
+                ZbEntry existingEntity = zbEntryRepository.findByIdAndCompanyRefId(detail.getId(), request.getCompanyRefId())
+                        .orElseThrow(() -> new my.maleva.api.common.exception.EntityNotFoundException(
+                                "ZbEntry not found with ID: " + detail.getId() + " for Company ID: " + request.getCompanyRefId()));
+                
+                zbEntryMapper.updateEntity(existingEntity, detail);
+                zbEntryRepository.save(existingEntity);
+            }
+        }
+        
+        log.info("Successfully processed bulk save for {} records.", request.getDetails().size());
     }
 }

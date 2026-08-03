@@ -179,6 +179,16 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     }
 
     @Override
+    @Transactional
+    public void updateRemarks(my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto request) {
+        SaleOrderMaster entity = repository.findByIdAndCompanyRefId(request.getId(), request.getCompanyRefId())
+                .orElseThrow(() -> new EntityNotFoundException("SaleOrderMaster not found for id: " + request.getId()));
+        
+        entity.setRemarks(request.getRemarks());
+        repository.save(entity);
+    }
+
+    @Override
     public SaleOrderEditDto getEditSaleOrder(Integer id, Integer saleOrderNo, Integer companyId) {
         validateEditLookupRequest(id, saleOrderNo, companyId);
 
@@ -1850,5 +1860,36 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
             throw new InvalidRequestException("Company ID is required");
         }
         return repository.getVesselActivityReport(companyId, fromDate, toDate, portName);
+    }
+    @Override
+    public List<SaleOrderMasterDto> getJobsWithMissingRemarks(Integer companyId, String fromDateStr, String toDateStr, Integer customerRefId, Integer referenceStatus) {
+        if (companyId == null || companyId <= 0) {
+            throw new InvalidRequestException("Company ID is required and must be positive.");
+        }
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDateTime fromDate;
+        LocalDateTime toDate;
+        
+        try {
+            // Parse start date, defaults to start of day
+            fromDate = java.time.LocalDate.parse(fromDateStr, formatter).atStartOfDay();
+            
+            // Parse end date, ADD 1 DAY as requested by the SQL query `DATEADD(DAY, 1, @ToDate)`
+            toDate = java.time.LocalDate.parse(toDateStr, formatter).plusDays(1).atStartOfDay();
+        } catch (DateTimeParseException e) {
+            throw new InvalidRequestException("Dates must be in yyyy-MM-dd format.");
+        }
+        
+        List<Object[]> results = repository.findJobsWithMissingRemarks(companyId, fromDate, toDate, customerRefId, referenceStatus);
+        return results.stream()
+                .map(obj -> {
+                    SaleOrderMaster master = (SaleOrderMaster) obj[0];
+                    String customerName = (String) obj[1];
+                    SaleOrderMasterDto dto = mapper.toDto(master);
+                    dto.setCustomerName(customerName);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 }

@@ -9,9 +9,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Repository
 public interface ZbEntryRepository extends JpaRepository<ZbEntry, Integer> {
+
+    Optional<ZbEntry> findByIdAndCompanyRefId(Integer id, Integer companyRefId);
 
     String SEARCH_QUERY = """
             SELECT * FROM ZbEntry S

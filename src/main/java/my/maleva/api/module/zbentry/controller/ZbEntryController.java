@@ -6,6 +6,7 @@ import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.module.zbentry.dto.ZbEntryBulkSaveRequest;
 import my.maleva.api.module.zbentry.dto.ZbEntryResponse;
 import my.maleva.api.module.zbentry.dto.ZbEntrySearchRequest;
 import my.maleva.api.module.zbentry.service.ZbEntryService;
@@ -14,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,5 +35,13 @@ public class ZbEntryController {
      public ResponseEntity<ApiResponse<Page<ZbEntryResponse>>> searchZbEntries(@Valid ZbEntrySearchRequest request, Pageable pageable) {
         Page<ZbEntryResponse> responsePage = zbEntryService.searchZbEntries(request, pageable);
         return ResponseEntity.ok(ApiResponse.success(responsePage, "ZbEntry search completed successfully"));
+    }
+
+    @PostMapping("/bulk-save")
+    @Operation(summary = "Bulk Save ZbEntries", description = "Upsert a list of ZbEntries for a given company. If ID is 0 or null, it inserts a new record. If ID > 0, it updates the existing record.")
+    @PermitAll
+    public ResponseEntity<ApiResponse<Void>> bulkSaveZbEntries(@RequestBody @Valid ZbEntryBulkSaveRequest request) {
+        zbEntryService.bulkSaveZbEntries(request);
+        return ResponseEntity.ok(ApiResponse.success(null, "Saved Successfully"));
     }
 }

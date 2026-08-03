@@ -40,19 +40,38 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
     List<RTIJobLookupDto> findRTIJobLookupByCompanyRefIdAndJobNo(@Param("companyRefId") Integer companyRefId, @Param("jobNo") String jobNo);
 
     @Query(value = """
-        SELECT 
-            CAST(COALESCE(ETA, ETB) AS DATE) AS activityDate,
-            Loadingvesselname AS vesselName,
-            'LOADING' AS activityType,
-            COUNT(Id) AS jobCount,
-            STRING_AGG(CNumberDisplay, ', ') AS cNumbers,
-            SPort AS portName,
-            MAX(ETA) AS eta,
-            MAX(ETB) AS etb,
-            CAST(NULL AS DATETIME) AS oeta,
-            CAST(NULL AS DATETIME) AS oetb
-        FROM 
-            SaleOrderMaster
+        SELECT g.*,
+            (
+                SELECT STRING_AGG(Emp.EmployeeName, ', ')
+                FROM (
+                    SELECT DISTINCT e.EmployeeName
+                    FROM SaleOrderMaster s2
+                    CROSS APPLY (
+                        VALUES (s2.LBoardingOfficerRefid), (s2.LBoardingOfficer1Refid), (s2.LBoardingOfficer2Refid)
+                    ) AS BO(EmpId)
+                    JOIN EmployeeMaster e ON e.Id = BO.EmpId
+                    WHERE 
+                        s2.CompanyRefId = :companyRefId
+                        AND s2.Loadingvesselname = g.vesselName
+                        AND s2.SPort = g.portName
+                        AND CAST(COALESCE(s2.ETA, s2.ETB) AS DATE) = g.activityDate
+                        AND s2.Active != 2
+                ) Emp
+            ) AS boardingOfficers
+        FROM (
+            SELECT 
+                CAST(COALESCE(ETA, ETB) AS DATE) AS activityDate,
+                Loadingvesselname AS vesselName,
+                'LOADING' AS activityType,
+                COUNT(Id) AS jobCount,
+                STRING_AGG(CNumberDisplay, ', ') AS cNumbers,
+                SPort AS portName,
+                MAX(ETA) AS eta,
+                MAX(ETB) AS etb,
+                CAST(NULL AS DATETIME) AS oeta,
+                CAST(NULL AS DATETIME) AS oetb
+            FROM 
+                SaleOrderMaster
         WHERE 
             CompanyRefId = :companyRefId
             AND Loadingvesselname IS NOT NULL 
@@ -66,22 +85,42 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             CAST(COALESCE(ETA, ETB) AS DATE),
             Loadingvesselname,
             SPort
+        ) g
 
         UNION ALL
 
-        SELECT 
-            CAST(COALESCE(OETA, OETB) AS DATE) AS activityDate,
-            Offvesselname AS vesselName,
-            'OFFLOADING' AS activityType,
-            COUNT(Id) AS jobCount,
-            STRING_AGG(CNumberDisplay, ', ') AS cNumbers,
-            OPort AS portName,
-            CAST(NULL AS DATETIME) AS eta,
-            CAST(NULL AS DATETIME) AS etb,
-            MAX(OETA) AS oeta,
-            MAX(OETB) AS oetb
-        FROM 
-            SaleOrderMaster
+        SELECT g.*,
+            (
+                SELECT STRING_AGG(Emp.EmployeeName, ', ')
+                FROM (
+                    SELECT DISTINCT e.EmployeeName
+                    FROM SaleOrderMaster s2
+                    CROSS APPLY (
+                        VALUES (s2.OBoardingOfficerRefid), (s2.OBoardingOfficer1Refid), (s2.OBoardingOfficer2Refid)
+                    ) AS BO(EmpId)
+                    JOIN EmployeeMaster e ON e.Id = BO.EmpId
+                    WHERE 
+                        s2.CompanyRefId = :companyRefId
+                        AND s2.Offvesselname = g.vesselName
+                        AND s2.OPort = g.portName
+                        AND CAST(COALESCE(s2.OETA, s2.OETB) AS DATE) = g.activityDate
+                        AND s2.Active != 2
+                ) Emp
+            ) AS boardingOfficers
+        FROM (
+            SELECT 
+                CAST(COALESCE(OETA, OETB) AS DATE) AS activityDate,
+                Offvesselname AS vesselName,
+                'OFFLOADING' AS activityType,
+                COUNT(Id) AS jobCount,
+                STRING_AGG(CNumberDisplay, ', ') AS cNumbers,
+                OPort AS portName,
+                CAST(NULL AS DATETIME) AS eta,
+                CAST(NULL AS DATETIME) AS etb,
+                MAX(OETA) AS oeta,
+                MAX(OETB) AS oetb
+            FROM 
+                SaleOrderMaster
         WHERE 
             CompanyRefId = :companyRefId
             AND Offvesselname IS NOT NULL 
@@ -95,6 +134,7 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             CAST(COALESCE(OETA, OETB) AS DATE),
             Offvesselname,
             OPort
+        ) g
 
         ORDER BY 
             activityDate ASC, 
@@ -102,6 +142,32 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             activityType ASC
         """, nativeQuery = true)
     List<VesselActivityReportProjection> getVesselActivityReport(@Param("companyRefId") Integer companyRefId, @Param("fromDate") String fromDate, @Param("toDate") String toDate, @Param("portName") String portName);
+
+    Optional<SaleOrderMaster> findByIdAndCompanyRefId(Integer id, Integer companyRefId);
+
+    @Query("""
+        SELECT s, c.customerName
+        FROM SaleOrderMaster s
+        LEFT JOIN my.maleva.api.module.customer.entity.Customer c ON s.customerRefId = c.id
+        WHERE s.companyRefId = :companyId
+          AND (
+               :referenceStatus = 1 
+               OR (:referenceStatus = 2 AND s.remarks IS NOT NULL AND TRIM(s.remarks) <> '') 
+               OR (:referenceStatus = 0 AND (s.remarks IS NULL OR TRIM(s.remarks) = ''))
+          )
+          AND s.saleDate >= :fromDate
+          AND s.saleDate < :toDate
+          AND (:customerRefId IS NULL OR :customerRefId = 0 OR s.customerRefId = :customerRefId)
+          AND s.active = 1
+        ORDER BY s.saleDate ASC
+    """)
+    List<Object[]> findJobsWithMissingRemarks(
+        @Param("companyId") Integer companyId, 
+        @Param("fromDate") java.time.LocalDateTime fromDate, 
+        @Param("toDate") java.time.LocalDateTime toDate,
+        @Param("customerRefId") Integer customerRefId,
+        @Param("referenceStatus") Integer referenceStatus
+    );
 
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN TRUE ELSE FALSE END FROM SaleOrderMaster s WHERE s.companyRefId = :companyRefId AND s.cNumber = :cNumber")
     boolean existsByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);

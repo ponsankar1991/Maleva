@@ -1,9 +1,12 @@
 package my.maleva.api.module.zbentry.mapper;
 
 import my.maleva.api.module.zbentry.dto.ZbEntryResponse;
+import my.maleva.api.module.zbentry.dto.ZbEntrySaveRequest;
 import my.maleva.api.module.zbentry.entity.ZbEntry;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 
 import java.math.BigDecimal;
@@ -19,6 +22,15 @@ public interface ZbEntryMapper {
     @Mapping(target = "entryDate", source = "entryDate", qualifiedByName = "stringToLocalDate")
     @Mapping(target = "amount", source = "amount", qualifiedByName = "stringToBigDecimal")
     ZbEntryResponse toDto(ZbEntry entity);
+
+    // Keep fields as String matching the Entity definitions
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "companyRefId", ignore = true)
+    ZbEntry toEntity(ZbEntrySaveRequest request);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "companyRefId", ignore = true)
+    void updateEntity(@MappingTarget ZbEntry entity, ZbEntrySaveRequest request);
 
     @Named("stringToLocalDate")
     default LocalDate stringToLocalDate(String dateStr) {
