@@ -195,6 +195,43 @@ public class SaleOrderMasterController {
     }
 
     /**
+     * Bulk Update Remarks for Sale Orders
+     * PUT /api/sale-orders/remarks
+     *
+     * Updates the remarks field for multiple SaleOrderMaster records.
+     *
+     * @param updateDtos List of SaleOrderRemarksUpdateDto
+     * @return ApiResponse with success status and message
+     */
+    @Operation(
+            summary = "Bulk Update Remarks for Sale Orders",
+            description = "Updates the remarks field for multiple SaleOrderMaster records."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Remarks updated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation error in request body"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "One or more sale orders not found")
+    })
+    @PutMapping("/remarks")
+    public ResponseEntity<ApiResponse<Void>> updateRemarksBulk(
+            @Parameter(description = "List of payloads containing new remarks, ID, and company ID", required = true)
+            @Valid @RequestBody List<my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto> updateDtos) {
+        
+        logger.info("Bulk update remarks request received for {} items", updateDtos.size());
+        
+        try {
+            service.updateRemarksBulk(updateDtos);
+            
+            logger.info("Bulk remarks updated successfully");
+            return ResponseEntity.ok(ApiResponse.success(null, "Remarks updated successfully"));
+        } catch (EntityNotFoundException ex) {
+            logger.error("Error bulk updating remarks: {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(ex.getMessage(), HttpStatus.NOT_FOUND.value()));
+        }
+    }
+
+    /**
      * Update Job Status for a Sale Order
      * PUT /api/sale-orders/{id}/job-status
      * POST /api/sale-orders/update-job-status?id={id}

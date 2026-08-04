@@ -187,6 +187,21 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         entity.setRemarks(request.getRemarks());
         repository.save(entity);
     }
+    
+    @Override
+    @Transactional
+    public void updateRemarksBulk(java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return;
+        }
+        for (my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto request : requests) {
+            SaleOrderMaster entity = repository.findByIdAndCompanyRefId(request.getId(), request.getCompanyRefId())
+                    .orElseThrow(() -> new EntityNotFoundException("SaleOrderMaster not found for id: " + request.getId()));
+            
+            entity.setRemarks(request.getRemarks());
+            repository.save(entity);
+        }
+    }
 
     @Override
     public SaleOrderEditDto getEditSaleOrder(Integer id, Integer saleOrderNo, Integer companyId) {

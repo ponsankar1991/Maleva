@@ -19,7 +19,8 @@ public enum UserRoles {
     TRANSPORTATION(1000),
     PAYABLE(1100),
     RECEIVABLE(1200),
-    MAINTENANCE(1300);
+    MAINTENANCE(1300),
+    FowardingAgent (1400);
 
 
 

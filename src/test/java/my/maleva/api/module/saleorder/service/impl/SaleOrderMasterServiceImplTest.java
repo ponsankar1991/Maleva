@@ -67,6 +67,39 @@ class SaleOrderMasterServiceImplTest {
         verify(repository, times(1)).save(entity);
     }
 
+
+    @Test
+    void updateRemarksBulk_Success() {
+        // Arrange
+        SaleOrderRemarksUpdateDto req1 = new SaleOrderRemarksUpdateDto();
+        req1.setId(1);
+        req1.setCompanyRefId(6);
+        req1.setRemarks("Remark 1");
+
+        SaleOrderRemarksUpdateDto req2 = new SaleOrderRemarksUpdateDto();
+        req2.setId(2);
+        req2.setCompanyRefId(6);
+        req2.setRemarks("Remark 2");
+        
+        SaleOrderMaster entity2 = new SaleOrderMaster();
+        entity2.setId(2);
+        entity2.setCompanyRefId(6);
+
+        when(repository.findByIdAndCompanyRefId(1, 6)).thenReturn(Optional.of(entity));
+        when(repository.findByIdAndCompanyRefId(2, 6)).thenReturn(Optional.of(entity2));
+        
+        // Act
+        service.updateRemarksBulk(java.util.Arrays.asList(req1, req2));
+
+        // Assert
+        assertEquals("Remark 1", entity.getRemarks());
+        assertEquals("Remark 2", entity2.getRemarks());
+        verify(repository, times(1)).findByIdAndCompanyRefId(1, 6);
+        verify(repository, times(1)).findByIdAndCompanyRefId(2, 6);
+        verify(repository, times(1)).save(entity);
+        verify(repository, times(1)).save(entity2);
+    }
+
     @Test
     void updateRemarks_NotFound_ThrowsEntityNotFoundException() {
         // Arrange

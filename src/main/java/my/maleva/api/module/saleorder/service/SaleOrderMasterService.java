@@ -23,6 +23,8 @@ public interface SaleOrderMasterService {
 
     SaleOrderMasterDto updateMaster(Integer id, SaleOrderMasterDto dto);
     void updateRemarks(my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto request);
+    
+    void updateRemarksBulk(java.util.List<my.maleva.api.module.saleorder.dto.SaleOrderRemarksUpdateDto> requests);
 
 
     SaleOrderStatusUpdateDto updateStatus(Integer id, Integer companyId, Integer jobStatusId);
