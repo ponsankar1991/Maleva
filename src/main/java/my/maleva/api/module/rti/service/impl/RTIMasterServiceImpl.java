@@ -50,6 +50,12 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     private my.maleva.api.module.rti.mapper.RTIDetailsMapper rtiDetailsMapper;
 
     @Autowired
+    private my.maleva.api.module.rti.repository.RTIRouteActivitiesRepository rtiRouteActivitiesRepository;
+
+    @Autowired
+    private my.maleva.api.module.rti.mapper.RTIRouteActivitiesMapper rtiRouteActivitiesMapper;
+
+    @Autowired
     private CustomerRepository customerRepository;
 
     @Autowired
@@ -148,7 +154,12 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     public Optional<RTIMasterDto> getById(Integer id) {
         logger.info("Fetching RTIMaster by ID: {}", id);
         return rtiMasterRepository.findById(id)
-                .map(mapper::toDto);
+                .map(entity -> {
+                    RTIMasterDto dto = mapper.toDto(entity);
+                    List<my.maleva.api.module.rti.entity.RTIRouteActivities> activities = rtiRouteActivitiesRepository.findByRtiMasterRefIdOrderBySequenceNoAsc(id);
+                    dto.setRouteActivities(activities.stream().map(rtiRouteActivitiesMapper::toDto).collect(Collectors.toList()));
+                    return dto;
+                });
     }
 
     @Override
@@ -282,8 +293,22 @@ public class RTIMasterServiceImpl implements RTIMasterService {
             }
         }
 
+        List<my.maleva.api.module.rti.dto.RTIRouteActivitiesDto> savedRouteActivitiesDto = new java.util.ArrayList<>();
+        if (dto.getRouteActivities() != null && !dto.getRouteActivities().isEmpty()) {
+            for (my.maleva.api.module.rti.dto.RTIRouteActivitiesDto activityDto : dto.getRouteActivities()) {
+                my.maleva.api.module.rti.entity.RTIRouteActivities activityEntity = rtiRouteActivitiesMapper.toEntity(activityDto);
+                activityEntity.setId(null);
+                activityEntity.setRtiMasterRefId(saved.getId());
+                activityEntity.setCompanyRefId(dto.getCompanyRefId()); // Ensure CompanyRefId is mapped
+                my.maleva.api.module.rti.entity.RTIRouteActivities savedActivity = rtiRouteActivitiesRepository.save(activityEntity);
+                logger.info("Saved route activity: {} at sequence: {} for RTIMasterRefId: {}", savedActivity.getLocationName(), savedActivity.getSequenceNo(), savedActivity.getRtiMasterRefId());
+                savedRouteActivitiesDto.add(rtiRouteActivitiesMapper.toDto(savedActivity));
+            }
+        }
+
         RTIMasterDto result = mapper.toDto(saved);
         result.setRtiDetails(savedDetailsDto);
+        result.setRouteActivities(savedRouteActivitiesDto);
         return result;
     }
 
@@ -353,8 +378,23 @@ public class RTIMasterServiceImpl implements RTIMasterService {
             }
         }
 
+        List<my.maleva.api.module.rti.dto.RTIRouteActivitiesDto> savedRouteActivitiesDto = new java.util.ArrayList<>();
+        if (dto.getRouteActivities() != null) {
+            rtiRouteActivitiesRepository.deleteByRtiMasterRefId(updated.getId());
+            for (my.maleva.api.module.rti.dto.RTIRouteActivitiesDto activityDto : dto.getRouteActivities()) {
+                my.maleva.api.module.rti.entity.RTIRouteActivities activityEntity = rtiRouteActivitiesMapper.toEntity(activityDto);
+                activityEntity.setId(null);
+                activityEntity.setRtiMasterRefId(updated.getId());
+                activityEntity.setCompanyRefId(dto.getCompanyRefId());
+                my.maleva.api.module.rti.entity.RTIRouteActivities savedActivity = rtiRouteActivitiesRepository.save(activityEntity);
+                logger.info("Saved route activity (during update): {} at sequence: {} for RTIMasterRefId: {}", savedActivity.getLocationName(), savedActivity.getSequenceNo(), savedActivity.getRtiMasterRefId());
+                savedRouteActivitiesDto.add(rtiRouteActivitiesMapper.toDto(savedActivity));
+            }
+        }
+
         RTIMasterDto result = mapper.toDto(updated);
         result.setRtiDetails(savedDetailsDto);
+        result.setRouteActivities(savedRouteActivitiesDto);
         return result;
     }
 
@@ -652,6 +692,14 @@ public class RTIMasterServiceImpl implements RTIMasterService {
         }
 
         masterDto.setRtiDetails(detailDtos);
+
+        // Fetch route activities for revise
+        List<my.maleva.api.module.rti.entity.RTIRouteActivities> activities = rtiRouteActivitiesRepository.findByRtiMasterRefIdOrderBySequenceNoAsc(source.getId());
+        List<my.maleva.api.module.rti.dto.RTIRouteActivitiesDto> activityDtos = activities.stream()
+                .map(rtiRouteActivitiesMapper::toDto)
+                .collect(java.util.stream.Collectors.toList());
+        masterDto.setRouteActivities(activityDtos);
+
         return masterDto;
     }
 

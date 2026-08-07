@@ -46,5 +46,4 @@ public enum UserRoles {
     public String toString() {
         return name() + "(" + roleId + ")";
     }
-
 }

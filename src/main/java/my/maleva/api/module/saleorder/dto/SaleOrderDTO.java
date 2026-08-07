@@ -239,6 +239,14 @@ public class SaleOrderDTO {
 
 
 
+    @JsonProperty("oBoardingOfficerRefid")
+    @JsonAlias({"OBoardingOfficerRefid", "OBoardingOfficerRefId", "oBoardingOfficerRefId"})
+    private Integer oBoardingOfficerRefid;
+
+    @JsonProperty("oBoardingOfficer1Refid")
+    @JsonAlias({"OBoardingOfficer1Refid", "OBoardingOfficer1RefId", "oBoardingOfficer1RefId"})
+    private Integer oBoardingOfficer1Refid;
+
     @Size(max = 100)
     private String oBoardingAmount;
 

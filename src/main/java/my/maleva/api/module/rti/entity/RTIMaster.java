@@ -149,6 +149,12 @@ public class RTIMaster {
     @Column(name = "DocumentSub")
     private Integer documentSub;
 
+    @Column(name = "OutsideDriver", length = 255)
+    private String outsideDriver;
+
+    @Column(name = "OutsideTruck", length = 255)
+    private String outsideTruck;
+
     @OneToMany(mappedBy = "rtiMaster", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<RTIDetails> rtiDetails;
 

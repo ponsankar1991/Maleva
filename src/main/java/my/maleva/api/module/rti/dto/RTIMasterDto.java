@@ -119,6 +119,15 @@ public class RTIMasterDto {
 
     private Integer documentSub;
 
+    @Size(max = 255, message = "Outside Driver cannot exceed 255 characters")
+    private String outsideDriver;
+
+    @Size(max = 255, message = "Outside Truck cannot exceed 255 characters")
+    private String outsideTruck;
+
     private List<RTIDetailsDto> rtiDetails;
+
+
+    private List<RTIRouteActivitiesDto> routeActivities;
 }
 
