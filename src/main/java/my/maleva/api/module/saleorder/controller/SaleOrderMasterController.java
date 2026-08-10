@@ -16,6 +16,8 @@ import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -35,9 +37,11 @@ public class SaleOrderMasterController {
     private static final Logger logger = LoggerFactory.getLogger(SaleOrderMasterController.class);
 
     private final SaleOrderMasterService service;
+    private final ObjectMapper objectMapper;
 
     public SaleOrderMasterController(SaleOrderMasterService service) {
         this.service = service;
+        this.objectMapper = new ObjectMapper();
     }
 
     @GetMapping("/{id}")
@@ -88,6 +92,13 @@ public class SaleOrderMasterController {
                                                                   @Valid @RequestBody SaleOrderDTO dto) {
         logger.info("Update SaleOrder aggregate request received - id: {}, company: {}, customer: {}",
                 id, dto.getCompanyRefId(), dto.getCustomerRefId());
+        
+        try {
+            String jsonPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dto);
+            logger.error("DEBUG PAYLOAD JSON for PUT /api/sale-orders/{}:\n{}", id, jsonPayload);
+        } catch (Exception e) {
+            logger.error("Could not serialize payload to JSON: {}", e.getMessage());
+        }
 
         return ResponseEntity.ok(ApiResponse.success(service.update(id, dto), SaleOrderApiConstants.MESSAGE_UPDATE_SUCCESS
         ));

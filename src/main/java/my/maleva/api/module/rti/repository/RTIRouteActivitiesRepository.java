@@ -35,7 +35,10 @@ public interface RTIRouteActivitiesRepository extends JpaRepository<RTIRouteActi
             LTRIM(RTRIM(UPPER(RA.LocationName))) AS port,
             RA.Remarks AS remarks,
             RA.FullRoute AS fullRoute,
-            RA.MarqisStatus AS marqisStatus
+            RA.MarqisStatus AS marqisStatus,
+            RM.CNumber AS cNumber,
+            RM.SaleDate AS saleDate,
+            RM.Id as RtiId
         FROM RTIRouteActivities RA
         INNER JOIN RTIMaster RM ON RA.RTIMasterRefId = RM.Id
         LEFT JOIN SaleOrderMaster SOM ON RM.CNumber = SOM.CNumber AND RM.CompanyRefId = SOM.CompanyRefId

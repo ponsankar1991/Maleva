@@ -792,6 +792,17 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
             checkPendingPortCharges(entity, targetStatusId, targetStatusName);
         }
 
+        // Manually allow clearing of boarding officers if the frontend sends null
+        if (dto.getBoardingOfficerRefid() == null) entity.setBoardingOfficerRefid(null);
+        if (dto.getBoardingOfficer1Refid() == null) entity.setBoardingOfficer1Refid(null);
+        if (dto.getBoardingOfficer2Refid() == null) entity.setBoardingOfficer2Refid(null);
+        if (dto.getLBoardingOfficerRefid() == null) entity.setLBoardingOfficerRefid(null);
+        if (dto.getLBoardingOfficer1Refid() == null) entity.setLBoardingOfficer1Refid(null);
+        if (dto.getLBoardingOfficer2Refid() == null) entity.setLBoardingOfficer2Refid(null);
+        if (dto.getOBoardingOfficerRefid() == null) entity.setOBoardingOfficerRefid(null);
+        if (dto.getOBoardingOfficer1Refid() == null) entity.setOBoardingOfficer1Refid(null);
+        if (dto.getOBoardingOfficer2Refid() == null) entity.setOBoardingOfficer2Refid(null);
+
         // Manually allow clearing of dates if the frontend sends null or empty strings
         if (dto.getEta() == null || dto.getEta().trim().isEmpty()) entity.setEta(null);
         if (dto.getEtb() == null || dto.getEtb().trim().isEmpty()) entity.setEtb(null);
