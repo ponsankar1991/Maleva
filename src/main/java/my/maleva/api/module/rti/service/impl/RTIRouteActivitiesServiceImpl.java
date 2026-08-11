@@ -1,7 +1,9 @@
 package my.maleva.api.module.rti.service.impl;
 
 import my.maleva.api.module.rti.dto.RTIRouteActivitiesDto;
+import my.maleva.api.module.rti.entity.RTIMaster;
 import my.maleva.api.module.rti.mapper.RTIRouteActivitiesMapper;
+import my.maleva.api.module.rti.repository.RTIMasterRepository;
 import my.maleva.api.module.rti.repository.RTIRouteActivitiesRepository;
 import my.maleva.api.module.rti.service.RTIRouteActivitiesService;
 import org.slf4j.Logger;
@@ -22,15 +24,31 @@ public class RTIRouteActivitiesServiceImpl implements RTIRouteActivitiesService 
     private RTIRouteActivitiesRepository repository;
 
     @Autowired
+    private RTIMasterRepository rtiMasterRepository;
+
+    @Autowired
     private RTIRouteActivitiesMapper mapper;
 
     @Override
     @Transactional(readOnly = true)
     public List<RTIRouteActivitiesDto> getByRtiMasterId(Integer rtiMasterRefId) {
         logger.info("Fetching RTIRouteActivities for RTIMaster: {}", rtiMasterRefId);
-        return repository.findByRtiMasterRefIdOrderBySequenceNoAsc(rtiMasterRefId)
+        
+        RTIMaster rtiMaster = rtiMasterRepository.findById(rtiMasterRefId).orElse(null);
+        
+        List<RTIRouteActivitiesDto> dtos = repository.findByRtiMasterRefIdOrderBySequenceNoAsc(rtiMasterRefId)
                 .stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
+                
+        if (rtiMaster != null) {
+            for (RTIRouteActivitiesDto dto : dtos) {
+                dto.setRtiId(rtiMaster.getId());
+                dto.setCNumber(rtiMaster.getCNumber());
+                dto.setRtinumber(rtiMaster.getCNumberDisplay());
+            }
+        }
+        
+        return dtos;
     }
 }

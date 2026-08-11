@@ -3941,42 +3941,6 @@
                     "response": []
                 },
                 {
-                    "name": "Get RTI Route Activities by Master ID",
-                    "request": {
-                        "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{token}}",
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json",
-                                "type": "text"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/api/rti-route-activities/rti-master/11378",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "api",
-                                "rti-route-activities",
-                                "rti-master",
-                                "11378"
-                            ]
-                        }
-                    },
-                    "response": []
-                },
-                {
                     "name": "Update RTI with Route Activities",
                     "request": {
                         "auth": {
@@ -4015,6 +3979,32 @@
                                 "api",
                                 "sale-orders",
                                 "11378"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get RTI Route Activities by Master ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/rti-route-activities/rti-master/14",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "rti-route-activities",
+                                "rti-master",
+                                "14"
                             ]
                         }
                     },
@@ -4753,7 +4743,7 @@
             "name": "Planning",
             "item": [
                 {
-                    "name": "Get Forwarding Planning",
+                    "name": "Get Forwarding Planning Report",
                     "request": {
                         "method": "GET",
                         "header": [
@@ -4764,7 +4754,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/planning/reports/forwarding-port-klang?companyRefId=1&fromDate=2026-08-01&toDate=2026-08-10",
+                            "raw": "{{base_url}}/api/planning/reports/forwarding?companyRefId=6&fromDate=2026-08-01&toDate=2026-08-10",
                             "host": [
                                 "{{base_url}}"
                             ],
@@ -4772,12 +4762,12 @@
                                 "api",
                                 "planning",
                                 "reports",
-                                "forwarding-port-klang"
+                                "forwarding"
                             ],
                             "query": [
                                 {
                                     "key": "companyRefId",
-                                    "value": "1"
+                                    "value": "6"
                                 },
                                 {
                                     "key": "fromDate",

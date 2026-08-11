@@ -23,6 +23,9 @@ public class RTIRouteActivitiesDto {
     private LocalDateTime plannedDateTime;
     private LocalDateTime eta;
     private String remarks;
+    private Integer rtiId;
+    private Integer cNumber;
+    private String rtinumber;
     private String fullRoute;
     private String driverNumber;
     private Integer marqisStatus;

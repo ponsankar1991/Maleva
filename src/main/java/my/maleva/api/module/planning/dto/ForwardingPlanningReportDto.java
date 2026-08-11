@@ -23,4 +23,9 @@ public class ForwardingPlanningReportDto {
     private String remarks;
     private String fullRoute;
     private Integer marqisStatus;
+    
+    // Additional RTIMaster fields
+    private Integer rtiId;
+    private Integer cNumber;
+    private String rtinumber;
 }

@@ -37,6 +37,7 @@ public interface RTIRouteActivitiesRepository extends JpaRepository<RTIRouteActi
             RA.FullRoute AS fullRoute,
             RA.MarqisStatus AS marqisStatus,
             RM.CNumber AS cNumber,
+            RM.CNumberDisplay as rtinumber,
             RM.SaleDate AS saleDate,
             RM.Id as RtiId
         FROM RTIRouteActivities RA

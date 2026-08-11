@@ -64,6 +64,11 @@ public class ForwardingPlanningServiceImpl implements ForwardingPlanningService 
             String remarks = row[9] != null ? row[9].toString() : null;
             String fullRoute = row[10] != null ? row[10].toString() : null;
             Integer marqisStatus = row[11] != null ? Integer.valueOf(row[11].toString()) : null;
+            
+            Integer cNumber = row[12] != null ? Integer.valueOf(row[12].toString()) : null;
+            String rtinumber = row[13] != null ? row[13].toString() : null;
+            // row[14] is saleDate (skip for now)
+            Integer rtiId = row[15] != null ? Integer.valueOf(row[15].toString()) : null;
 
             report.add(ForwardingPlanningReportDto.builder()
                     .lorryNo(lorryNo)
@@ -78,6 +83,9 @@ public class ForwardingPlanningServiceImpl implements ForwardingPlanningService 
                     .remarks(remarks)
                     .fullRoute(fullRoute)
                     .marqisStatus(marqisStatus)
+                    .cNumber(cNumber)
+                    .rtinumber(rtinumber)
+                    .rtiId(rtiId)
                     .build());
         }
 
