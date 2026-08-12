@@ -1323,7 +1323,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                 filter.getFromdate(),
                 filter.getTodate(),
                 filter.getPickup(),
-                filter.getInvoicecheck()
+                filter.getInvoicecheck(),
+                filter.getPortName()
         );
     }
 

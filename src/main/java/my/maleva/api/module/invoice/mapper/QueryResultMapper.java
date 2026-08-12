@@ -86,6 +86,10 @@ public abstract class QueryResultMapper {
             vm.setQneCode(toString(row[31]));
             vm.setQneId(toString(row[32]));
 
+            // Column 33-34 - Quantity and TotalWeight
+            if (row.length > 33) vm.setQuantity(toString(row[33]));
+            if (row.length > 34) vm.setTotalWeight(toString(row[34]));
+
         } catch (Exception e) {
             return null;
         }

@@ -32,7 +32,7 @@ public class SaleOrderSpecification {
             Integer jobId, Integer employeeId, Integer dashboardStatus, String statusList, Integer statusId,
             Boolean completeStatusNotShow, Integer remarks, String offVesselName, String loadingVesselName,
             String search, Boolean invoice, Boolean eta, Integer etaType, LocalDate fromDate,
-            LocalDate toDate, Boolean pickup, Boolean invoiceCheck) {
+            LocalDate toDate, Boolean pickup, Boolean invoiceCheck, String portName) {
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -221,6 +221,14 @@ public class SaleOrderSpecification {
                                 cb.isNull(root.get("invoiceNo"))
                         )
                 );
+            }
+
+            // Port Name filter (SPort OR OPort)
+            if (portName != null && !portName.trim().isEmpty()) {
+                predicates.add(cb.or(
+                        cb.equal(root.get("sPort"), portName),
+                        cb.equal(root.get("oPort"), portName)
+                ));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

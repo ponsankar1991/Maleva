@@ -429,4 +429,35 @@ public class EmployeeMasterService {
             employeeCapabilityRepository.save(ec);
         }
     }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeMasterDto> getAllEmployeeDetails(Integer companyId) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("Company ID is required");
+        }
+
+        List<EmployeeMaster> results = repository.findByCompanyRefIdAndActive(companyId, 1);
+        List<EmployeeMasterDto> dtos = results.stream().map(mapper::toDto).collect(Collectors.toList());
+
+        // Optimize N+1 Query Problem: Collect all AccountRefid and fetch at once
+        List<Integer> accountRefIds = results.stream()
+                .map(EmployeeMaster::getAccountRefid)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (!accountRefIds.isEmpty()) {
+            java.util.Map<Integer, String> accountMap = accountsGroupMasterRepository.findByIdInAndCompanyRefId(accountRefIds, companyId)
+                    .stream()
+                    .collect(Collectors.toMap(my.maleva.api.module.accountsgroupmaster.entity.AccountsGroupMaster::getId, my.maleva.api.module.accountsgroupmaster.entity.AccountsGroupMaster::getAccountCode));
+
+            for (EmployeeMasterDto dto : dtos) {
+                if (dto.getAccountRefid() != null && accountMap.containsKey(dto.getAccountRefid())) {
+                    dto.setAccountCode(accountMap.get(dto.getAccountRefid()));
+                }
+            }
+        }
+
+        return dtos;
+    }
 }

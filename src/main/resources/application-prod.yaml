@@ -1,6 +1,9 @@
 spring:
   application:
     name: Maleva Production
+  jackson:
+    time-zone: Asia/Kuala_Lumpur
+    date-format: dd/MM/yyyy
   autoconfigure:
     exclude:
   # Disable Spring Boot Docker Compose dev-services so the app runs standalone
@@ -71,7 +74,7 @@ spring:
           provider_disables_autocommit: true
 
 server:
-  port: 8083
+  port: 8082
   servlet:
     multipart:
       max-file-size: 10MB

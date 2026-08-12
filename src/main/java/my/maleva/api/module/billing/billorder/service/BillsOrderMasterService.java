@@ -776,8 +776,8 @@ public class BillsOrderMasterService {
 
             List<BillsOrderMasterViewDto> masterList = masterRows.stream().map(row ->
                     BillsOrderMasterViewDto.builder()
-                            .id(((Number) row.get("Id")).intValue())
-                            .pStatus(((Number) row.get("PStatus")).intValue())
+                            .id(row.get("Id") != null ? ((Number) row.get("Id")).intValue() : 0)
+                            .pStatus(row.get("PStatus") != null ? ((Number) row.get("PStatus")).intValue() : 0)
                             .employeeName((String) row.get("EmployeeName"))
                             .billDate((String) row.get("BillDate"))
                             .invoiceNo((String) row.get("InvoiceNo"))
@@ -787,14 +787,14 @@ public class BillsOrderMasterService {
                             .supplierName((String) row.get("SupplierName"))
                             .netAmt(row.get("NetAmt") != null ? ((Number) row.get("NetAmt")).floatValue() : 0f)
                             .saleType((String) row.get("SaleType"))
-                            .billNo(((Number) row.get("BillNo")).intValue())
+                            .billNo(row.get("BillNo") != null ? ((Number) row.get("BillNo")).intValue() : 0)
                             .truckName((String) row.get("TruckName"))
                             .driverName((String) row.get("DriverName"))
                             .billNoDisplay1((String) row.get("BillNoDisplay1"))
                             .billStatus((String) row.get("BillStatus"))
                             .payTo((String) row.get("PayTo"))
                             .description((String) row.get("Description"))
-                            .fileupload(((Number) row.get("Fileupload")).intValue())
+                            .fileupload(row.get("Fileupload") != null ? ((Number) row.get("Fileupload")).intValue() : 0)
                             .build()
             ).collect(Collectors.toList());
 
@@ -810,7 +810,7 @@ public class BillsOrderMasterService {
                             .mrp(row.get("MRP") != null ? ((Number) row.get("MRP")).floatValue() : 0f)
                             .productName((String) row.get("ProductName"))
                             .saleRate(row.get("SaleRate") != null ? ((Number) row.get("SaleRate")).floatValue() : 0f)
-                            .saleRefId(((Number) row.get("SaleRefId")).intValue())
+                            .saleRefId(row.get("SaleRefId") != null ? ((Number) row.get("SaleRefId")).intValue() : 0)
                             .taxAmt(row.get("TaxAmt") != null ? ((Number) row.get("TaxAmt")).floatValue() : 0f)
                             .taxPercent(row.get("TaxPercent") != null ? ((Number) row.get("TaxPercent")).floatValue() : 0f)
                             .productCode((String) row.get("ProductCode"))

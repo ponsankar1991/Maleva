@@ -264,7 +264,9 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
             "ISNULL(J.Name, '') AS JobStatus, " +                                             // 29
             "ISNULL(SM.CNumberDisplay, '') AS InvoiceNo, " +                                  // 30
             "ISNULL(SM.QNECode, '') AS QNECode, " +                                           // 31
-            "ISNULL(SM.QNEId, '') AS QNEId " +                                                // 32
+            "ISNULL(SM.QNEId, '') AS QNEId, " +                                               // 32
+            "ISNULL(A.Quantity, '') AS Quantity, " +                                          // 33
+            "ISNULL(A.TotalWeight, '') AS TotalWeight " +                                     // 34
             "FROM SaleOrderMaster A WITH(NOLOCK) " +
             "INNER JOIN Customer B WITH(NOLOCK) ON A.CustomerRefId = B.Id " +
             "LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = A.EmployeeRefId " +

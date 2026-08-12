@@ -21,6 +21,12 @@ public class SaleMasterViewModel {
     @JsonProperty("Id")
     private Integer id;
 
+    @JsonProperty("Quantity")
+    private String quantity;
+
+    @JsonProperty("TotalWeight")
+    private String totalWeight;
+
     @JsonProperty("sportsaleorderid")
     private Integer sportsaleorderid;
 

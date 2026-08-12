@@ -167,4 +167,9 @@ public class EmployeeMasterController {
         ApiResponse<String> response = service.bulkUpsertEmployees(employees, companyRefId);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/selectallemployeeDetails")
+    public ResponseEntity<ApiResponse<List<EmployeeMasterDto>>> selectallemployeeDetails(@RequestParam Integer companyId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getAllEmployeeDetails(companyId), "Success"));
+    }
 }

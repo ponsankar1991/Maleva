@@ -77,7 +77,6 @@ public class SaleOrderDeliveryController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
         }
     }
-
     /**
      * Delete SaleOrderDelivery
      * DELETE /api/sale-order-deliveries/{id}
