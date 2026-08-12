@@ -181,4 +181,6 @@ public class DriverMasterDto {
     private String kemamanPortStatus;
 
     private java.time.LocalDate jurongPort;
+    
+    private java.util.List<my.maleva.api.module.leave.dto.response.LeaveRequestResponseDto> leaves;
 }

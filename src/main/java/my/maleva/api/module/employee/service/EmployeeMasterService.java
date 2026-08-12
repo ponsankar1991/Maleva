@@ -26,6 +26,10 @@ import my.maleva.api.module.employee.repository.EmployeeCapabilityRepository;
 import my.maleva.api.module.employee.entity.EmployeeCapability;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.ArrayList;
+import my.maleva.api.module.leave.repository.LeaveRequestRepository;
+import my.maleva.api.module.leave.mapper.LeaveRequestMapper;
+import my.maleva.api.module.leave.dto.response.LeaveRequestResponseDto;
 
 @Service
 @Transactional
@@ -37,14 +41,18 @@ public class EmployeeMasterService {
     private final PasswordEncoder passwordEncoder;
     private final AccountsGroupMasterRepository accountsGroupMasterRepository;
     private final EmployeeCapabilityRepository employeeCapabilityRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final LeaveRequestMapper leaveRequestMapper;
 
-    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, EmployeeAllMapper employeeAllMapper, PasswordEncoder passwordEncoder, AccountsGroupMasterRepository accountsGroupMasterRepository, EmployeeCapabilityRepository employeeCapabilityRepository) {
+    public EmployeeMasterService(EmployeeMasterRepository repository, EmployeeMasterMapper mapper, EmployeeAllMapper employeeAllMapper, PasswordEncoder passwordEncoder, AccountsGroupMasterRepository accountsGroupMasterRepository, EmployeeCapabilityRepository employeeCapabilityRepository, LeaveRequestRepository leaveRequestRepository, LeaveRequestMapper leaveRequestMapper) {
         this.repository = repository;
         this.mapper = mapper;
         this.employeeAllMapper = employeeAllMapper;
         this.passwordEncoder = passwordEncoder;
         this.accountsGroupMasterRepository = accountsGroupMasterRepository;
         this.employeeCapabilityRepository = employeeCapabilityRepository;
+        this.leaveRequestRepository = leaveRequestRepository;
+        this.leaveRequestMapper = leaveRequestMapper;
     }
 
     @CacheEvict(value = "employees", allEntries = true)
@@ -454,6 +462,28 @@ public class EmployeeMasterService {
             for (EmployeeMasterDto dto : dtos) {
                 if (dto.getAccountRefid() != null && accountMap.containsKey(dto.getAccountRefid())) {
                     dto.setAccountCode(accountMap.get(dto.getAccountRefid()));
+                }
+            }
+        }
+
+        // Optimize N+1 Query Problem for Leaves (ApplicantType = 1 for Employee)
+        List<Integer> employeeIds = dtos.stream().map(EmployeeMasterDto::getId).collect(Collectors.toList());
+        if (!employeeIds.isEmpty()) {
+            java.time.LocalDateTime startDate = java.time.LocalDateTime.now().with(java.time.LocalTime.MIN);
+            java.time.LocalDateTime endDate = startDate.plusDays(3).with(java.time.LocalTime.MAX);
+
+            List<my.maleva.api.module.leave.entity.LeaveRequestMaster> leaves = leaveRequestRepository.findOverlappingLeavesForApplicants(1, employeeIds, 1, startDate, endDate);
+            if (!leaves.isEmpty()) {
+                List<LeaveRequestResponseDto> leaveDtos = leaveRequestMapper.toResponseDtoList(leaves);
+                java.util.Map<Integer, List<LeaveRequestResponseDto>> leavesByEmployee = leaveDtos.stream()
+                        .collect(Collectors.groupingBy(LeaveRequestResponseDto::getApplicantRefId));
+                
+                for (EmployeeMasterDto dto : dtos) {
+                    dto.setLeaves(leavesByEmployee.getOrDefault(dto.getId(), new ArrayList<>()));
+                }
+            } else {
+                for (EmployeeMasterDto dto : dtos) {
+                    dto.setLeaves(new ArrayList<>());
                 }
             }
         }

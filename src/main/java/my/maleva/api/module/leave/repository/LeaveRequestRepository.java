@@ -30,4 +30,16 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequestMaster
             @org.springframework.data.repository.query.Param("applicantRefId") Integer applicantRefId,
             @org.springframework.data.repository.query.Param("fromDate") java.time.LocalDateTime fromDate,
             @org.springframework.data.repository.query.Param("toDate") java.time.LocalDateTime toDate);
+            
+    @EntityGraph(attributePaths = {"leaveType", "leaveStatus"})
+    @Query("SELECT lr FROM LeaveRequestMaster lr WHERE lr.active = :active " +
+           "AND lr.applicantType = :applicantType " +
+           "AND lr.applicantRefId IN :applicantRefIds " +
+           "AND lr.fromDate <= :endDate AND lr.toDate >= :startDate")
+    List<LeaveRequestMaster> findOverlappingLeavesForApplicants(
+        @org.springframework.data.repository.query.Param("applicantType") Integer applicantType, 
+        @org.springframework.data.repository.query.Param("applicantRefIds") List<Integer> applicantRefIds, 
+        @org.springframework.data.repository.query.Param("active") Integer active,
+        @org.springframework.data.repository.query.Param("startDate") java.time.LocalDateTime startDate,
+        @org.springframework.data.repository.query.Param("endDate") java.time.LocalDateTime endDate);
 }

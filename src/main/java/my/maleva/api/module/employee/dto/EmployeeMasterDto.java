@@ -167,4 +167,6 @@ public class EmployeeMasterDto {
 
     @Size(max = 255)
     private String employeecurrency;
+    
+    private java.util.List<my.maleva.api.module.leave.dto.response.LeaveRequestResponseDto> leaves;
 }

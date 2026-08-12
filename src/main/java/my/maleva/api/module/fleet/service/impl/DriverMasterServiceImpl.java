@@ -8,6 +8,9 @@ import my.maleva.api.module.fleet.repository.DriverMasterRepository;
 import my.maleva.api.module.fleet.service.DriverMasterService;
 import my.maleva.api.common.exception.EntityNotFoundException;
 import my.maleva.api.module.accountsgroupmaster.repository.AccountsGroupMasterRepository;
+import my.maleva.api.module.leave.repository.LeaveRequestRepository;
+import my.maleva.api.module.leave.mapper.LeaveRequestMapper;
+import my.maleva.api.module.leave.dto.response.LeaveRequestResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,12 +39,16 @@ public class DriverMasterServiceImpl implements DriverMasterService {
     private final DriverMasterMapper mapper;
     private final EntityManager entityManager;
     private final AccountsGroupMasterRepository accountsGroupMasterRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final LeaveRequestMapper leaveRequestMapper;
 
-    public DriverMasterServiceImpl(DriverMasterRepository repository, DriverMasterMapper mapper, EntityManager entityManager, AccountsGroupMasterRepository accountsGroupMasterRepository) {
+    public DriverMasterServiceImpl(DriverMasterRepository repository, DriverMasterMapper mapper, EntityManager entityManager, AccountsGroupMasterRepository accountsGroupMasterRepository, LeaveRequestRepository leaveRequestRepository, LeaveRequestMapper leaveRequestMapper) {
         this.repository = repository;
         this.mapper = mapper;
         this.entityManager = entityManager;
         this.accountsGroupMasterRepository = accountsGroupMasterRepository;
+        this.leaveRequestRepository = leaveRequestRepository;
+        this.leaveRequestMapper = leaveRequestMapper;
     }
 
     @Override
@@ -261,6 +268,28 @@ public class DriverMasterServiceImpl implements DriverMasterService {
             for (DriverMasterDto dto : dtos) {
                 if (dto.getAccountRefid() != null && accountMap.containsKey(dto.getAccountRefid())) {
                     dto.setAccountCode(accountMap.get(dto.getAccountRefid()));
+                }
+            }
+        }
+
+        // Optimize N+1 Query Problem for Leaves
+        List<Integer> driverIds = dtos.stream().map(DriverMasterDto::getId).collect(Collectors.toList());
+        if (!driverIds.isEmpty()) {
+            java.time.LocalDateTime startDate = java.time.LocalDateTime.now().with(java.time.LocalTime.MIN);
+            java.time.LocalDateTime endDate = startDate.plusDays(3).with(java.time.LocalTime.MAX);
+            
+            List<my.maleva.api.module.leave.entity.LeaveRequestMaster> leaves = leaveRequestRepository.findOverlappingLeavesForApplicants(2, driverIds, 1, startDate, endDate);
+            if (!leaves.isEmpty()) {
+                List<LeaveRequestResponseDto> leaveDtos = leaveRequestMapper.toResponseDtoList(leaves);
+                java.util.Map<Integer, List<LeaveRequestResponseDto>> leavesByDriver = leaveDtos.stream()
+                        .collect(Collectors.groupingBy(LeaveRequestResponseDto::getApplicantRefId));
+                
+                for (DriverMasterDto dto : dtos) {
+                    dto.setLeaves(leavesByDriver.getOrDefault(dto.getId(), new ArrayList<>()));
+                }
+            } else {
+                for (DriverMasterDto dto : dtos) {
+                    dto.setLeaves(new ArrayList<>());
                 }
             }
         }
