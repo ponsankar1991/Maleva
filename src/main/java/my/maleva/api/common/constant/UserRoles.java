@@ -20,7 +20,8 @@ public enum UserRoles {
     PAYABLE(1100),
     RECEIVABLE(1200),
     MAINTENANCE(1300),
-    FowardingAgent (1400);
+    FowardingAgent (1400),
+    Fowarding (1500);
 
 
 
