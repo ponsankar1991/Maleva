@@ -401,10 +401,14 @@ public class RTIMasterServiceImpl implements RTIMasterService {
     @Override
     @Transactional
     public boolean delete(Integer id) {
-        logger.info("Deleting RTIMaster with ID: {}", id);
-        if (rtiMasterRepository.existsById(id)) {
-            rtiMasterRepository.deleteById(id);
-            logger.info("RTIMaster deleted with ID: {}", id);
+
+        logger.info("Soft deleting RTIMaster with ID: {}", id);
+        RTIMaster entity = rtiMasterRepository.findById(id).orElse(null);
+        if (entity != null) {
+            entity.setActive(0);
+            entity.setModifiedDate(LocalDateTime.now());
+            rtiMasterRepository.save(entity);
+            logger.info("RTIMaster marked as inactive with ID: {}", id);
             return true;
         }
         logger.warn("RTIMaster not found with ID: {}", id);

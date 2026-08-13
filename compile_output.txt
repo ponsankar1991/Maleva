@@ -1,0 +1,20 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------------< my.maleva:api >----------------------------
+[INFO] Building Maleva 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ api ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.10.1:compile (default-compile) @ api ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 1071 source files to C:\karthickworkspace\malevanew\fulstack\Maleva\target\classes
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:20 min
+[INFO] Finished at: 2026-08-13T15:01:37+08:00
+[INFO] ------------------------------------------------------------------------
