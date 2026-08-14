@@ -72,6 +72,7 @@ public class AgentController {
         try {
             // Validate companyRefId
             if (companyRefId == null || companyRefId <= 0) {
+
                 return ResponseEntity.badRequest()
                         .body(AgentSelectionResponse.failure("CompanyRefId must be a valid positive integer"));
             }

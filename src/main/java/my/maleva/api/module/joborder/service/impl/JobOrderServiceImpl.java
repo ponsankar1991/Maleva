@@ -24,8 +24,6 @@ import my.maleva.api.module.joborder.service.JobOrderService;
 import my.maleva.api.module.master.entity.SequenceNoMaster;
 import my.maleva.api.module.master.repository.SequenceNoMasterRepository;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,37 +51,43 @@ public class JobOrderServiceImpl implements JobOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<JobOrderResponseDto> getJobOrders(JobOrderFilterDto filterDto, Pageable pageable) {
+    public List<JobOrderResponseDto> getJobOrders(JobOrderFilterDto filterDto) {
         Specification<JobOrderMaster> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if (filterDto.getCompanyRefId() != null) {
+            if (filterDto.getCompanyRefId() != null && filterDto.getCompanyRefId() != 0) {
                 predicates.add(cb.equal(root.get("companyRefId"), filterDto.getCompanyRefId()));
             }
-            if (filterDto.getStatusRefId() != null) {
+            if (filterDto.getStatusRefId() != null && filterDto.getStatusRefId() != 0) {
                 predicates.add(cb.equal(root.get("status").get("id"), filterDto.getStatusRefId()));
             }
-            if (filterDto.getJobTypeRefId() != null) {
+            if (filterDto.getJobTypeRefId() != null && filterDto.getJobTypeRefId() != 0) {
                 predicates.add(cb.equal(root.get("jobType").get("id"), filterDto.getJobTypeRefId()));
             }
-            if (filterDto.getPriorityRefId() != null) {
+            if (filterDto.getPriorityRefId() != null && filterDto.getPriorityRefId() != 0) {
                 predicates.add(cb.equal(root.get("priority").get("id"), filterDto.getPriorityRefId()));
             }
-            if (filterDto.getTruckMasterRefId() != null) {
+            if (filterDto.getTruckMasterRefId() != null && filterDto.getTruckMasterRefId() != 0) {
                 predicates.add(cb.equal(root.get("truck").get("id"), filterDto.getTruckMasterRefId()));
             }
             if (filterDto.getFromDate() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("jobDate"), filterDto.getFromDate()));
+                predicates.add(cb.greaterThanOrEqualTo(root.get("jobDate"), filterDto.getFromDate().atStartOfDay()));
             }
             if (filterDto.getToDate() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("jobDate"), filterDto.getToDate()));
+                predicates.add(cb.lessThanOrEqualTo(root.get("jobDate"), filterDto.getToDate().atTime(java.time.LocalTime.MAX)));
+            }
+
+            if (filterDto.getIsActive() != null) {
+                predicates.add(cb.equal(root.get("isActive"), filterDto.getIsActive()));
+            } else {
+                predicates.add(cb.isTrue(root.get("isActive")));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        Page<JobOrderMaster> page = jobOrderMasterRepository.findAll(spec, pageable);
-        return page.map(jobOrderMapper::toDto);
+        List<JobOrderMaster> list = jobOrderMasterRepository.findAll(spec);
+        return list.stream().map(jobOrderMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
@@ -171,7 +175,9 @@ public class JobOrderServiceImpl implements JobOrderService {
     public void deleteJobOrder(Integer id, Integer companyRefId) {
         log.info("Deleting Job Order {} for company {}", id, companyRefId);
         JobOrderMaster entity = findByIdAndCompany(id, companyRefId);
-        jobOrderMasterRepository.delete(entity);
+        entity.setIsActive(false);
+        entity.setModifiedDate(LocalDateTime.now());
+        jobOrderMasterRepository.save(entity);
     }
 
     @Override
@@ -194,6 +200,30 @@ public class JobOrderServiceImpl implements JobOrderService {
                 .jobTypes(types)
                 .priorities(priorities)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JobOrderLookupDto.LookupItem> getStatuses() {
+        return statusRepository.findByIsActiveTrue().stream()
+                .map(s -> new JobOrderLookupDto.LookupItem(s.getId(), s.getStatusName()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JobOrderLookupDto.LookupItem> getJobTypes() {
+        return typeRepository.findByIsActiveTrue().stream()
+                .map(t -> new JobOrderLookupDto.LookupItem(t.getId(), t.getJobTypeName()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JobOrderLookupDto.LookupItem> getPriorities() {
+        return priorityRepository.findByIsActiveTrue().stream()
+                .map(p -> new JobOrderLookupDto.LookupItem(p.getId(), p.getPriorityName()))
+                .collect(Collectors.toList());
     }
 
     private JobOrderMaster findByIdAndCompany(Integer id, Integer companyRefId) {

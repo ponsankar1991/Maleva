@@ -59,4 +59,6 @@ public class JobOrderResponseDto {
     private LocalDateTime createdDate;
     private Integer modifiedBy;
     private LocalDateTime modifiedDate;
+
+    private Boolean isActive;
 }

@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Data
 @Builder
@@ -17,6 +17,7 @@ public class JobOrderFilterDto {
     private Integer jobTypeRefId;
     private Integer priorityRefId;
     private Integer truckMasterRefId;
-    private LocalDateTime fromDate;
-    private LocalDateTime toDate;
+    private LocalDate fromDate;
+    private LocalDate toDate;
+    private Boolean isActive;
 }

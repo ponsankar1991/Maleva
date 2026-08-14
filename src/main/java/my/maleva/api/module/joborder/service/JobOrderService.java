@@ -4,12 +4,11 @@ import my.maleva.api.module.joborder.dto.JobOrderFilterDto;
 import my.maleva.api.module.joborder.dto.JobOrderLookupDto;
 import my.maleva.api.module.joborder.dto.JobOrderRequestDto;
 import my.maleva.api.module.joborder.dto.JobOrderResponseDto;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import java.util.List;
 
 public interface JobOrderService {
 
-    Page<JobOrderResponseDto> getJobOrders(JobOrderFilterDto filterDto, Pageable pageable);
+    List<JobOrderResponseDto> getJobOrders(JobOrderFilterDto filterDto);
 
     JobOrderResponseDto getJobOrderById(Integer id, Integer companyRefId);
 
@@ -20,4 +19,8 @@ public interface JobOrderService {
     void deleteJobOrder(Integer id, Integer companyRefId);
 
     JobOrderLookupDto getLookups();
+
+    List<JobOrderLookupDto.LookupItem> getStatuses();
+    List<JobOrderLookupDto.LookupItem> getJobTypes();
+    List<JobOrderLookupDto.LookupItem> getPriorities();
 }

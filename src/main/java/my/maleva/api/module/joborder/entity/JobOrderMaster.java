@@ -106,4 +106,7 @@ public class JobOrderMaster {
 
     @Column(name = "ModifiedDate")
     private LocalDateTime modifiedDate;
+
+    @Column(name = "IsActive", nullable = false)
+    private Boolean isActive = true;
 }

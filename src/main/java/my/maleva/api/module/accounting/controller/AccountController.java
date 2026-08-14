@@ -20,7 +20,6 @@ public class AccountController extends BaseController<AccountDto, UUID> {
     public AccountController(AccountService accountService) {
         super(accountService, "/api/accounts");
     }
-
     @Override
     protected UUID getId(AccountDto dto) {
         return dto.getId();

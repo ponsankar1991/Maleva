@@ -5020,6 +5020,250 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "Job Order",
+      "item": [
+        {
+          "name": "Get Job Order Lookups",
+          "id": "b8cb085b-0699-4ace-a076-5301354d12ae",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders/lookups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders",
+                "lookups"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Job Order",
+          "id": "255c7587-81d7-44ef-a8a2-ef1d99217bba",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"companyRefId\": 1,\n    \"truckMasterRefId\": 1,\n    \"driverMasterRefId\": 1,\n    \"employeeRefId\": 1,\n    \"vendorName\": \"Express Parts & Service\",\n    \"jobTypeRefId\": 1,\n    \"statusRefId\": 1,\n    \"priorityRefId\": 2,\n    \"problemName\": \"Engine stalling on highways and weird noise\",\n    \"productUse\": \"General Transport / Heavy Cargo\",\n    \"remarks\": \"Check engine light is on, replace oil filters.\",\n    \"odometerReading\": 125000,\n    \"estimatedCost\": 500.0,\n    \"jobDate\": \"2026-08-14T09:26:37\",\n    \"expectedCompletionDate\": \"2026-08-16T09:26:37\",\n    \"actualCost\": 450.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Job Order (Complete Job)",
+          "id": "69ef4e08-a48b-4627-a7f4-a38053ba61ee",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"companyRefId\": 6,\n    \"truckMasterRefId\": 7,\n    \"driverMasterRefId\": 93,\n    \"employeeRefId\": 14,\n    \"vendorName\": \"Express Parts & Service\",\n    \"jobTypeRefId\": 1,\n    \"statusRefId\": 2,\n    \"priorityRefId\": 2,\n    \"problemName\": \"ertertafew\",\n    \"productUse\": \"General Transport / Heavy Cargo\",\n    \"remarks\": \"Issue resolved.\",\n    \"odometerReading\": 0.0,\n    \"estimatedCost\": 0.0,\n    \"actualCost\": 7557.38,\n    \"jobDate\": \"2026-08-14T11:04:01\",\n    \"expectedCompletionDate\": \"2026-08-16T11:04:01\",\n    \"completedDate\": \"2026-08-15T11:04:01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders/3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders",
+                "3"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Job Orders",
+          "id": "86a68a45-4d8c-4434-b478-e4121449bfa2",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"companyRefId\": 1,\n    \"statusRefId\": 0,\n    \"jobTypeRefId\": 0,\n    \"fromDate\": \"2023-01-01\",\n    \"toDate\": \"2024-12-31\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders",
+                "list"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Order Statuses",
+          "id": "30a40b3a-abeb-497e-8d4d-06fda9dad8c2",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders/statuses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders",
+                "statuses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Order Types",
+          "id": "64955db5-9d9b-4556-87ff-8ad1629d5b73",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders/types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders",
+                "types"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Order Priorities",
+          "id": "268fbfff-f9f9-4f98-94f5-df50fd96d0c9",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders/priorities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders",
+                "priorities"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "auth": {

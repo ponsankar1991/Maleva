@@ -8,10 +8,7 @@ import my.maleva.api.module.joborder.dto.JobOrderLookupDto;
 import my.maleva.api.module.joborder.dto.JobOrderRequestDto;
 import my.maleva.api.module.joborder.dto.JobOrderResponseDto;
 import my.maleva.api.module.joborder.service.JobOrderService;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,17 +28,10 @@ public class JobOrderController {
     private final JobOrderService jobOrderService;
 
     @PostMapping("/list")
-    public ResponseEntity<ApiResponse<Page<JobOrderResponseDto>>> getJobOrders(
-            @RequestBody JobOrderFilterDto filterDto,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "DESC") String direction) {
+    public ResponseEntity<ApiResponse<List<JobOrderResponseDto>>> getJobOrders(
+            @RequestBody JobOrderFilterDto filterDto) {
         
-        Sort sort = Sort.by(Sort.Direction.fromString(direction), sortBy);
-        Pageable pageable = PageRequest.of(page, size, sort);
-        
-        Page<JobOrderResponseDto> result = jobOrderService.getJobOrders(filterDto, pageable);
+        List<JobOrderResponseDto> result = jobOrderService.getJobOrders(filterDto);
         return ResponseEntity.ok(ApiResponse.success(result, "Job Orders retrieved successfully"));
     }
 
@@ -80,5 +70,20 @@ public class JobOrderController {
     public ResponseEntity<ApiResponse<JobOrderLookupDto>> getLookups() {
         JobOrderLookupDto result = jobOrderService.getLookups();
         return ResponseEntity.ok(ApiResponse.success(result, "Lookups retrieved successfully"));
+    }
+
+    @GetMapping("/statuses")
+    public ResponseEntity<ApiResponse<java.util.List<JobOrderLookupDto.LookupItem>>> getStatuses() {
+        return ResponseEntity.ok(ApiResponse.success(jobOrderService.getStatuses(), "Statuses retrieved successfully"));
+    }
+
+    @GetMapping("/types")
+    public ResponseEntity<ApiResponse<java.util.List<JobOrderLookupDto.LookupItem>>> getJobTypes() {
+        return ResponseEntity.ok(ApiResponse.success(jobOrderService.getJobTypes(), "Job Types retrieved successfully"));
+    }
+
+    @GetMapping("/priorities")
+    public ResponseEntity<ApiResponse<java.util.List<JobOrderLookupDto.LookupItem>>> getPriorities() {
+        return ResponseEntity.ok(ApiResponse.success(jobOrderService.getPriorities(), "Priorities retrieved successfully"));
     }
 }

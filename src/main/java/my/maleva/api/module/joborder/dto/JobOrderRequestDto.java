@@ -56,4 +56,6 @@ public class JobOrderRequestDto {
     private LocalDateTime expectedCompletionDate;
 
     private LocalDateTime completedDate;
+
+    private Boolean isActive;
 }
