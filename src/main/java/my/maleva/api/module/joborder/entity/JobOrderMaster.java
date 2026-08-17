@@ -8,7 +8,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.CascadeType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -109,4 +111,10 @@ public class JobOrderMaster {
 
     @Column(name = "IsActive", nullable = false)
     private Boolean isActive = true;
+
+    @Column(name = "RequestedBy")
+    private Integer requestedBy;
+
+    @OneToMany(mappedBy = "jobOrderMaster", fetch = FetchType.LAZY)
+    private java.util.List<JobOrderDetail> details;
 }

@@ -61,4 +61,8 @@ public class JobOrderResponseDto {
     private LocalDateTime modifiedDate;
 
     private Boolean isActive;
+
+    private Integer requestedBy;
+
+    private java.util.List<JobOrderDetailResponseDto> details;
 }

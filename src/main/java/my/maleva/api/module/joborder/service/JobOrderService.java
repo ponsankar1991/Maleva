@@ -12,6 +12,8 @@ public interface JobOrderService {
 
     JobOrderResponseDto getJobOrderById(Integer id, Integer companyRefId);
 
+    List<my.maleva.api.module.joborder.dto.JobOrderDetailResponseDto> getJobOrderDetailsByMasterId(Integer masterId);
+
     JobOrderResponseDto createJobOrder(JobOrderRequestDto requestDto);
 
     JobOrderResponseDto updateJobOrder(Integer id, JobOrderRequestDto requestDto);

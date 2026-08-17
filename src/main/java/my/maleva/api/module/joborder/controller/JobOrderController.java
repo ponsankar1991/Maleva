@@ -43,6 +43,13 @@ public class JobOrderController {
         return ResponseEntity.ok(ApiResponse.success(result, "Job Order retrieved successfully"));
     }
 
+    @GetMapping("/{id}/details")
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.joborder.dto.JobOrderDetailResponseDto>>> getJobOrderDetailsByMasterId(
+            @PathVariable Integer id) {
+        List<my.maleva.api.module.joborder.dto.JobOrderDetailResponseDto> result = jobOrderService.getJobOrderDetailsByMasterId(id);
+        return ResponseEntity.ok(ApiResponse.success(result, "Job Order Details retrieved successfully"));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<JobOrderResponseDto>> createJobOrder(
             @Valid @RequestBody JobOrderRequestDto requestDto) {

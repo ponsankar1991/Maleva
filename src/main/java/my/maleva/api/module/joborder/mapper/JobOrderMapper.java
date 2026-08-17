@@ -8,7 +8,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
-@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE, uses = {JobOrderDetailMapper.class})
 public interface JobOrderMapper {
 
     @Mapping(target = "employeeName", source = "employee.employeeName")
@@ -42,6 +42,7 @@ public interface JobOrderMapper {
     @Mapping(target = "createdDate", ignore = true)
     @Mapping(target = "modifiedBy", ignore = true)
     @Mapping(target = "modifiedDate", ignore = true)
+    @Mapping(target = "details", ignore = true)
     JobOrderMaster toEntity(JobOrderRequestDto request);
 
     @Mapping(target = "id", ignore = true)
@@ -57,5 +58,6 @@ public interface JobOrderMapper {
     @Mapping(target = "createdDate", ignore = true)
     @Mapping(target = "modifiedBy", ignore = true)
     @Mapping(target = "modifiedDate", ignore = true)
+    @Mapping(target = "details", ignore = true)
     void updateEntity(@MappingTarget JobOrderMaster entity, JobOrderRequestDto request);
 }

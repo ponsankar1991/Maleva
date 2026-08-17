@@ -58,4 +58,8 @@ public class JobOrderRequestDto {
     private LocalDateTime completedDate;
 
     private Boolean isActive;
+
+    private Integer requestedBy;
+
+    private java.util.List<JobOrderDetailRequestDto> details;
 }

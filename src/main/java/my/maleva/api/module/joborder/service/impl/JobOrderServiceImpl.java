@@ -23,6 +23,8 @@ import my.maleva.api.module.joborder.repository.JobOrderTypeMasterRepository;
 import my.maleva.api.module.joborder.service.JobOrderService;
 import my.maleva.api.module.master.entity.SequenceNoMaster;
 import my.maleva.api.module.master.repository.SequenceNoMasterRepository;
+import my.maleva.api.module.joborder.repository.JobOrderDetailRepository;
+import my.maleva.api.module.joborder.mapper.JobOrderDetailMapper;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,8 @@ public class JobOrderServiceImpl implements JobOrderService {
     private final DriverMasterRepository driverRepository;
     private final SequenceNoMasterRepository sequenceRepository;
     private final JobOrderMapper jobOrderMapper;
+    private final JobOrderDetailRepository jobOrderDetailRepository;
+    private final JobOrderDetailMapper jobOrderDetailMapper;
 
 
     @Override
@@ -87,14 +91,30 @@ public class JobOrderServiceImpl implements JobOrderService {
         };
 
         List<JobOrderMaster> list = jobOrderMasterRepository.findAll(spec);
-        return list.stream().map(jobOrderMapper::toDto).collect(Collectors.toList());
+        return list.stream().map(entity -> {
+            JobOrderResponseDto dto = jobOrderMapper.toDto(entity);
+            List<my.maleva.api.module.joborder.entity.JobOrderDetail> details = jobOrderDetailRepository.findByJobOrderMasterRefId(entity.getId());
+            dto.setDetails(details.stream().map(jobOrderDetailMapper::toDto).collect(Collectors.toList()));
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public JobOrderResponseDto getJobOrderById(Integer id, Integer companyRefId) {
         JobOrderMaster entity = findByIdAndCompany(id, companyRefId);
-        return jobOrderMapper.toDto(entity);
+        JobOrderResponseDto dto = jobOrderMapper.toDto(entity);
+        List<my.maleva.api.module.joborder.entity.JobOrderDetail> details = jobOrderDetailRepository.findByJobOrderMasterRefId(id);
+        dto.setDetails(details.stream().map(jobOrderDetailMapper::toDto).collect(Collectors.toList()));
+        return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<my.maleva.api.module.joborder.dto.JobOrderDetailResponseDto> getJobOrderDetailsByMasterId(Integer masterId) {
+        log.info("Fetching details for JobOrderMaster ID: {}", masterId);
+        List<my.maleva.api.module.joborder.entity.JobOrderDetail> details = jobOrderDetailRepository.findByJobOrderMasterRefId(masterId);
+        return details.stream().map(jobOrderDetailMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
@@ -143,8 +163,28 @@ public class JobOrderServiceImpl implements JobOrderService {
             entity.setJobDate(LocalDateTime.now());
         }
 
+        sanitizeDecimals(entity);
+
         JobOrderMaster saved = jobOrderMasterRepository.save(entity);
-        return jobOrderMapper.toDto(saved);
+        
+        List<my.maleva.api.module.joborder.dto.JobOrderDetailResponseDto> savedDetailsDto = new java.util.ArrayList<>();
+        if (requestDto.getDetails() != null && !requestDto.getDetails().isEmpty()) {
+            for (my.maleva.api.module.joborder.dto.JobOrderDetailRequestDto detailDto : requestDto.getDetails()) {
+                my.maleva.api.module.joborder.entity.JobOrderDetail detailEntity = jobOrderDetailMapper.toEntity(detailDto);
+                if (detailEntity.getCost() != null) {
+                    detailEntity.setCost(detailEntity.getCost().setScale(2, java.math.RoundingMode.HALF_UP));
+                }
+                detailEntity.setId(null);
+                detailEntity.setJobOrderMasterRefId(saved.getId());
+                detailEntity.setCreatedBy(userId);
+                my.maleva.api.module.joborder.entity.JobOrderDetail savedDetail = jobOrderDetailRepository.save(detailEntity);
+                savedDetailsDto.add(jobOrderDetailMapper.toDto(savedDetail));
+            }
+        }
+        
+        JobOrderResponseDto responseDto = jobOrderMapper.toDto(saved);
+        responseDto.setDetails(savedDetailsDto);
+        return responseDto;
     }
 
     @Override
@@ -166,8 +206,45 @@ public class JobOrderServiceImpl implements JobOrderService {
         entity.setModifiedBy(userId);
         entity.setModifiedDate(LocalDateTime.now());
 
+        sanitizeDecimals(entity);
+
         JobOrderMaster updated = jobOrderMasterRepository.save(entity);
-        return jobOrderMapper.toDto(updated);
+        
+        List<my.maleva.api.module.joborder.dto.JobOrderDetailResponseDto> savedDetailsDto = new java.util.ArrayList<>();
+        if (requestDto.getDetails() != null) {
+            List<my.maleva.api.module.joborder.entity.JobOrderDetail> existingDetails = jobOrderDetailRepository.findByJobOrderMasterRefId(updated.getId());
+            java.util.Map<Integer, my.maleva.api.module.joborder.entity.JobOrderDetail> existingDetailsMap = existingDetails.stream()
+                    .collect(java.util.stream.Collectors.toMap(my.maleva.api.module.joborder.entity.JobOrderDetail::getId, d -> d));
+
+            for (my.maleva.api.module.joborder.dto.JobOrderDetailRequestDto detailDto : requestDto.getDetails()) {
+                my.maleva.api.module.joborder.entity.JobOrderDetail detailEntity;
+                if (detailDto.getId() != null && detailDto.getId() > 0 && existingDetailsMap.containsKey(detailDto.getId())) {
+                    detailEntity = existingDetailsMap.get(detailDto.getId());
+                    jobOrderDetailMapper.updateEntity(detailEntity, detailDto);
+                    existingDetailsMap.remove(detailDto.getId());
+                } else {
+                    detailEntity = jobOrderDetailMapper.toEntity(detailDto);
+                    detailEntity.setId(null);
+                    detailEntity.setJobOrderMasterRefId(updated.getId());
+                    detailEntity.setCreatedBy(userId);
+                }
+
+                if (detailEntity.getCost() != null) {
+                    detailEntity.setCost(detailEntity.getCost().setScale(2, java.math.RoundingMode.HALF_UP));
+                }
+                
+                my.maleva.api.module.joborder.entity.JobOrderDetail savedDetail = jobOrderDetailRepository.save(detailEntity);
+                savedDetailsDto.add(jobOrderDetailMapper.toDto(savedDetail));
+            }
+
+            for (my.maleva.api.module.joborder.entity.JobOrderDetail detailToDelete : existingDetailsMap.values()) {
+                jobOrderDetailRepository.delete(detailToDelete);
+            }
+        }
+
+        JobOrderResponseDto responseDto = jobOrderMapper.toDto(updated);
+        responseDto.setDetails(savedDetailsDto);
+        return responseDto;
     }
 
     @Override
@@ -268,6 +345,18 @@ public class JobOrderServiceImpl implements JobOrderService {
             entity.setDriver(driverRepository.findById(request.getDriverMasterRefId()).orElse(null));
         } else {
             entity.setDriver(null);
+        }
+    }
+
+    private void sanitizeDecimals(JobOrderMaster entity) {
+        if (entity.getOdometerReading() != null) {
+            entity.setOdometerReading(entity.getOdometerReading().setScale(2, java.math.RoundingMode.HALF_UP));
+        }
+        if (entity.getEstimatedCost() != null) {
+            entity.setEstimatedCost(entity.getEstimatedCost().setScale(2, java.math.RoundingMode.HALF_UP));
+        }
+        if (entity.getActualCost() != null) {
+            entity.setActualCost(entity.getActualCost().setScale(2, java.math.RoundingMode.HALF_UP));
         }
     }
 }
