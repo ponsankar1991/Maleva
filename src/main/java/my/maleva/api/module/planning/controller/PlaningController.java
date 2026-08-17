@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -43,13 +44,16 @@ public class PlaningController {
     private final SequenceNoMasterService sequenceNoMasterService;
     private final PlanningMasterService planningMasterService;
     private final PlanningSaveService planningSaveService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public PlaningController(SequenceNoMasterService sequenceNoMasterService,
                             PlanningMasterService planningMasterService,
-                            PlanningSaveService planningSaveService) {
+                            PlanningSaveService planningSaveService,
+                            SimpMessagingTemplate messagingTemplate) {
         this.sequenceNoMasterService = sequenceNoMasterService;
         this.planningMasterService = planningMasterService;
         this.planningSaveService = planningSaveService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     /**
@@ -217,6 +221,13 @@ public class PlaningController {
         logger.info("Received save planning request: {} records, comid={}", requests.size(), comid);
 
         List<PlanningSaveResponseDto> results = planningSaveService.saveAll(requests, comid);
+        
+        try {
+            messagingTemplate.convertAndSend("/topic/planning", "UPDATE");
+        } catch (Exception e) {
+            logger.error("Failed to send WebSocket message", e);
+        }
+        
         return ResponseEntity.ok(results);
     }
 

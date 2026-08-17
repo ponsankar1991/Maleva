@@ -25,6 +25,8 @@ public interface JobOrderMapper {
     @Mapping(target = "jobTypeRefId", source = "jobType.id")
     @Mapping(target = "statusRefId", source = "status.id")
     @Mapping(target = "priorityRefId", source = "priority.id")
+    @Mapping(target = "cNumber", source = "CNumber")
+    @Mapping(target = "cNumberDisplay", source = "CNumberDisplay")
     JobOrderResponseDto toDto(JobOrderMaster entity);
 
     // Entity is usually hydrated via Service layer to prevent detached entity errors,

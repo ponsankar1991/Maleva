@@ -122,6 +122,8 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/api/ws").permitAll()
+                        .requestMatchers("/api/ws/**").permitAll()
                         // welcome requires JWT auth
                         .requestMatchers("/api/welcome").authenticated()
                         // all other endpoints require authentication
