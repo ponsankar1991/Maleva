@@ -32,6 +32,9 @@ public class JobOrderResponseDto {
     private Integer driverMasterRefId;
     private String driverName;
 
+    private Integer workshopSupplierMasterRefId;
+    private String workshopSupplierName;
+
     private String vendorName;
 
     private Integer jobTypeRefId;
@@ -63,6 +66,7 @@ public class JobOrderResponseDto {
     private Boolean isActive;
 
     private Integer requestedBy;
+    private String requestedEmployeeName;
 
     private java.util.List<JobOrderDetailResponseDto> details;
 }

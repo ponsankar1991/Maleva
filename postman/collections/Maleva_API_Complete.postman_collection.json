@@ -5025,8 +5025,44 @@
       "name": "Job Order",
       "item": [
         {
+          "name": "Get Next Job Number",
+          "id": "3eee47a7-067f-4d1f-9c2b-dd8756401994",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-orders/next-number?companyRefId=6",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "job-orders",
+                "next-number"
+              ],
+              "query": [
+                {
+                  "key": "companyRefId",
+                  "value": "6"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Get Job Order Lookups",
-          "id": "143c1b1f-e573-41c2-9cb3-34032a47905b",
+          "id": "b794f021-ce8a-4e39-9f18-b983507ebd1c",
           "request": {
             "auth": {
               "type": "bearer",
@@ -5056,7 +5092,7 @@
         },
         {
           "name": "Create Job Order with Details",
-          "id": "2d0228fb-6d12-4260-be05-41717ed7079d",
+          "id": "6988ab9d-dfa0-448a-b313-f98c79befc87",
           "request": {
             "auth": {
               "type": "bearer",
@@ -5095,7 +5131,7 @@
         },
         {
           "name": "Update Job Order with Details",
-          "id": "011266d7-8c7a-4173-8e28-9c594395bba1",
+          "id": "c824cc1f-03ca-4e74-ac67-bc611343683f",
           "request": {
             "auth": {
               "type": "bearer",
@@ -5135,7 +5171,7 @@
         },
         {
           "name": "List Job Orders",
-          "id": "030d80ff-140c-4930-8c72-f6f0dee035ad",
+          "id": "7b3ce637-073e-4025-bb0e-a80167808ee6",
           "request": {
             "auth": {
               "type": "bearer",
@@ -5175,7 +5211,7 @@
         },
         {
           "name": "Get Job Order By Id",
-          "id": "6ef95fea-b248-477d-be11-6aa11289a7b2",
+          "id": "7816ab53-9885-4853-8887-85144a808b65",
           "request": {
             "auth": {
               "type": "bearer",
@@ -5211,7 +5247,7 @@
         },
         {
           "name": "Get Job Order Details By Master Id",
-          "id": "96b38431-3c94-4d15-88bf-ebb48c40d430",
+          "id": "67908e79-fa6a-4cd7-8cc7-3088815fb737",
           "request": {
             "auth": {
               "type": "bearer",

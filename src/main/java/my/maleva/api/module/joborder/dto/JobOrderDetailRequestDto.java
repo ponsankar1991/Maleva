@@ -28,6 +28,8 @@ public class JobOrderDetailRequestDto {
 
     private Integer productRefId;
 
+    private Integer supplierMasterRefId;
+
     private BigDecimal cost;
 
     @Size(max = 500, message = "Remarks cannot exceed 500 characters")

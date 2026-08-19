@@ -27,6 +27,7 @@ import my.maleva.api.module.joborder.repository.JobOrderDetailRepository;
 import my.maleva.api.module.joborder.mapper.JobOrderDetailMapper;
 
 import org.springframework.data.jpa.domain.Specification;
+import my.maleva.api.module.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +52,7 @@ public class JobOrderServiceImpl implements JobOrderService {
     private final JobOrderMapper jobOrderMapper;
     private final JobOrderDetailRepository jobOrderDetailRepository;
     private final JobOrderDetailMapper jobOrderDetailMapper;
+    private final SupplierRepository supplierRepository;
 
 
     @Override
@@ -136,11 +138,16 @@ public class JobOrderServiceImpl implements JobOrderService {
         }
 
         // Sequence logic
-        Integer maxSeq = sequenceRepository.findMaxSequenceNoByCompanyAndSequenceName(requestDto.getCompanyRefId(), "JobOrderMaster");
+        Integer maxSeq = sequenceRepository.findMaxSequenceNoByCompanyAndSequenceName(
+                requestDto.getCompanyRefId(),
+                "JobOrderMaster"
+        );
+
         Integer newSeq = (maxSeq == null || maxSeq == 0) ? 1 : maxSeq + 1;
-        
+
         entity.setCNumber(newSeq);
-        String cNumberDisplay = String.format("JO%09d", newSeq);
+
+        String cNumberDisplay = String.format("JO%05d", newSeq);
         entity.setCNumberDisplay(cNumberDisplay);
 
         // Update SequenceNoMaster
@@ -177,6 +184,9 @@ public class JobOrderServiceImpl implements JobOrderService {
                 detailEntity.setId(null);
                 detailEntity.setJobOrderMasterRefId(saved.getId());
                 detailEntity.setCreatedBy(userId);
+                if (detailEntity.getSupplierMasterRefId() != null) {
+                    detailEntity.setSupplier(supplierRepository.findById(detailEntity.getSupplierMasterRefId()).orElse(null));
+                }
                 my.maleva.api.module.joborder.entity.JobOrderDetail savedDetail = jobOrderDetailRepository.save(detailEntity);
                 savedDetailsDto.add(jobOrderDetailMapper.toDto(savedDetail));
             }
@@ -233,6 +243,12 @@ public class JobOrderServiceImpl implements JobOrderService {
                     detailEntity.setCost(detailEntity.getCost().setScale(2, java.math.RoundingMode.HALF_UP));
                 }
                 
+                if (detailEntity.getSupplierMasterRefId() != null) {
+                    detailEntity.setSupplier(supplierRepository.findById(detailEntity.getSupplierMasterRefId()).orElse(null));
+                } else {
+                    detailEntity.setSupplier(null);
+                }
+
                 my.maleva.api.module.joborder.entity.JobOrderDetail savedDetail = jobOrderDetailRepository.save(detailEntity);
                 savedDetailsDto.add(jobOrderDetailMapper.toDto(savedDetail));
             }
@@ -255,6 +271,18 @@ public class JobOrderServiceImpl implements JobOrderService {
         entity.setIsActive(false);
         entity.setModifiedDate(LocalDateTime.now());
         jobOrderMasterRepository.save(entity);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getNextJobNumber(Integer companyRefId) {
+        Integer maxSeq = sequenceRepository.findMaxSequenceNoByCompanyAndSequenceName(
+                companyRefId,
+                "JobOrderMaster"
+        );
+        Integer newSeq = (maxSeq == null || maxSeq == 0) ? 1 : maxSeq + 1;
+        return String.format("JO%05d", newSeq);
     }
 
     @Override
@@ -345,6 +373,18 @@ public class JobOrderServiceImpl implements JobOrderService {
             entity.setDriver(driverRepository.findById(request.getDriverMasterRefId()).orElse(null));
         } else {
             entity.setDriver(null);
+        }
+
+        if (request.getRequestedBy() != null) {
+            entity.setRequestedEmployee(employeeRepository.findById(request.getRequestedBy()).orElse(null));
+        } else {
+            entity.setRequestedEmployee(null);
+        }
+        
+        if (request.getWorkshopSupplierMasterRefId() != null) {
+            entity.setWorkshopSupplier(supplierRepository.findById(request.getWorkshopSupplierMasterRefId()).orElse(null));
+        } else {
+            entity.setWorkshopSupplier(null);
         }
     }
 

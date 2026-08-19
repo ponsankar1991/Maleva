@@ -19,6 +19,8 @@ public class JobOrderDetailResponseDto {
     private String problemName;
     private String productUse;
     private Integer productRefId;
+    private Integer supplierMasterRefId;
+    private String supplierName;
     private BigDecimal cost;
     private String remarks;
     private Integer active;

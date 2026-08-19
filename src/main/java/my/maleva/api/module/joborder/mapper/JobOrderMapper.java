@@ -25,8 +25,11 @@ public interface JobOrderMapper {
     @Mapping(target = "jobTypeRefId", source = "jobType.id")
     @Mapping(target = "statusRefId", source = "status.id")
     @Mapping(target = "priorityRefId", source = "priority.id")
+    @Mapping(target = "workshopSupplierMasterRefId", source = "workshopSupplier.id")
+    @Mapping(target = "workshopSupplierName", source = "workshopSupplier.supplierName")
     @Mapping(target = "cNumber", source = "CNumber")
     @Mapping(target = "cNumberDisplay", source = "CNumberDisplay")
+    @Mapping(target = "requestedEmployeeName", source = "requestedEmployee.employeeName")
     JobOrderResponseDto toDto(JobOrderMaster entity);
 
     // Entity is usually hydrated via Service layer to prevent detached entity errors,
@@ -40,11 +43,13 @@ public interface JobOrderMapper {
     @Mapping(target = "jobType", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "priority", ignore = true)
+    @Mapping(target = "workshopSupplier", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "createdDate", ignore = true)
     @Mapping(target = "modifiedBy", ignore = true)
     @Mapping(target = "modifiedDate", ignore = true)
     @Mapping(target = "details", ignore = true)
+    @Mapping(target = "requestedEmployee", ignore = true)
     JobOrderMaster toEntity(JobOrderRequestDto request);
 
     @Mapping(target = "id", ignore = true)
@@ -61,5 +66,6 @@ public interface JobOrderMapper {
     @Mapping(target = "modifiedBy", ignore = true)
     @Mapping(target = "modifiedDate", ignore = true)
     @Mapping(target = "details", ignore = true)
+    @Mapping(target = "requestedEmployee", ignore = true)
     void updateEntity(@MappingTarget JobOrderMaster entity, JobOrderRequestDto request);
 }

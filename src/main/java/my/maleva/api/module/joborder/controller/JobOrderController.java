@@ -73,6 +73,12 @@ public class JobOrderController {
         return ResponseEntity.ok(ApiResponse.success(null, "Job Order deleted successfully"));
     }
 
+    @GetMapping("/next-number")
+    public ResponseEntity<ApiResponse<String>> getNextJobNumber(@RequestParam Integer companyRefId) {
+        String nextNumber = jobOrderService.getNextJobNumber(companyRefId);
+        return ResponseEntity.ok(ApiResponse.success(nextNumber, "Next job number retrieved successfully"));
+    }
+
     @GetMapping("/lookups")
     public ResponseEntity<ApiResponse<JobOrderLookupDto>> getLookups() {
         JobOrderLookupDto result = jobOrderService.getLookups();

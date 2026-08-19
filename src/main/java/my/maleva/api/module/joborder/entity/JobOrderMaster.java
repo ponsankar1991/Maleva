@@ -59,6 +59,10 @@ public class JobOrderMaster {
     private String vendorName;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "WorkshopSupplierMasterRefId")
+    private my.maleva.api.module.supplier.entity.Supplier workshopSupplier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "JobTypeRefId", nullable = false)
     private JobOrderTypeMaster jobType;
 
@@ -114,6 +118,10 @@ public class JobOrderMaster {
 
     @Column(name = "RequestedBy")
     private Integer requestedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "RequestedBy", insertable = false, updatable = false)
+    private EmployeeMaster requestedEmployee;
 
     @OneToMany(mappedBy = "jobOrderMaster", fetch = FetchType.LAZY)
     private java.util.List<JobOrderDetail> details;

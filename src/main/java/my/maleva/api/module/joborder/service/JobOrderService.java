@@ -20,6 +20,8 @@ public interface JobOrderService {
 
     void deleteJobOrder(Integer id, Integer companyRefId);
 
+    String getNextJobNumber(Integer companyRefId);
+
     JobOrderLookupDto getLookups();
 
     List<JobOrderLookupDto.LookupItem> getStatuses();

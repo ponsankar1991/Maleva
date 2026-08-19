@@ -34,6 +34,9 @@ public class JobOrderDetail {
     @Column(name = "ProductRefId")
     private Integer productRefId;
 
+    @Column(name = "SupplierMasterRefId")
+    private Integer supplierMasterRefId;
+
     @Column(name = "Cost", precision = 12, scale = 2)
     private BigDecimal cost;
 
@@ -58,6 +61,10 @@ public class JobOrderDetail {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "JobOrderMasterRefId", insertable = false, updatable = false)
     private JobOrderMaster jobOrderMaster;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "SupplierMasterRefId", insertable = false, updatable = false)
+    private my.maleva.api.module.supplier.entity.Supplier supplier;
 
     @PrePersist
     protected void onCreate() {

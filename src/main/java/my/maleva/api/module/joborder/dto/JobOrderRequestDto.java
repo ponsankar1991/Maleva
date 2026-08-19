@@ -25,6 +25,8 @@ public class JobOrderRequestDto {
 
     private Integer driverMasterRefId;
 
+    private Integer workshopSupplierMasterRefId;
+
     @Size(max = 150, message = "Vendor name cannot exceed 150 characters")
     private String vendorName;
 

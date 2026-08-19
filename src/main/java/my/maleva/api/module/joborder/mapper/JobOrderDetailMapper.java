@@ -10,8 +10,10 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface JobOrderDetailMapper {
 
+    @org.mapstruct.Mapping(target = "supplierName", source = "supplier.supplierName")
     JobOrderDetailResponseDto toDto(JobOrderDetail entity);
 
+    @org.mapstruct.Mapping(target = "supplier", ignore = true)
     JobOrderDetail toEntity(JobOrderDetailRequestDto requestDto);
 
     @org.mapstruct.Mapping(target = "id", ignore = true)
@@ -20,5 +22,6 @@ public interface JobOrderDetailMapper {
     @org.mapstruct.Mapping(target = "modifiedBy", ignore = true)
     @org.mapstruct.Mapping(target = "modifiedDate", ignore = true)
     @org.mapstruct.Mapping(target = "jobOrderMaster", ignore = true)
+    @org.mapstruct.Mapping(target = "supplier", ignore = true)
     void updateEntity(@MappingTarget JobOrderDetail entity, JobOrderDetailRequestDto requestDto);
 }
