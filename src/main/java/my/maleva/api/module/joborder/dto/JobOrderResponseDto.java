@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Data
 @Builder
@@ -54,8 +55,8 @@ public class JobOrderResponseDto {
     private BigDecimal estimatedCost;
     private BigDecimal actualCost;
 
-    private LocalDateTime jobDate;
-    private LocalDateTime expectedCompletionDate;
+    private LocalDate jobDate;
+    private LocalDate expectedCompletionDate;
     private LocalDateTime completedDate;
 
     private Integer createdBy;

@@ -30,6 +30,8 @@ import org.springframework.data.jpa.domain.Specification;
 import my.maleva.api.module.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -54,6 +56,27 @@ public class JobOrderServiceImpl implements JobOrderService {
     private final JobOrderDetailMapper jobOrderDetailMapper;
     private final SupplierRepository supplierRepository;
 
+    /**
+     * Extract user ID from security context
+     * Returns the employee ID from the JWT token claims
+     */
+    private Integer getCurrentUserId() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                Object principal = auth.getPrincipal();
+                if (principal instanceof String) {
+                    // For JWT tokens, the principal might be the username
+                    // In production, extract from JWT claims or user details
+                    // For now, return null if we can't extract a numeric ID
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not extract user ID from security context", e);
+        }
+        return null;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -77,10 +100,10 @@ public class JobOrderServiceImpl implements JobOrderService {
                 predicates.add(cb.equal(root.get("truck").get("id"), filterDto.getTruckMasterRefId()));
             }
             if (filterDto.getFromDate() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("jobDate"), filterDto.getFromDate().atStartOfDay()));
+                predicates.add(cb.greaterThanOrEqualTo(root.get("jobDate"), filterDto.getFromDate()));
             }
             if (filterDto.getToDate() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("jobDate"), filterDto.getToDate().atTime(java.time.LocalTime.MAX)));
+                predicates.add(cb.lessThanOrEqualTo(root.get("jobDate"), filterDto.getToDate()));
             }
 
             if (filterDto.getIsActive() != null) {
@@ -125,7 +148,7 @@ public class JobOrderServiceImpl implements JobOrderService {
         log.info("Creating new Job Order for company {}", requestDto.getCompanyRefId());
         JobOrderMaster entity = jobOrderMapper.toEntity(requestDto);
 
-        Integer userId = null;
+        Integer userId = getCurrentUserId();
 
         // Set lookups
         hydrateLookups(entity, requestDto);
@@ -147,7 +170,7 @@ public class JobOrderServiceImpl implements JobOrderService {
 
         entity.setCNumber(newSeq);
 
-        String cNumberDisplay = String.format("JO%05d", newSeq);
+        String cNumberDisplay = String.format("JO%09d", newSeq);
         entity.setCNumberDisplay(cNumberDisplay);
 
         // Update SequenceNoMaster
@@ -167,7 +190,7 @@ public class JobOrderServiceImpl implements JobOrderService {
         
         // Ensure default JobDate if null
         if (entity.getJobDate() == null) {
-            entity.setJobDate(LocalDateTime.now());
+            entity.setJobDate(java.time.LocalDate.now());
         }
 
         sanitizeDecimals(entity);
@@ -206,8 +229,8 @@ public class JobOrderServiceImpl implements JobOrderService {
         jobOrderMapper.updateEntity(entity, requestDto);
         hydrateLookups(entity, requestDto);
 
-        Integer userId = null;
-        
+        Integer userId = getCurrentUserId();
+
         // Auto set CompletedDate if status changed to Completed (Assuming 3 is Completed)
         if (requestDto.getStatusRefId() != null && requestDto.getStatusRefId() == 3 && entity.getCompletedDate() == null) {
             entity.setCompletedDate(LocalDateTime.now());

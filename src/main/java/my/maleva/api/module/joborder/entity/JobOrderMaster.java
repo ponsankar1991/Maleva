@@ -21,6 +21,7 @@ import my.maleva.api.module.fleet.entity.TruckMaster;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "JobOrderMaster")
@@ -93,10 +94,10 @@ public class JobOrderMaster {
     private BigDecimal actualCost;
 
     @Column(name = "JobDate", nullable = false)
-    private LocalDateTime jobDate = LocalDateTime.now();
+    private LocalDate jobDate = LocalDate.now();
 
     @Column(name = "ExpectedCompletionDate")
-    private LocalDateTime expectedCompletionDate;
+    private LocalDate expectedCompletionDate;
 
     @Column(name = "CompletedDate")
     private LocalDateTime completedDate;
