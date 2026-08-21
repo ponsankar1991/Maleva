@@ -1,0 +1,533 @@
+package my.maleva.api.module.inventory.service.impl;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import my.maleva.api.common.exception.EntityNotFoundException;
+import my.maleva.api.common.exception.InvalidRequestException;
+import my.maleva.api.module.inventory.dto.*;
+import my.maleva.api.module.inventory.entity.AssetStatus;
+import my.maleva.api.module.inventory.entity.InventoryItem;
+import my.maleva.api.module.inventory.entity.ItemType;
+import my.maleva.api.module.inventory.repository.InventoryAssetRepository;
+import my.maleva.api.module.inventory.repository.InventoryItemRepository;
+import my.maleva.api.module.inventory.service.InventoryItemService;
+import my.maleva.api.module.inventory.service.InventoryService;
+import my.maleva.api.module.inventory.service.RepairableAssetService;
+import my.maleva.api.module.productmaster.entity.ProductMaster;
+import my.maleva.api.module.productmaster.entity.ProductMasterCStock;
+import my.maleva.api.module.productmaster.repository.ProductMasterCStockRepository;
+import my.maleva.api.module.productmaster.repository.ProductMasterRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Catalogue CRUD for workshop inventory items.
+ *
+ * Creating an item touches four tables and is deliberately a single transaction:
+ * ProductMaster (the product record other modules select from), InventoryItem
+ * (workshop configuration), ProductMasterCStock (the balance row) and, when there
+ * is an opening balance, InventoryTransaction (the movement that explains it).
+ */
+@Service
+@Transactional
+public class InventoryItemServiceImpl implements InventoryItemService {
+
+    private static final Logger logger = LoggerFactory.getLogger(InventoryItemServiceImpl.class);
+
+    private static final String STATUS_IN_STOCK = "IN_STOCK";
+    private static final String STATUS_LOW_STOCK = "LOW_STOCK";
+    private static final String STATUS_OUT_OF_STOCK = "OUT_OF_STOCK";
+
+    @Autowired private InventoryItemRepository itemRepository;
+    @Autowired private InventoryAssetRepository assetRepository;
+    @Autowired private ProductMasterRepository productMasterRepository;
+    @Autowired private ProductMasterCStockRepository cstockRepository;
+    @Autowired private InventoryService inventoryService;
+    @Autowired private RepairableAssetService repairableAssetService;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    // ------------------------------------------------------------------ create
+
+    @Override
+    @Transactional
+    public InventoryItemResponseDto create(InventoryItemRequestDto request) {
+        ItemType type = parseType(request.getItemType());
+
+        String serial = request.getFirstSerialNo() == null ? null : request.getFirstSerialNo().trim();
+        if (type.isSerialised() && (serial == null || serial.isEmpty())) {
+            throw new InvalidRequestException(
+                    "A serial number is required for the first unit of a " + type + " item");
+        }
+        if (!type.isSerialised() && serial != null && !serial.isEmpty()) {
+            throw new InvalidRequestException(
+                    "Serial numbers only apply to ASSET and TOOL items, not " + type);
+        }
+
+        ProductMaster product = request.getProductRefId() != null
+                ? useExistingProduct(request)
+                : createProduct(request);
+
+        InventoryItem item = itemRepository.save(InventoryItem.builder()
+                .companyRefId(request.getCompanyRefId())
+                .productRefId(product.getId())
+                .itemType(type)
+                .category(trimOrNull(request.getCategory()))
+                .brand(trimOrNull(request.getBrand()))
+                .fitsModel(trimOrNull(request.getFitsModel()))
+                .baseUom(defaultUom(request.getBaseUom(), type))
+                .minQty(type.isSerialised() ? null : nvl(request.getMinQty()))
+                .reorderQty(type.isSerialised() ? null : nvl(request.getReorderQty()))
+                .unitCost(nvl(request.getUnitCost()))
+                .storageLocation(trimOrNull(request.getStorageLocation()))
+                .binCode(trimOrNull(request.getBinCode()))
+                .defaultSupplierRefId(request.getDefaultSupplierRefId())
+                .remarks(trimOrNull(request.getRemarks()))
+                .active(1)
+                .modifiedBy(request.getModifiedBy())
+                .build());
+
+        // A balance row must exist before any movement is recorded against it.
+        // An existing product usually has one already - creating a second would
+        // break the one-row-per-company-and-product rule, so only add if missing.
+        if (cstockRepository.findByCompanyRefIdAndProductRefId(
+                request.getCompanyRefId(), product.getId()).isEmpty()) {
+            cstockRepository.save(ProductMasterCStock.builder()
+                    .companyRefId(request.getCompanyRefId())
+                    .productRefId(product.getId())
+                    .cstock(0.0)
+                    .modifiedBy(request.getModifiedBy())
+                    .build());
+        }
+
+        if (type.isSerialised()) {
+            repairableAssetService.registerAsset(RegisterAssetRequestDto.builder()
+                    .companyRefId(request.getCompanyRefId())
+                    .productRefId(product.getId())
+                    .serialNo(serial)
+                    .remarks("First unit registered with item")
+                    .createdBy(request.getModifiedBy())
+                    .build());
+        } else if (request.getOpeningQty() != null
+                && request.getOpeningQty().compareTo(BigDecimal.ZERO) > 0) {
+            inventoryService.stockIn(StockInRequestDto.builder()
+                    .companyRefId(request.getCompanyRefId())
+                    .productRefId(product.getId())
+                    .quantity(request.getOpeningQty())
+                    .referenceType("OPENING")
+                    .remarks(trimOrNull(request.getRemarks()))
+                    .createdBy(request.getModifiedBy())
+                    .build());
+        }
+
+        logger.info("Inventory item created: company={}, code={}, type={}, productRefId={}, reusedProduct={}",
+                request.getCompanyRefId(), product.getProdCode(), type, product.getId(),
+                request.getProductRefId() != null);
+
+        // Push the inserts and detach everything, so the item is re-read with its
+        // ProductMaster and Supplier associations resolved. Without this the freshly
+        // saved instance is returned straight from the persistence context with those
+        // associations still null, and the response would carry no item code or name.
+        entityManager.flush();
+        entityManager.clear();
+
+        return toDetail(itemRepository.findById(item.getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Inventory item not found after create, id: " + item.getId())));
+    }
+
+    /**
+     * Bring a product that already exists in ProductMaster into the workshop store.
+     * Its code and name are left exactly as they are, so the product other modules
+     * already reference by id does not change underneath them.
+     */
+    private ProductMaster useExistingProduct(InventoryItemRequestDto request) {
+        ProductMaster product = productMasterRepository.findById(request.getProductRefId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Product not found with ID: " + request.getProductRefId()));
+
+        if (!request.getCompanyRefId().equals(product.getCompanyRefId())) {
+            throw new InvalidRequestException(
+                    "Product " + product.getProdCode() + " belongs to another company");
+        }
+        if (itemRepository.existsByCompanyRefIdAndProductRefId(
+                request.getCompanyRefId(), product.getId())) {
+            throw new InvalidRequestException("Product '" + product.getProdCode()
+                    + "' is already set up in the workshop store. Open it from the inventory"
+                    + " list to change its settings.");
+        }
+        return product;
+    }
+
+    /** Create a brand new product along with its workshop settings. */
+    private ProductMaster createProduct(InventoryItemRequestDto request) {
+        String code = request.getItemCode().trim();
+        if (productMasterRepository.existsByCompanyRefIdAndProdCode(request.getCompanyRefId(), code)) {
+            throw new InvalidRequestException("Item Code '" + code + "' already exists for this"
+                    + " company. Pick it from the existing product list instead of creating"
+                    + " it again.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        return productMasterRepository.save(ProductMaster.builder()
+                .companyRefId(request.getCompanyRefId())
+                .prodCode(code)
+                .pname(request.getItemName().trim())
+                .printName(request.getItemName().trim())
+                .taxCode(resolveTaxCode(request))
+                .uomCode(resolveUomCode(request))
+                .purchaseRate(request.getUnitCost())
+                .activestatus(1)
+                .isProduct(1)
+                .createdDate(now)
+                .modifiedDate(now)
+                .modifiedBy(request.getModifiedBy())
+                .build());
+    }
+
+    // ------------------------------------------------------------------ update
+
+    @Override
+    @Transactional
+    public InventoryItemResponseDto update(Integer id, InventoryItemRequestDto request) {
+        InventoryItem item = itemRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Inventory item not found with ID: " + id));
+
+        ItemType type = parseType(request.getItemType());
+        if (type != item.getItemType()) {
+            throw new InvalidRequestException("Item type cannot be changed after creation. "
+                    + "This item is tracked as " + item.getItemType()
+                    + "; create a separate item to track it as " + type + ".");
+        }
+
+        ProductMaster product = productMasterRepository.findById(item.getProductRefId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "ProductMaster not found with ID: " + item.getProductRefId()));
+
+        String code = request.getItemCode().trim();
+        if (!code.equalsIgnoreCase(product.getProdCode())
+                && productMasterRepository.existsByCompanyRefIdAndProdCode(item.getCompanyRefId(), code)) {
+            throw new InvalidRequestException("Item Code '" + code + "' already exists for this company");
+        }
+
+        product.setProdCode(code);
+        product.setPname(request.getItemName().trim());
+        product.setPurchaseRate(request.getUnitCost());
+        product.setModifiedBy(request.getModifiedBy());
+        product.setModifiedDate(LocalDateTime.now());
+        productMasterRepository.save(product);
+
+        item.setCategory(trimOrNull(request.getCategory()));
+        item.setBrand(trimOrNull(request.getBrand()));
+        item.setFitsModel(trimOrNull(request.getFitsModel()));
+        item.setBaseUom(defaultUom(request.getBaseUom(), type));
+        if (!type.isSerialised()) {
+            item.setMinQty(nvl(request.getMinQty()));
+            item.setReorderQty(nvl(request.getReorderQty()));
+        }
+        item.setUnitCost(nvl(request.getUnitCost()));
+        item.setStorageLocation(trimOrNull(request.getStorageLocation()));
+        item.setBinCode(trimOrNull(request.getBinCode()));
+        item.setDefaultSupplierRefId(request.getDefaultSupplierRefId());
+        item.setRemarks(trimOrNull(request.getRemarks()));
+        item.setModifiedBy(request.getModifiedBy());
+        itemRepository.save(item);
+
+        logger.info("Inventory item updated: id={}, code={}", id, code);
+        return toDetail(item);
+    }
+
+    // ------------------------------------------------------------------ select
+
+    @Override
+    public InventoryItemResponseDto getById(Integer id) {
+        return toDetail(itemRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Inventory item not found with ID: " + id)));
+    }
+
+    @Override
+    public InventoryItemResponseDto getByProduct(Integer companyRefId, Integer productRefId) {
+        return toDetail(itemRepository.findByCompanyRefIdAndProductRefId(companyRefId, productRefId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "No inventory item configured for product " + productRefId)));
+    }
+
+    @Override
+    public List<InventoryItemListDto> search(Integer companyRefId, String itemType, String search) {
+        String term = (search == null || search.trim().isEmpty())
+                ? "%"
+                : "%" + search.trim().toLowerCase() + "%";
+
+        List<InventoryItem> items = (itemType == null || itemType.trim().isEmpty())
+                ? itemRepository.search(companyRefId, term)
+                : itemRepository.searchByType(companyRefId, parseType(itemType), term);
+
+        return toListRows(companyRefId, items);
+    }
+
+    @Override
+    public List<InventoryItemListDto> getLowStock(Integer companyRefId) {
+        return toListRows(companyRefId, itemRepository.findLowStock(companyRefId));
+    }
+
+    @Override
+    public List<AvailableProductDto> getAvailableProducts(Integer companyRefId) {
+        return itemRepository.findProductsWithoutInventorySettings(companyRefId)
+                .stream()
+                .map(p -> AvailableProductDto.builder()
+                        .productRefId(p.getId())
+                        .prodCode(p.getProdCode())
+                        .pname(p.getPname())
+                        .uomCode(p.getUomCode())
+                        .purchaseRate(p.getPurchaseRate())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public boolean deactivate(Integer id, String modifiedBy) {
+        Optional<InventoryItem> found = itemRepository.findById(id);
+        if (found.isEmpty()) {
+            return false;
+        }
+        InventoryItem item = found.get();
+        item.setActive(0);
+        item.setModifiedBy(modifiedBy);
+        itemRepository.save(item);
+
+        productMasterRepository.findById(item.getProductRefId()).ifPresent(p -> {
+            p.setActivestatus(0);
+            p.setModifiedBy(modifiedBy);
+            p.setModifiedDate(LocalDateTime.now());
+            productMasterRepository.save(p);
+        });
+
+        logger.info("Inventory item deactivated: id={}", id);
+        return true;
+    }
+
+    // ------------------------------------------------------------------ mapping
+
+    /**
+     * Builds list rows using two batch queries (balances, unit counts) rather than
+     * per-row lookups, so the list screen cost does not grow with the catalogue.
+     */
+    private List<InventoryItemListDto> toListRows(Integer companyRefId, List<InventoryItem> items) {
+        if (items.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Integer> productIds = items.stream()
+                .map(InventoryItem::getProductRefId).collect(Collectors.toList());
+
+        Map<Integer, Double> balances = cstockRepository
+                .findByCompanyRefIdAndProductRefIdIn(companyRefId, productIds).stream()
+                .collect(Collectors.toMap(ProductMasterCStock::getProductRefId,
+                        s -> s.getCstock() == null ? 0.0 : s.getCstock(), (a, b) -> a));
+
+        Map<Integer, Map<AssetStatus, Long>> unitCounts = loadUnitCounts(companyRefId, productIds);
+
+        return items.stream().map(i -> {
+            Map<AssetStatus, Long> counts = unitCounts.getOrDefault(i.getProductRefId(), Map.of());
+            BigDecimal onHand = onHandOf(i, balances, counts);
+            return InventoryItemListDto.builder()
+                    .id(i.getId())
+                    .productRefId(i.getProductRefId())
+                    .itemCode(i.getProductMaster() != null ? i.getProductMaster().getProdCode() : null)
+                    .itemName(i.getProductMaster() != null ? i.getProductMaster().getPname() : null)
+                    .itemType(i.getItemType().name())
+                    .serialised(i.getItemType().isSerialised())
+                    .category(i.getCategory())
+                    .baseUom(i.getBaseUom())
+                    .onHand(onHand)
+                    .minQty(i.getMinQty())
+                    .unitCost(i.getUnitCost())
+                    .stockValue(valueOf(onHand, i.getUnitCost()))
+                    .storageLocation(i.getStorageLocation())
+                    .stockStatus(statusOf(i, onHand))
+                    .totalUnits(i.getItemType().isSerialised() ? totalUnits(counts) : null)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    private InventoryItemResponseDto toDetail(InventoryItem i) {
+        Double balance = cstockRepository
+                .findByCompanyRefIdAndProductRefId(i.getCompanyRefId(), i.getProductRefId())
+                .stream().findFirst().map(ProductMasterCStock::getCstock).orElse(0.0);
+
+        Map<AssetStatus, Long> counts = i.getItemType().isSerialised()
+                ? loadUnitCounts(i.getCompanyRefId(), List.of(i.getProductRefId()))
+                    .getOrDefault(i.getProductRefId(), Map.of())
+                : Map.of();
+
+        BigDecimal onHand = i.getItemType().isSerialised()
+                ? BigDecimal.valueOf(counts.getOrDefault(AssetStatus.AVAILABLE, 0L))
+                : BigDecimal.valueOf(balance == null ? 0.0 : balance);
+
+        return InventoryItemResponseDto.builder()
+                .id(i.getId())
+                .companyRefId(i.getCompanyRefId())
+                .productRefId(i.getProductRefId())
+                .itemCode(i.getProductMaster() != null ? i.getProductMaster().getProdCode() : null)
+                .itemName(i.getProductMaster() != null ? i.getProductMaster().getPname() : null)
+                .itemType(i.getItemType().name())
+                .serialised(i.getItemType().isSerialised())
+                .category(i.getCategory())
+                .brand(i.getBrand())
+                .fitsModel(i.getFitsModel())
+                .baseUom(i.getBaseUom())
+                .minQty(i.getMinQty())
+                .reorderQty(i.getReorderQty())
+                .unitCost(i.getUnitCost())
+                .storageLocation(i.getStorageLocation())
+                .binCode(i.getBinCode())
+                .defaultSupplierRefId(i.getDefaultSupplierRefId())
+                .defaultSupplierName(i.getDefaultSupplier() != null
+                        ? i.getDefaultSupplier().getSupplierName() : null)
+                .remarks(i.getRemarks())
+                .active(i.getActive())
+                .onHand(onHand)
+                .stockValue(valueOf(onHand, i.getUnitCost()))
+                .stockStatus(statusOf(i, onHand))
+                .totalUnits(i.getItemType().isSerialised() ? totalUnits(counts) : null)
+                .availableUnits(i.getItemType().isSerialised()
+                        ? counts.getOrDefault(AssetStatus.AVAILABLE, 0L).intValue() : null)
+                .installedUnits(i.getItemType().isSerialised()
+                        ? counts.getOrDefault(AssetStatus.INSTALLED, 0L).intValue() : null)
+                .underRepairUnits(i.getItemType().isSerialised()
+                        ? counts.getOrDefault(AssetStatus.UNDER_REPAIR, 0L).intValue() : null)
+                .createdDate(i.getCreatedDate())
+                .modifiedDate(i.getModifiedDate())
+                .modifiedBy(i.getModifiedBy())
+                .build();
+    }
+
+    private Map<Integer, Map<AssetStatus, Long>> loadUnitCounts(Integer companyRefId, List<Integer> productIds) {
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, Map<AssetStatus, Long>> out = new HashMap<>();
+        for (Object[] row : assetRepository.countByProductAndStatus(companyRefId, productIds)) {
+            Integer productRefId = (Integer) row[0];
+            AssetStatus status = (AssetStatus) row[1];
+            Long count = ((Number) row[2]).longValue();
+            out.computeIfAbsent(productRefId, k -> new EnumMap<>(AssetStatus.class)).put(status, count);
+        }
+        return out;
+    }
+
+    private BigDecimal onHandOf(InventoryItem i, Map<Integer, Double> balances, Map<AssetStatus, Long> counts) {
+        if (i.getItemType().isSerialised()) {
+            return BigDecimal.valueOf(counts.getOrDefault(AssetStatus.AVAILABLE, 0L));
+        }
+        return BigDecimal.valueOf(balances.getOrDefault(i.getProductRefId(), 0.0));
+    }
+
+    private Integer totalUnits(Map<AssetStatus, Long> counts) {
+        return (int) counts.values().stream().mapToLong(Long::longValue).sum();
+    }
+
+    private BigDecimal valueOf(BigDecimal onHand, Double unitCost) {
+        return onHand.multiply(BigDecimal.valueOf(unitCost == null ? 0.0 : unitCost))
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String statusOf(InventoryItem i, BigDecimal onHand) {
+        if (onHand.compareTo(BigDecimal.ZERO) <= 0) {
+            return STATUS_OUT_OF_STOCK;
+        }
+        // "At or below" - reaching the reorder level is the point at which you
+        // reorder, so it counts as low. This must stay <= to match the low-stock
+        // query in InventoryItemRepository: with < , an item sitting exactly on
+        // its level appeared in the needs-attention list while its own row still
+        // showed a green In Stock chip.
+        if (!i.getItemType().isSerialised() && i.getMinQty() != null
+                && onHand.compareTo(BigDecimal.valueOf(i.getMinQty())) <= 0) {
+            return STATUS_LOW_STOCK;
+        }
+        return STATUS_IN_STOCK;
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private ItemType parseType(String raw) {
+        try {
+            return ItemType.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new InvalidRequestException("Item Type must be one of "
+                    + Arrays.toString(ItemType.values()) + ", got: " + raw);
+        }
+    }
+
+    /**
+     * ProductMaster.Tax_Code is NOT NULL. Use the caller's value, otherwise the
+     * company's first configured tax. Never invents master data silently - a company
+     * with no tax set up is a real configuration problem and says so.
+     */
+    private Integer resolveTaxCode(InventoryItemRequestDto request) {
+        if (request.getTaxCode() != null) {
+            return request.getTaxCode();
+        }
+        Integer resolved = firstIdFor("TaxMaster", request.getCompanyRefId());
+        if (resolved == null) {
+            throw new InvalidRequestException(
+                    "No tax code was supplied and this company has no tax records configured. "
+                    + "Set up a tax record first, or pass taxCode in the request.");
+        }
+        return resolved;
+    }
+
+    /** Same contract as resolveTaxCode, for the NOT NULL ProductMaster.UOM_Code. */
+    private Integer resolveUomCode(InventoryItemRequestDto request) {
+        if (request.getUomCode() != null) {
+            return request.getUomCode();
+        }
+        Integer resolved = firstIdFor("UOM", request.getCompanyRefId());
+        if (resolved == null) {
+            throw new InvalidRequestException(
+                    "No UOM code was supplied and this company has no UOM records configured. "
+                    + "Set up a UOM record first, or pass uomCode in the request.");
+        }
+        return resolved;
+    }
+
+    private Integer firstIdFor(String table, Integer companyRefId) {
+        List<Integer> ids = jdbcTemplate.queryForList(
+                "SELECT TOP 1 Id FROM " + table + " WHERE CompanyRefId = ? ORDER BY Id",
+                Integer.class, companyRefId);
+        return ids.isEmpty() ? null : ids.get(0);
+    }
+
+    private String defaultUom(String supplied, ItemType type) {
+        if (supplied != null && !supplied.trim().isEmpty()) {
+            return supplied.trim();
+        }
+        switch (type) {
+            case CONSUMABLE: return "L";
+            case PART: return "Pcs";
+            default: return "Unit";
+        }
+    }
+
+    private String trimOrNull(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private Double nvl(Double d) {
+        return d == null ? 0.0 : d;
+    }
+}
