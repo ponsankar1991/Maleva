@@ -65,6 +65,10 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     @Transactional
     public InventoryItemResponseDto create(InventoryItemRequestDto request) {
         ItemType type = parseType(request.getItemType());
+        // Resolved once: it is both the item's stock-keeping unit and what the
+        // new product's UOM_Code is matched against.
+        String baseUom = displayUom(uomLookup(request.getCompanyRefId()),
+                defaultUom(request.getBaseUom(), type));
 
         String serial = request.getFirstSerialNo() == null ? null : request.getFirstSerialNo().trim();
         if (type.isSerialised() && (serial == null || serial.isEmpty())) {
@@ -78,7 +82,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
         ProductMaster product = request.getProductRefId() != null
                 ? useExistingProduct(request)
-                : createProduct(request);
+                : createProduct(request, baseUom);
 
         InventoryItem item = itemRepository.save(InventoryItem.builder()
                 .companyRefId(request.getCompanyRefId())
@@ -87,7 +91,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .category(trimOrNull(request.getCategory()))
                 .brand(trimOrNull(request.getBrand()))
                 .fitsModel(trimOrNull(request.getFitsModel()))
-                .baseUom(defaultUom(request.getBaseUom(), type))
+                .baseUom(baseUom)
                 .minQty(type.isSerialised() ? null : nvl(request.getMinQty()))
                 .reorderQty(type.isSerialised() ? null : nvl(request.getReorderQty()))
                 .unitCost(nvl(request.getUnitCost()))
@@ -172,7 +176,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     }
 
     /** Create a brand new product along with its workshop settings. */
-    private ProductMaster createProduct(InventoryItemRequestDto request) {
+    private ProductMaster createProduct(InventoryItemRequestDto request, String baseUom) {
         String code = request.getItemCode().trim();
         if (productMasterRepository.existsByCompanyRefIdAndProdCode(request.getCompanyRefId(), code)) {
             throw new InvalidRequestException("Item Code '" + code + "' already exists for this"
@@ -181,14 +185,27 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         }
 
         LocalDateTime now = LocalDateTime.now();
+        double cost = request.getUnitCost() == null ? 0.0 : request.getUnitCost();
+
+        // Every column below is NOT NULL in ProductMaster. The table has DEFAULT
+        // constraints for several of them, but a default only applies when the
+        // column is omitted from the INSERT - Hibernate always lists every mapped
+        // column, so a null here becomes an explicit NULL and the insert is
+        // rejected. They are therefore all set explicitly.
         return productMasterRepository.save(ProductMaster.builder()
                 .companyRefId(request.getCompanyRefId())
                 .prodCode(code)
+                .pcodeDigits(numericCodeDigits(code))
                 .pname(request.getItemName().trim())
                 .printName(request.getItemName().trim())
                 .taxCode(resolveTaxCode(request))
-                .uomCode(resolveUomCode(request))
-                .purchaseRate(request.getUnitCost())
+                .uomCode(resolveUomCode(request, baseUom))
+                .mrp(0.0)
+                .purchaseRate(cost)
+                .landingCost(cost)
+                .salesRate(0.0)
+                .saleRateType(false)
+                .sorting(0)
                 .activestatus(1)
                 .isProduct(1)
                 .createdDate(now)
@@ -232,7 +249,8 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         item.setCategory(trimOrNull(request.getCategory()));
         item.setBrand(trimOrNull(request.getBrand()));
         item.setFitsModel(trimOrNull(request.getFitsModel()));
-        item.setBaseUom(defaultUom(request.getBaseUom(), type));
+        item.setBaseUom(displayUom(uomLookup(item.getCompanyRefId()),
+                defaultUom(request.getBaseUom(), type)));
         if (!type.isSerialised()) {
             item.setMinQty(nvl(request.getMinQty()));
             item.setReorderQty(nvl(request.getReorderQty()));
@@ -280,6 +298,19 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     @Override
     public List<InventoryItemListDto> getLowStock(Integer companyRefId) {
         return toListRows(companyRefId, itemRepository.findLowStock(companyRefId));
+    }
+
+    @Override
+    public List<UomOptionDto> getUomOptions(Integer companyRefId) {
+        return jdbcTemplate.query(
+                "SELECT Id, Code, Description FROM UOM WHERE CompanyRefId = ? AND Active = 1"
+                        + " ORDER BY Description",
+                (rs, rowNum) -> UomOptionDto.builder()
+                        .uomCode(rs.getInt("Id"))
+                        .code(rs.getString("Code"))
+                        .description(rs.getString("Description"))
+                        .build(),
+                companyRefId);
     }
 
     @Override
@@ -338,6 +369,8 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                         s -> s.getCstock() == null ? 0.0 : s.getCstock(), (a, b) -> a));
 
         Map<Integer, Map<AssetStatus, Long>> unitCounts = loadUnitCounts(companyRefId, productIds);
+        // Loaded once for the page rather than per row.
+        Map<String, String> uomNames = uomLookup(companyRefId);
 
         return items.stream().map(i -> {
             Map<AssetStatus, Long> counts = unitCounts.getOrDefault(i.getProductRefId(), Map.of());
@@ -350,7 +383,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                     .itemType(i.getItemType().name())
                     .serialised(i.getItemType().isSerialised())
                     .category(i.getCategory())
-                    .baseUom(i.getBaseUom())
+                    .baseUom(displayUom(uomNames, i.getBaseUom()))
                     .onHand(onHand)
                     .minQty(i.getMinQty())
                     .unitCost(i.getUnitCost())
@@ -376,6 +409,14 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 ? BigDecimal.valueOf(counts.getOrDefault(AssetStatus.AVAILABLE, 0L))
                 : BigDecimal.valueOf(balance == null ? 0.0 : balance);
 
+        // The product's accounting unit and tax, so the detail screen can show
+        // what was actually written to ProductMaster rather than only the
+        // workshop's own stock-keeping label.
+        Integer productUomCode = i.getProductMaster() != null ? i.getProductMaster().getUomCode() : null;
+        Integer productTaxCode = i.getProductMaster() != null ? i.getProductMaster().getTaxCode() : null;
+
+        String uomLabel = displayUom(uomLookup(i.getCompanyRefId()), i.getBaseUom());
+
         return InventoryItemResponseDto.builder()
                 .id(i.getId())
                 .companyRefId(i.getCompanyRefId())
@@ -387,7 +428,11 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .category(i.getCategory())
                 .brand(i.getBrand())
                 .fitsModel(i.getFitsModel())
-                .baseUom(i.getBaseUom())
+                .baseUom(uomLabel)
+                .uomCode(productUomCode)
+                .uomName(lookupName("UOM", productUomCode))
+                .taxCode(productTaxCode)
+                .taxName(lookupName("TaxMaster", productTaxCode))
                 .minQty(i.getMinQty())
                 .reorderQty(i.getReorderQty())
                 .unitCost(i.getUnitCost())
@@ -489,18 +534,142 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         return resolved;
     }
 
-    /** Same contract as resolveTaxCode, for the NOT NULL ProductMaster.UOM_Code. */
-    private Integer resolveUomCode(InventoryItemRequestDto request) {
+    /**
+     * Resolve ProductMaster.UOM_Code (NOT NULL) for a newly created product.
+     *
+     * Order: the caller's explicit uomCode, then the UOM master row that matches
+     * the unit chosen on the form, then the company's first UOM as a last resort.
+     *
+     * The match matters. Without it every new product took whichever UOM happened
+     * to sort first - KG for company 6 - so an oil item created as litres was
+     * filed against ProductMaster as kilograms, and any other module reading
+     * UOM_Code saw the wrong unit.
+     */
+    private Integer resolveUomCode(InventoryItemRequestDto request, String baseUom) {
         if (request.getUomCode() != null) {
             return request.getUomCode();
         }
+
+        Integer matched = matchUomToBaseUom(request.getCompanyRefId(), baseUom);
+        if (matched != null) {
+            return matched;
+        }
+
         Integer resolved = firstIdFor("UOM", request.getCompanyRefId());
         if (resolved == null) {
             throw new InvalidRequestException(
                     "No UOM code was supplied and this company has no UOM records configured. "
                     + "Set up a UOM record first, or pass uomCode in the request.");
         }
+        logger.warn("No UOM master row matches '{}' for company {} - falling back to UOM id {}."
+                + " Add a UOM record for '{}' so new products carry the right unit.",
+                baseUom, request.getCompanyRefId(), resolved, baseUom);
         return resolved;
+    }
+
+    /**
+     * Find the active UOM master row for a stock-keeping unit. Matches on either
+     * Description or Code, and accepts the spellings these tables use in
+     * practice - LITRE and LTR for L, UNIT(S) for Unit, and so on.
+     */
+    private Integer matchUomToBaseUom(Integer companyRefId, String baseUom) {
+        if (baseUom == null || baseUom.trim().isEmpty()) {
+            return null;
+        }
+        List<String> aliases = uomAliases(baseUom.trim());
+        String placeholders = String.join(",", Collections.nCopies(aliases.size(), "?"));
+
+        List<Object> args = new ArrayList<>();
+        args.add(companyRefId);
+        args.addAll(aliases);
+        args.addAll(aliases);
+
+        List<Integer> ids = jdbcTemplate.queryForList(
+                "SELECT TOP 1 Id FROM UOM WHERE CompanyRefId = ? AND Active = 1 AND ("
+                        + " UPPER(LTRIM(RTRIM(Description))) IN (" + placeholders + ")"
+                        + " OR UPPER(LTRIM(RTRIM(Code))) IN (" + placeholders + ")) ORDER BY Id",
+                Integer.class, args.toArray());
+        return ids.isEmpty() ? null : ids.get(0);
+    }
+
+    /**
+     * ProductMaster.PCode_Digits holds the numeric value of a short all-digit
+     * product code, and 0 for anything else - the same rule the legacy
+     * SP_ProductMaster applied.
+     */
+    private Integer numericCodeDigits(String code) {
+        if (code == null || code.isEmpty() || code.length() >= 8 || !code.matches("\\d+")) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(code);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private List<String> uomAliases(String baseUom) {
+        switch (baseUom.toUpperCase()) {
+            case "L":
+                return List.of("L", "LTR", "LITRE", "LITER", "LITRES", "LITERS");
+            case "PCS":
+                return List.of("PCS", "PC", "PCSS", "PIECE", "PIECES");
+            case "UNIT":
+                return List.of("UNIT", "UNITS", "UNIT(S)");
+            default:
+                return List.of(baseUom.toUpperCase());
+        }
+    }
+
+    /**
+     * Every way a UOM row can be referred to, mapped to its Description.
+     *
+     * Keys are the row's Id, its Code and its Description, all upper-cased. That
+     * lets a stored baseUom be healed on the way out whatever was put in it -
+     * screens have written the Id ("14") and the Code ("09") at different points,
+     * and both render as nonsense next to a quantity ("1100 09").
+     */
+    private Map<String, String> uomLookup(Integer companyRefId) {
+        Map<String, String> lookup = new HashMap<>();
+        jdbcTemplate.query(
+                "SELECT Id, Code, Description FROM UOM WHERE CompanyRefId = ?",
+                rs -> {
+                    String description = rs.getString("Description");
+                    if (description == null || description.trim().isEmpty()) {
+                        return;
+                    }
+                    String value = description.trim();
+                    lookup.put(String.valueOf(rs.getInt("Id")), value);
+                    String code = rs.getString("Code");
+                    if (code != null && !code.trim().isEmpty()) {
+                        lookup.putIfAbsent(code.trim().toUpperCase(), value);
+                    }
+                    lookup.putIfAbsent(value.toUpperCase(), value);
+                },
+                companyRefId);
+        return lookup;
+    }
+
+    /** Display label for a stored baseUom, left untouched when nothing matches. */
+    private String displayUom(Map<String, String> lookup, String baseUom) {
+        if (baseUom == null || baseUom.trim().isEmpty()) {
+            return baseUom;
+        }
+        return lookup.getOrDefault(baseUom.trim().toUpperCase(), baseUom.trim());
+    }
+
+    /**
+     * Readable name for a UOM or TaxMaster row. Both tables carry Description,
+     * so one lookup serves each. Returns null rather than throwing when the row
+     * is missing - a detail screen should still render if master data is untidy.
+     */
+    private String lookupName(String table, Integer id) {
+        if (id == null) {
+            return null;
+        }
+        List<String> names = jdbcTemplate.queryForList(
+                "SELECT TOP 1 Description FROM " + table + " WHERE Id = ?", String.class, id);
+        return names.isEmpty() ? null : names.get(0);
     }
 
     private Integer firstIdFor(String table, Integer companyRefId) {

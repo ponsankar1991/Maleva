@@ -29,6 +29,11 @@ public class InventoryItemResponseDto {
     private String brand;
     private String fitsModel;
     private String baseUom;
+    /** The product's accounting unit and tax, read from ProductMaster. */
+    private Integer uomCode;
+    private String uomName;
+    private Integer taxCode;
+    private String taxName;
     private Double minQty;
     private Double reorderQty;
     private Double unitCost;

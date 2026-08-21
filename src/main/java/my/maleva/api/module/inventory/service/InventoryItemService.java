@@ -4,6 +4,7 @@ import my.maleva.api.module.inventory.dto.AvailableProductDto;
 import my.maleva.api.module.inventory.dto.InventoryItemListDto;
 import my.maleva.api.module.inventory.dto.InventoryItemRequestDto;
 import my.maleva.api.module.inventory.dto.InventoryItemResponseDto;
+import my.maleva.api.module.inventory.dto.UomOptionDto;
 
 import java.util.List;
 
@@ -24,6 +25,12 @@ public interface InventoryItemService {
      * choices for the "existing product" path on the create screen.
      */
     List<AvailableProductDto> getAvailableProducts(Integer companyRefId);
+
+    /**
+     * Active units of measure for the company, for the new-product form's unit
+     * picker. The chosen id becomes ProductMaster.UOM_Code.
+     */
+    List<UomOptionDto> getUomOptions(Integer companyRefId);
 
     /**
      * Update catalogue fields. Stock is never changed here - it only moves

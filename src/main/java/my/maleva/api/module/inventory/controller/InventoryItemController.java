@@ -6,6 +6,7 @@ import my.maleva.api.module.inventory.dto.AvailableProductDto;
 import my.maleva.api.module.inventory.dto.InventoryItemListDto;
 import my.maleva.api.module.inventory.dto.InventoryItemRequestDto;
 import my.maleva.api.module.inventory.dto.InventoryItemResponseDto;
+import my.maleva.api.module.inventory.dto.UomOptionDto;
 import my.maleva.api.module.inventory.service.InventoryItemService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +66,16 @@ public class InventoryItemController {
     public ResponseEntity<List<AvailableProductDto>> availableProducts(
             @RequestParam Integer companyRefId) {
         return ResponseEntity.ok(itemService.getAvailableProducts(companyRefId));
+    }
+
+    /**
+     * Active units of measure for the company. The chosen id is sent back as
+     * uomCode when creating a new product.
+     */
+    @GetMapping("/uoms")
+    @PermitAll
+    public ResponseEntity<List<UomOptionDto>> uomOptions(@RequestParam Integer companyRefId) {
+        return ResponseEntity.ok(itemService.getUomOptions(companyRefId));
     }
 
     /**
