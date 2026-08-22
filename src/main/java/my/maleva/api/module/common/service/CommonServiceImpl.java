@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.nio.file.DirectoryStream;
@@ -29,7 +30,14 @@ public class CommonServiceImpl implements ICommonService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Writes through JdbcTemplate, so it needs its own transaction. The pool hands
+     * out connections with autocommit off; without a transaction to commit, Hikari
+     * rolls the update back when the connection is returned and the path silently
+     * saves nothing.
+     */
     @Override
+    @Transactional
     public ResponseViewModel uploadFile(int id, int comid, String tableName, String paths) {
         try {
             String sql = "UPDATE " + tableName + " SET FilePath = ? WHERE Id = ? AND CompanyRefId = ?";

@@ -375,6 +375,15 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
         }
     }
 
+    /**
+     * Declared on IBillsOrderMasterInsertService, so it can be called on its own
+     * rather than only from insertBillsOrderMaster. It writes through
+     * JdbcTemplate, and the pool hands out connections with autocommit off, so
+     * an external call without a transaction would discard the update instead of
+     * saving it. Internal calls already run inside the caller's transaction and
+     * join it here.
+     */
+    @Transactional(rollbackFor = Exception.class)
     public void updateSaleOrderMasterFlags(BillsOrderMasterInsertDto dto) {
         logger.info("─── SALE ORDER MASTER FLAG UPDATE ───");
 

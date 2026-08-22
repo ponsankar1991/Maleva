@@ -54,6 +54,19 @@ public class InventoryItemResponseDto {
     private Integer installedUnits;
     private Integer underRepairUnits;
 
+    /** Removed from a truck and waiting on the recon shelf. */
+    private Integer awaitingReconUnits;
+
+    /** Written off. Excluded from totalUnits - they are gone, not held. */
+    private Integer scrappedUnits;
+
+    /**
+     * Split of availableUnits by condition, so recon stock is never read as new
+     * stock. availableNewUnits + availableReconUnits == availableUnits.
+     */
+    private Integer availableNewUnits;
+    private Integer availableReconUnits;
+
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
     private String modifiedBy;

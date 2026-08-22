@@ -48,7 +48,13 @@ spring:
       pool-name: MalevaHikariPool-PROD
       validation-timeout: 10000
       connection-init-sql: SET NOCOUNT ON
-      auto-commit: true
+      # MUST stay false. hibernate.connection.provider_disables_autocommit=true below
+      # promises Hibernate that the pool hands out connections with autocommit already
+      # off, so Hibernate never calls setAutoCommit(false) itself. With this set to true
+      # that promise is broken: every statement self-commits, @Transactional stops being
+      # atomic, and rollback throws "Unable to rollback against JDBC Connection" -
+      # which replaces the real exception and turns every 400 into a 500.
+      auto-commit: false
   jpa:
     open-in-view: false              # Critical - prevent connection exhaustion in APIs
     show-sql: false                  # Disable SQL logging in production

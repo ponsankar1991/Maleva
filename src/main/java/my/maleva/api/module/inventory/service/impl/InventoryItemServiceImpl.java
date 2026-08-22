@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import my.maleva.api.common.exception.EntityNotFoundException;
 import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.inventory.dto.*;
+import my.maleva.api.module.inventory.entity.AssetCondition;
 import my.maleva.api.module.inventory.entity.AssetStatus;
 import my.maleva.api.module.inventory.entity.InventoryItem;
 import my.maleva.api.module.inventory.entity.ItemType;
@@ -71,11 +72,18 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 defaultUom(request.getBaseUom(), type));
 
         String serial = request.getFirstSerialNo() == null ? null : request.getFirstSerialNo().trim();
-        if (type.isSerialised() && (serial == null || serial.isEmpty())) {
-            throw new InvalidRequestException(
-                    "A serial number is required for the first unit of a " + type + " item");
+        if (serial != null && serial.isEmpty()) {
+            serial = null;
         }
-        if (!type.isSerialised() && serial != null && !serial.isEmpty()) {
+        // A serial is optional even for a serialised type. Setting up the item is
+        // cataloguing it - deciding it exists, what it fits and where it lives -
+        // which is a separate act from having a unit in your hand to register.
+        // Requiring one here forced a made-up serial whenever the catalogue was
+        // built ahead of the stock, and a made-up serial is worse than none: it
+        // becomes a unit the system thinks is on the shelf. The item is created
+        // with zero units, and units are registered from the item page as they
+        // actually arrive.
+        if (!type.isSerialised() && serial != null) {
             throw new InvalidRequestException(
                     "Serial numbers only apply to ASSET and TOOL items, not " + type);
         }
@@ -116,7 +124,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                     .build());
         }
 
-        if (type.isSerialised()) {
+        if (type.isSerialised() && serial != null) {
             repairableAssetService.registerAsset(RegisterAssetRequestDto.builder()
                     .companyRefId(request.getCompanyRefId())
                     .productRefId(product.getId())
@@ -405,6 +413,13 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                     .getOrDefault(i.getProductRefId(), Map.of())
                 : Map.of();
 
+        // How much of the shelf stock is reconditioned rather than new. Only
+        // meaningful for serialised items - a bulk part has no unit identity.
+        Map<AssetCondition, Long> conditions = i.getItemType().isSerialised()
+                ? loadConditionCounts(i.getCompanyRefId(), List.of(i.getProductRefId()))
+                    .getOrDefault(i.getProductRefId(), Map.of())
+                : Map.of();
+
         BigDecimal onHand = i.getItemType().isSerialised()
                 ? BigDecimal.valueOf(counts.getOrDefault(AssetStatus.AVAILABLE, 0L))
                 : BigDecimal.valueOf(balance == null ? 0.0 : balance);
@@ -453,6 +468,14 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                         ? counts.getOrDefault(AssetStatus.INSTALLED, 0L).intValue() : null)
                 .underRepairUnits(i.getItemType().isSerialised()
                         ? counts.getOrDefault(AssetStatus.UNDER_REPAIR, 0L).intValue() : null)
+                .awaitingReconUnits(i.getItemType().isSerialised()
+                        ? counts.getOrDefault(AssetStatus.AWAITING_RECON, 0L).intValue() : null)
+                .scrappedUnits(i.getItemType().isSerialised()
+                        ? counts.getOrDefault(AssetStatus.SCRAPPED, 0L).intValue() : null)
+                .availableNewUnits(i.getItemType().isSerialised()
+                        ? conditions.getOrDefault(AssetCondition.NEW, 0L).intValue() : null)
+                .availableReconUnits(i.getItemType().isSerialised()
+                        ? conditions.getOrDefault(AssetCondition.RECON, 0L).intValue() : null)
                 .createdDate(i.getCreatedDate())
                 .modifiedDate(i.getModifiedDate())
                 .modifiedBy(i.getModifiedBy())
@@ -480,8 +503,31 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         return BigDecimal.valueOf(balances.getOrDefault(i.getProductRefId(), 0.0));
     }
 
+    private Map<Integer, Map<AssetCondition, Long>> loadConditionCounts(
+            Integer companyRefId, List<Integer> productIds) {
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, Map<AssetCondition, Long>> out = new HashMap<>();
+        for (Object[] row : assetRepository.countAvailableByProductAndCondition(companyRefId, productIds)) {
+            Integer productRefId = (Integer) row[0];
+            AssetCondition condition = (AssetCondition) row[1];
+            Long count = ((Number) row[2]).longValue();
+            out.computeIfAbsent(productRefId, k -> new EnumMap<>(AssetCondition.class))
+                    .put(condition, count);
+        }
+        return out;
+    }
+
+    /**
+     * Units the workshop still holds. Scrapped units are excluded - they have
+     * been written off, so counting them would overstate what is on hand.
+     */
     private Integer totalUnits(Map<AssetStatus, Long> counts) {
-        return (int) counts.values().stream().mapToLong(Long::longValue).sum();
+        return (int) counts.entrySet().stream()
+                .filter(e -> e.getKey() != AssetStatus.SCRAPPED)
+                .mapToLong(Map.Entry::getValue)
+                .sum();
     }
 
     private BigDecimal valueOf(BigDecimal onHand, Double unitCost) {

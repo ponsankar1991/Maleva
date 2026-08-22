@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -22,6 +23,19 @@ public class InventoryAssetDto {
     private String status;
     private Integer currentTruckRefId;
     private String currentTruckName;
+
+    /** NEW until the first completed recon, RECON from then on. */
+    private String condition;
+
+    /** How many times this unit has been reconditioned. */
+    private Integer reconCount;
+
+    /** Where it came off. Survives removal, unlike currentTruckRefId. */
+    private Integer lastTruckRefId;
+    private String lastTruckName;
+
+    /** Purchase cost while NEW; the repair spend once RECON. */
+    private BigDecimal currentValue;
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
     private String modifiedBy;

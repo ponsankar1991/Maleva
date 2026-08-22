@@ -48,4 +48,17 @@ public interface InventoryAssetRepository extends JpaRepository<InventoryAsset, 
          + "group by a.productRefId, a.status")
     List<Object[]> countByProductAndStatus(@Param("companyRefId") Integer companyRefId,
                                            @Param("productRefIds") List<Integer> productRefIds);
+
+    /**
+     * Available units split by condition, so a stock screen can show how much
+     * of what is on the shelf is reconditioned rather than new. Only AVAILABLE
+     * units are counted - condition is only meaningful for issuable stock.
+     * Each row is [productRefId, AssetCondition, count].
+     */
+    @Query("select a.productRefId, a.condition, count(a) from InventoryAsset a "
+         + "where a.companyRefId = :companyRefId and a.productRefId in :productRefIds "
+         + "and a.status = my.maleva.api.module.inventory.entity.AssetStatus.AVAILABLE "
+         + "group by a.productRefId, a.condition")
+    List<Object[]> countAvailableByProductAndCondition(@Param("companyRefId") Integer companyRefId,
+                                                       @Param("productRefIds") List<Integer> productRefIds);
 }

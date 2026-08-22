@@ -4,6 +4,7 @@ import my.maleva.api.common.exception.EntityNotFoundException;
 import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.inventory.exception.InsufficientStockException;
 import my.maleva.api.module.inventory.exception.InvalidAssetStateException;
+import my.maleva.api.module.inventory.recon.controller.ReconController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -29,7 +30,8 @@ import java.util.stream.Collectors;
 @RestControllerAdvice(assignableTypes = {
         InventoryController.class,
         InventoryItemController.class,
-        RepairableAssetController.class
+        RepairableAssetController.class,
+        ReconController.class
 })
 public class InventoryExceptionHandler {
 
