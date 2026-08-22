@@ -137,3 +137,51 @@ rti:
   job-wise:
     max-date-range-days: 90
 
+
+
+# ---------------------------------------------------------------------------
+# Wialon GPS integration (replaces the legacy Common/gpsapilist.cs + GPSJob.cs)
+# The token MUST come from the WIALON_TOKEN environment variable - never commit it.
+# ---------------------------------------------------------------------------
+wialon:
+  enabled: ${WIALON_ENABLED:false}
+  base-url: ${WIALON_BASE_URL:https://hst-api.wialon.com/wialon/ajax.html}
+  token: ${WIALON_TOKEN:}
+  company-ref-id: ${WIALON_COMPANY_REF_ID:6}
+  window-hours: 12
+  timeout-seconds: 300
+  # true reproduces the legacy DateTime.Now-as-UTC epoch, so the same interval
+  # is selected as the old job. Set false to send a true UTC instant.
+  legacy-epoch: true
+  locale-settle-seconds: 60
+
+  locale:
+    tz-base-seconds: 28800   # +08:00 Malaysia
+    dst: true
+    language: en
+    format-date: "%Y-%m-%E %H:%M:%S"
+
+  reports:
+    fuel:
+      enabled: true
+      template-id: ${WIALON_FUEL_TEMPLATE_ID:2}
+      resource-id: ${WIALON_RESOURCE_ID:24589375}
+      object-id: ${WIALON_GROUP_OBJECT_ID:24589610}
+      table: unit_group_fillings
+    speed:
+      enabled: true
+      template-id: ${WIALON_SPEED_TEMPLATE_ID:3}
+      resource-id: ${WIALON_RESOURCE_ID:24589375}
+      object-id: ${WIALON_GROUP_OBJECT_ID:24589610}
+      table: unit_group_speedings
+    engine:
+      enabled: true
+      # resolved by name, which survives Wialon renumbering
+      template-name: ${WIALON_ENGINE_TEMPLATE_NAME:Maleva Group Engine Hours}
+      # runs once per avl_unit: its rows carry no vehicle column, so the truck
+      # is known from the unit the report was executed for
+      table: unit_engine_hours
+
+  sync:
+    enabled: ${WIALON_SYNC_ENABLED:false}
+    cron: ${WIALON_SYNC_CRON:0 0 */6 * * *}

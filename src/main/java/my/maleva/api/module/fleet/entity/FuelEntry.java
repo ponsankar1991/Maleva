@@ -110,6 +110,24 @@ public class FuelEntry {
     @Column(name = "Modified_Date", nullable = false)
     private LocalDateTime modifiedDate;
 
+    /**
+     * The GPS filling this entry was matched to.
+     *
+     * Null means no filling is attached yet. Storing it is what stops the
+     * pairing drifting: without it the match was re-derived on every read from
+     * (truck, date, litres), and on a day where a truck refuelled more than once
+     * that question has no single answer.
+     */
+    @Column(name = "FuelFillingRefId")
+    private Integer fuelFillingRefId;
+
+    /**
+     * How the link was set: AUTO by the matcher, MANUAL by a person.
+     * A MANUAL link is never overwritten automatically.
+     */
+    @Column(name = "FuelFillingMatchType", length = 10)
+    private String fuelFillingMatchType;
+
     @Column(name = "Modified_By", length = 50, nullable = false)
     private String modifiedBy;
 }
