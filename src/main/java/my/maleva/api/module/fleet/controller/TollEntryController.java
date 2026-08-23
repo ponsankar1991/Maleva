@@ -1,239 +1,150 @@
 package my.maleva.api.module.fleet.controller;
 
 import jakarta.annotation.security.PermitAll;
-import my.maleva.api.module.fleet.dto.TollEntryDto;
-import my.maleva.api.module.fleet.dto.TollEntryDetailsDto;
+import jakarta.validation.Valid;
+import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.module.fleet.dto.TollEntryDetailDto;
+import my.maleva.api.module.fleet.dto.TollEntryListResponse;
+import my.maleva.api.module.fleet.dto.request.TollEntrySaveRequest;
+import my.maleva.api.module.fleet.dto.request.TollEntrySearchRequest;
 import my.maleva.api.module.fleet.service.TollEntryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDate;
 
 /**
- * TollEntryController - REST Controller for TollEntry API
+ * Toll entries.
+ *
+ * Replaces the legacy /TollEntry/* MVC actions. Reads are GETs with query
+ * parameters rather than POSTs with a JSON body, and the company id travels as
+ * a parameter instead of the {@code Comid} header.
  */
 @RestController
 @RequestMapping("/api/toll-entries")
+@Validated
 @PermitAll
 public class TollEntryController {
 
     private static final Logger logger = LoggerFactory.getLogger(TollEntryController.class);
 
-    @Autowired
-    private TollEntryService service;
+    private final TollEntryService service;
 
-    /**
-     * Get all TollEntry records by company ID
-     * GET /api/toll-entries/company/{companyRefId}
-     */
-    @GetMapping("/company/{companyRefId}")
-    public ResponseEntity<List<TollEntryDto>> getByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Fetching TollEntry for company: {}", companyRefId);
-        return ResponseEntity.ok(service.getByCompanyRefId(companyRefId));
+    public TollEntryController(TollEntryService service) {
+        this.service = service;
     }
 
     /**
-     * Get active TollEntry records by company
-     * GET /api/toll-entries/company/{companyRefId}/active
+     * The toll entry list with its total.
+     * Legacy equivalent: POST /TollEntry/SelectTollEntry
      */
-    @GetMapping("/company/{companyRefId}/active")
-    public ResponseEntity<List<TollEntryDto>> getActiveByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Fetching active TollEntry for company: {}", companyRefId);
-        return ResponseEntity.ok(service.getActiveByCompanyRefId(companyRefId));
+    @GetMapping
+    public ResponseEntity<ApiResponse<TollEntryListResponse>> search(
+            @RequestParam Integer companyRefId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) Integer truckRefId,
+            @RequestParam(required = false) Integer employeeRefId,
+            @RequestParam(required = false) String search) {
+
+        TollEntryListResponse data = service.search(TollEntrySearchRequest.builder()
+                .companyRefId(companyRefId)
+                .fromDate(fromDate)
+                .toDate(toDate)
+                .truckRefId(truckRefId)
+                .employeeRefId(employeeRefId)
+                .search(search)
+                .build());
+
+        return ResponseEntity.ok(ApiResponse.success(data, "Toll entries retrieved"));
     }
 
     /**
-     * Get TollEntry by C Number
-     * GET /api/toll-entries/c-number/{cNumber}/company/{companyRefId}
+     * The next toll number to show on a blank form.
+     * Legacy equivalent: POST /TollEntry/MaxTollEntryNo
      */
-    @GetMapping("/c-number/{cNumber}/company/{companyRefId}")
-    public ResponseEntity<?> getByCNumber(@PathVariable Integer cNumber, @PathVariable Integer companyRefId) {
-        logger.info("Fetching TollEntry by C Number: {} for company: {}", cNumber, companyRefId);
-        Optional<TollEntryDto> record = service.getByCNumber(cNumber, companyRefId);
-        return record.isPresent() ? ResponseEntity.ok(record.get()) :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+    @GetMapping("/next-no")
+    public ResponseEntity<ApiResponse<String>> nextTollNumber(@RequestParam Integer companyRefId) {
+        return ResponseEntity.ok(
+                ApiResponse.success(service.nextTollNumber(companyRefId), "Next toll number"));
     }
 
     /**
-     * Get TollEntry records by user ID
-     * GET /api/toll-entries/user/{userRefId}
-     */
-    @GetMapping("/user/{userRefId}")
-    public ResponseEntity<List<TollEntryDto>> getByUserRefId(@PathVariable Integer userRefId) {
-        logger.info("Fetching TollEntry for user: {}", userRefId);
-        return ResponseEntity.ok(service.getByUserRefId(userRefId));
-    }
-
-    /**
-     * Get TollEntry records by employee ID
-     * GET /api/toll-entries/employee/{employeeRefId}
-     */
-    @GetMapping("/employee/{employeeRefId}")
-    public ResponseEntity<List<TollEntryDto>> getByEmployeeRefId(@PathVariable Integer employeeRefId) {
-        logger.info("Fetching TollEntry for employee: {}", employeeRefId);
-        return ResponseEntity.ok(service.getByEmployeeRefId(employeeRefId));
-    }
-
-    /**
-     * Get TollEntry records by truck ID
-     * GET /api/toll-entries/truck/{truckRefid}
-     */
-    @GetMapping("/truck/{truckRefid}")
-    public ResponseEntity<List<TollEntryDto>> getByTruckRefid(@PathVariable Integer truckRefid) {
-        logger.info("Fetching TollEntry for truck: {}", truckRefid);
-        return ResponseEntity.ok(service.getByTruckRefid(truckRefid));
-    }
-
-    /**
-     * Get TollEntry by ID
-     * GET /api/toll-entries/{id}
+     * One entry with its transactions, for the edit form.
+     * Legacy equivalent: POST /TollEntry/EditTollEntry
      */
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Integer id) {
-        logger.info("Fetching TollEntry by ID: {}", id);
-        Optional<TollEntryDto> record = service.getById(id);
-        return record.isPresent() ? ResponseEntity.ok(record.get()) :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+    public ResponseEntity<ApiResponse<TollEntryDetailDto>> getForEdit(
+            @PathVariable Integer id,
+            @RequestParam Integer companyRefId,
+            @RequestParam(required = false) Integer tollNumber) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(service.getForEdit(id, tollNumber, companyRefId),
+                        "Toll entry retrieved"));
     }
 
     /**
-     * Create new TollEntry
-     * POST /api/toll-entries
+     * The data behind the print action. Rendering still belongs to the .NET
+     * report server, as it does for RTI and Planning.
+     * Legacy equivalent: POST /TollEntry/TollEntryVIEW
+     */
+    @GetMapping("/{id}/print-data")
+    public ResponseEntity<ApiResponse<TollEntryDetailDto>> getForPrint(
+            @PathVariable Integer id,
+            @RequestParam Integer companyRefId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(service.getForPrint(id, companyRefId), "Toll entry print data"));
+    }
+
+    /**
+     * Creates or updates an entry and all of its transactions.
+     * Legacy equivalent: POST /TollEntry/InsertTollEntry
+     *
+     * <p>The whole detail set is replaced, so send every line, not just the
+     * changed ones. The header Amount is recomputed from them.
      */
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody TollEntryDto dto) {
-        logger.info("Creating new TollEntry");
-        try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<TollEntryDetailDto>> save(
+            @Valid @RequestBody TollEntrySaveRequest request,
+            Authentication authentication) {
+
+        TollEntryDetailDto saved = service.save(request, usernameOf(authentication));
+        logger.info("Saved toll entry {} with {} transactions",
+                saved.getId(), saved.getDetails() == null ? 0 : saved.getDetails().size());
+        return ResponseEntity.ok(ApiResponse.success(saved, "Toll entry saved"));
     }
 
     /**
-     * Process TollEntry (SP_TollEntry logic - INSERT or UPDATE with details)
-     * POST /api/toll-entries/process?companyId=1
-     */
-    @PostMapping("/process")
-    public ResponseEntity<?> processTollEntry(
-            @Valid @RequestBody TollEntryRequest request,
-            @RequestParam Integer companyId) {
-        logger.info("Processing TollEntry with SP_TollEntry logic for company: {}", companyId);
-        try {
-            TollEntryDto result = service.processTollEntry(
-                    request.getTollEntry(),
-                    request.getDetails(),
-                    companyId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Update TollEntry
-     * PUT /api/toll-entries/{id}
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody TollEntryDto dto) {
-        logger.info("Updating TollEntry with ID: {}", id);
-        try {
-            return ResponseEntity.ok(service.update(id, dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        }
-    }
-
-    /**
-     * Delete TollEntry
-     * DELETE /api/toll-entries/{id}
+     * Soft delete.
+     * Legacy equivalent: POST /TollEntry/DeleteTollEntry
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Integer id) {
-        logger.info("Deleting TollEntry with ID: {}", id);
-        return service.delete(id) ? ResponseEntity.noContent().build() :
-               ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @PathVariable Integer id,
+            @RequestParam Integer companyRefId,
+            Authentication authentication) {
+
+        service.delete(id, companyRefId, usernameOf(authentication));
+        return ResponseEntity.ok(ApiResponse.success(null, "Toll entry deleted"));
     }
 
-    /**
-     * Activate TollEntry
-     * PUT /api/toll-entries/{id}/activate
-     */
-    @PutMapping("/{id}/activate")
-    public ResponseEntity<?> activateTollEntry(@PathVariable Integer id) {
-        logger.info("Activating TollEntry with ID: {}", id);
-        try {
-            return ResponseEntity.ok(service.activateTollEntry(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        }
-    }
-
-    /**
-     * Deactivate TollEntry
-     * PUT /api/toll-entries/{id}/deactivate
-     */
-    @PutMapping("/{id}/deactivate")
-    public ResponseEntity<?> deactivateTollEntry(@PathVariable Integer id) {
-        logger.info("Deactivating TollEntry with ID: {}", id);
-        try {
-            return ResponseEntity.ok(service.deactivateTollEntry(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        }
-    }
-
-    /**
-     * Count TollEntry records by company ID
-     * GET /api/toll-entries/company/{companyRefId}/count
-     */
-    @GetMapping("/company/{companyRefId}/count")
-    public ResponseEntity<?> countByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Counting TollEntry for company: {}", companyRefId);
-        long count = service.countByCompanyRefId(companyRefId);
-        return ResponseEntity.ok("Total: " + count);
-    }
-
-    /**
-     * Count active TollEntry records by company
-     * GET /api/toll-entries/company/{companyRefId}/active/count
-     */
-    @GetMapping("/company/{companyRefId}/active/count")
-    public ResponseEntity<?> countActiveByCompanyRefId(@PathVariable Integer companyRefId) {
-        logger.info("Counting active TollEntry for company: {}", companyRefId);
-        long count = service.countActiveByCompanyRefId(companyRefId);
-        return ResponseEntity.ok("Total: " + count);
-    }
-
-    /**
-     * Inner class for TollEntry request with details
-     */
-    public static class TollEntryRequest {
-        private TollEntryDto tollEntry;
-        private List<TollEntryDetailsDto> details;
-
-        public TollEntryDto getTollEntry() {
-            return tollEntry;
-        }
-
-        public void setTollEntry(TollEntryDto tollEntry) {
-            this.tollEntry = tollEntry;
-        }
-
-        public List<TollEntryDetailsDto> getDetails() {
-            return details;
-        }
-
-        public void setDetails(List<TollEntryDetailsDto> details) {
-            this.details = details;
-        }
+    private String usernameOf(Authentication authentication) {
+        return authentication == null ? "system" : authentication.getName();
     }
 }
-

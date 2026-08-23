@@ -1,318 +1,370 @@
 package my.maleva.api.module.fleet.service.impl;
 
-import my.maleva.api.module.fleet.dto.TollEntryDto;
-import my.maleva.api.module.fleet.dto.TollEntryDetailsDto;
-import my.maleva.api.module.fleet.mapper.TollEntryMapper;
-import my.maleva.api.module.fleet.mapper.TollEntryDetailsMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import my.maleva.api.common.exception.EntityNotFoundException;
+import my.maleva.api.common.exception.InvalidRequestException;
+import my.maleva.api.module.fleet.dto.TollEntryDetailDto;
+import my.maleva.api.module.fleet.dto.TollEntryDetailRowDto;
+import my.maleva.api.module.fleet.dto.TollEntryListItemDto;
+import my.maleva.api.module.fleet.dto.TollEntryListResponse;
+import my.maleva.api.module.fleet.dto.request.TollEntryDetailRequest;
+import my.maleva.api.module.fleet.dto.request.TollEntrySaveRequest;
+import my.maleva.api.module.fleet.dto.request.TollEntrySearchRequest;
 import my.maleva.api.module.fleet.entity.TollEntry;
 import my.maleva.api.module.fleet.entity.TollEntryDetails;
-import my.maleva.api.module.fleet.repository.TollEntryRepository;
+import my.maleva.api.module.fleet.entity.TruckMaster;
 import my.maleva.api.module.fleet.repository.TollEntryDetailsRepository;
+import my.maleva.api.module.fleet.repository.TollEntryRepository;
+import my.maleva.api.module.fleet.repository.TruckMasterRepository;
 import my.maleva.api.module.fleet.service.TollEntryService;
+import my.maleva.api.module.fleet.specification.TollEntrySpecification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
- * TollEntryServiceImpl - Implementation for TollEntry service
- * Incorporates SP_TollEntry stored procedure logic
- * Handles toll entry processing with detail records
+ * Toll entry business logic.
+ *
+ * Differences from the legacy TollEntryServices, all deliberate:
+ * <ul>
+ *   <li>the SP call and every WHERE clause are parameterised - the legacy code
+ *       concatenated them, and stripped apostrophes out of remarks to cope;</li>
+ *   <li>the list returns headers only, with a transaction count, instead of
+ *       every detail row of every entry in the range;</li>
+ *   <li>the header Amount is recomputed from the lines rather than trusted from
+ *       the browser.</li>
+ * </ul>
  */
 @Service
 public class TollEntryServiceImpl implements TollEntryService {
 
     private static final Logger logger = LoggerFactory.getLogger(TollEntryServiceImpl.class);
 
-    @Autowired
-    private TollEntryRepository repository;
+    private static final Integer ACTIVE = 1;
+    private static final String TOLL_NUMBER_PREFIX = "TE";
+    private static final int TOLL_NUMBER_DIGITS = 9;
+    private static final String SEQUENCE_NAME = "TollEntry";
 
-    @Autowired
-    private TollEntryDetailsRepository detailsRepository;
+    private final TollEntryRepository tollEntryRepository;
+    private final TollEntryDetailsRepository tollEntryDetailsRepository;
+    private final TruckMasterRepository truckMasterRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private TollEntryMapper mapper;
-
-    @Autowired
-    private TollEntryDetailsMapper detailsMapper;
-
-    @Override
-    public List<TollEntryDto> getByCompanyRefId(Integer companyRefId) {
-        logger.info("Fetching TollEntry for company: {}", companyRefId);
-        return repository.findByCompanyRefId(companyRefId)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+    public TollEntryServiceImpl(TollEntryRepository tollEntryRepository,
+                                TollEntryDetailsRepository tollEntryDetailsRepository,
+                                TruckMasterRepository truckMasterRepository,
+                                JdbcTemplate jdbcTemplate,
+                                ObjectMapper objectMapper) {
+        this.tollEntryRepository = tollEntryRepository;
+        this.tollEntryDetailsRepository = tollEntryDetailsRepository;
+        this.truckMasterRepository = truckMasterRepository;
+        this.jdbcTemplate = jdbcTemplate;
+        this.objectMapper = objectMapper;
     }
 
-    @Override
-    public List<TollEntryDto> getActiveByCompanyRefId(Integer companyRefId) {
-        logger.info("Fetching active TollEntry for company: {}", companyRefId);
-        return repository.findByCompanyRefIdAndActive(companyRefId, 1)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
+    // ----------------------------------------------------------------- list
 
     @Override
-    public Optional<TollEntryDto> getByCNumber(Integer cNumber, Integer companyRefId) {
-        logger.info("Fetching TollEntry by C Number: {} for company: {}", cNumber, companyRefId);
-        return repository.findByCNumberAndCompanyRefId(cNumber, companyRefId).map(mapper::toDto);
+    @Transactional(readOnly = true)
+    public TollEntryListResponse search(TollEntrySearchRequest request) {
+        requireCompany(request.getCompanyRefId());
+        boolean byNumber = request.getSearch() != null && !request.getSearch().isBlank();
+        if (!byNumber && (request.getFromDate() == null || request.getToDate() == null)) {
+            throw new InvalidRequestException("fromDate and toDate are required unless a toll number is given");
+        }
+        if (!byNumber && request.getFromDate().isAfter(request.getToDate())) {
+            throw new InvalidRequestException("fromDate must not be after toDate");
+        }
+
+        List<TollEntry> entries = tollEntryRepository.findAll(
+                TollEntrySpecification.from(request), TollEntryRepository.DEFAULT_SORT);
+
+        Map<Integer, String> truckNames = truckNames(request.getCompanyRefId());
+
+        List<TollEntryListItemDto> items = entries.stream()
+                .map(entry -> TollEntryListItemDto.builder()
+                        .id(entry.getId())
+                        .cNumber(entry.getCNumber())
+                        .cNumberDisplay(entry.getCNumberDisplay())
+                        .saleDate(entry.getSaleDate() == null ? null : entry.getSaleDate().toLocalDate())
+                        .truckRefId(entry.getTruckRefid())
+                        .truckName(truckNames.get(entry.getTruckRefid()))
+                        .amount(toDouble(entry.getAmount()))
+                        .detailCount((int) tollEntryDetailsRepository
+                                .countByTollEntryMasterRefId(entry.getId()))
+                        .remarks(entry.getRemarks())
+                        .filePath(entry.getFilePath())
+                        .build())
+                .toList();
+
+        double total = items.stream()
+                .mapToDouble(item -> item.getAmount() == null ? 0d : item.getAmount())
+                .sum();
+
+        return TollEntryListResponse.builder()
+                .items(items)
+                .entriesTotal(round2(total))
+                .build();
     }
 
-    @Override
-    public List<TollEntryDto> getByUserRefId(Integer userRefId) {
-        logger.info("Fetching TollEntry for user: {}", userRefId);
-        return repository.findByUserRefId(userRefId)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
+    // -------------------------------------------------------------- numbering
 
     @Override
-    public List<TollEntryDto> getByEmployeeRefId(Integer employeeRefId) {
-        logger.info("Fetching TollEntry for employee: {}", employeeRefId);
-        return repository.findByEmployeeRefId(employeeRefId)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public String nextTollNumber(Integer companyRefId) {
+        requireCompany(companyRefId);
+        Integer next = jdbcTemplate.queryForObject(
+                "SELECT ISNULL(MAX(SequenceNo) + 1, 1) FROM SequenceNoMaster WITH (NOLOCK) "
+                        + "WHERE CompanyRefId = ? AND SequenceName = ?",
+                Integer.class, companyRefId, SEQUENCE_NAME);
+
+        int value = next == null ? 1 : next;
+        return TOLL_NUMBER_PREFIX + String.format("%0" + TOLL_NUMBER_DIGITS + "d", value);
     }
 
-    @Override
-    public List<TollEntryDto> getByTruckRefid(Integer truckRefid) {
-        logger.info("Fetching TollEntry for truck: {}", truckRefid);
-        return repository.findByTruckRefid(truckRefid)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<TollEntryDto> getByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        logger.info("Fetching TollEntry for date range: {} to {}", startDate, endDate);
-        return repository.findBySaleDateGreaterThanEqualAndSaleDateLessThanEqual(startDate, endDate)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<TollEntryDto> getByCompanyAndDateRange(Integer companyRefId, LocalDateTime startDate, LocalDateTime endDate) {
-        logger.info("Fetching TollEntry for company: {} and date range: {} to {}", companyRefId, startDate, endDate);
-        return repository.findByCompanyRefIdAndSaleDateGreaterThanEqualAndSaleDateLessThanEqual(companyRefId, startDate, endDate)
-                .stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Optional<TollEntryDto> getById(Integer id) {
-        logger.info("Fetching TollEntry by ID: {}", id);
-        return repository.findById(id).map(mapper::toDto);
-    }
+    // ------------------------------------------------------------------ save
 
     @Override
     @Transactional
-    public TollEntryDto create(TollEntryDto dto) {
-        logger.info("Creating new TollEntry");
-        validateTollEntryData(dto);
-        TollEntry entity = mapper.toEntity(dto);
+    public TollEntryDetailDto save(TollEntrySaveRequest request, String username) {
+        requireCompany(request.getCompanyRefId());
 
-        // Set default values as per SP_TollEntry logic
-        LocalDateTime now = LocalDateTime.now();
-        if (entity.getCreatedDate() == null) {
-            entity.setCreatedDate(now);
-        }
-        if (entity.getCreatedBy() == null) {
-            entity.setCreatedBy("SYSTEM");
-        }
-        if (entity.getModifiedDate() == null) {
-            entity.setModifiedDate(now);
-        }
-        if (entity.getModifiedBy() == null) {
-            entity.setModifiedBy("SYSTEM");
-        }
-        if (entity.getActive() == null) {
-            entity.setActive(0);
-        }
-        if (entity.getAmount() == null) {
-            entity.setAmount(0F);
+        List<TollEntryDetailRequest> details =
+                request.getDetails() == null ? List.of() : request.getDetails();
+        if (details.isEmpty()) {
+            throw new InvalidRequestException("A toll entry needs at least one transaction");
         }
 
-        TollEntry saved = repository.save(entity);
-        logger.info("TollEntry created with ID: {}", saved.getId());
-        return mapper.toDto(saved);
+        // The header total is the sum of the lines. The legacy screen computed it
+        // in JavaScript and posted it, so it could disagree with its own details.
+        double amount = details.stream()
+                .mapToDouble(line -> line.getEntryAmount() == null ? 0d : line.getEntryAmount())
+                .sum();
+
+        String payload = buildStoredProcedurePayload(request, details, round2(amount));
+
+        // Bound parameters. The legacy call pasted the JSON into the statement
+        // after stripping apostrophes, so a location name containing one could
+        // rewrite the command.
+        Map<String, Object> result = jdbcTemplate.queryForMap(
+                "EXEC [SP_TollEntry] ?, ?", payload, request.getCompanyRefId());
+
+        Integer resultCode = asInteger(result.get("Result"));
+        if (resultCode == null || resultCode != 1) {
+            String message = String.valueOf(result.getOrDefault("Msg", "Toll entry was not saved"));
+            logger.warn("SP_TollEntry rejected the entry: {}", message);
+            throw new InvalidRequestException(message);
+        }
+
+        Integer savedId = asInteger(result.get("Id"));
+        if (savedId == null || savedId == 0) {
+            savedId = request.getId();
+        }
+        return getForEdit(savedId, null, request.getCompanyRefId());
     }
+
+    /**
+     * Builds the JSON array SP_TollEntry expects.
+     *
+     * The procedure reads the header with OPENJSON and then reads
+     * {@code $.SaleDetails} again as nested JSON, so the transactions have to be
+     * an array inside the header object rather than a separate argument.
+     * Jackson builds it so quotes and backslashes are escaped properly.
+     */
+    private String buildStoredProcedurePayload(TollEntrySaveRequest request,
+                                               List<TollEntryDetailRequest> details,
+                                               double amount) {
+        ObjectNode master = objectMapper.createObjectNode();
+        master.put("Id", request.getId() == null ? 0 : request.getId());
+        master.put("CompanyRefId", request.getCompanyRefId());
+        master.put("EmployeeRefId", request.getEmployeeRefId() == null ? 0 : request.getEmployeeRefId());
+        master.put("TruckRefid", request.getTruckRefId());
+        master.put("UserRefId", 0);
+        master.put("SaleDate", request.getSaleDate().toString());
+        master.put("Amount", amount);
+        master.put("Remarks", request.getRemarks() == null ? "" : request.getRemarks());
+        master.put("FilePath", request.getFilePath() == null ? "" : request.getFilePath());
+        master.put("CNumberDisplay", "");
+        master.put("CNumber", 0);
+
+        ArrayNode lines = objectMapper.createArrayNode();
+        for (TollEntryDetailRequest line : details) {
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("EntryAmount", nullSafe(line.getEntryAmount()));
+            node.put("EntryBalance", nullSafe(line.getEntryBalance()));
+            node.put("EntryDate", line.getEntryDate() == null ? null : line.getEntryDate().toString());
+            node.put("EntryTime", line.getEntryTime() == null ? null : line.getEntryTime().toString());
+            node.put("TransType", line.getTransType() == null ? "" : line.getTransType());
+            node.put("VehicleClass", line.getVehicleClass() == null ? 0 : line.getVehicleClass());
+            node.put("EntrySP", blankIfNull(line.getEntrySP()));
+            node.put("EntryLocation", blankIfNull(line.getEntryLocation()));
+            node.put("ExitSP", blankIfNull(line.getExitSP()));
+            node.put("ExitLocation", blankIfNull(line.getExitLocation()));
+            node.put("TransNo", blankIfNull(line.getTransNo()));
+            node.put("TransactionID", blankIfNull(line.getTransactionId()));
+            node.put("VehicleNumber", blankIfNull(line.getVehicleNumber()));
+            node.put("MFGNumber", blankIfNull(line.getMfgNumber()));
+            lines.add(node);
+        }
+        master.set("SaleDetails", lines);
+
+        ArrayNode rows = objectMapper.createArrayNode();
+        rows.add(master);
+        return rows.toString();
+    }
+
+    // ------------------------------------------------------------------ read
+
+    @Override
+    @Transactional(readOnly = true)
+    public TollEntryDetailDto getForEdit(Integer id, Integer tollNumber, Integer companyRefId) {
+        requireCompany(companyRefId);
+
+        Integer lookupId = id;
+        if (tollNumber != null && tollNumber != 0) {
+            lookupId = tollEntryRepository.findIdsByCNumber(companyRefId, tollNumber)
+                    .stream().findFirst()
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "No toll entry with number " + tollNumber));
+        }
+        if (lookupId == null || lookupId == 0) {
+            throw new InvalidRequestException("Either id or tollNumber must be supplied");
+        }
+
+        final Integer resolvedId = lookupId;
+        TollEntry entry = tollEntryRepository
+                .findByIdAndCompanyRefIdAndActive(resolvedId, companyRefId, ACTIVE)
+                .orElseThrow(() -> new EntityNotFoundException("Toll entry " + resolvedId + " was not found"));
+
+        return toDetail(entry, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TollEntryDetailDto getForPrint(Integer id, Integer companyRefId) {
+        requireCompany(companyRefId);
+        TollEntry entry = tollEntryRepository
+                .findByIdAndCompanyRefIdAndActive(id, companyRefId, ACTIVE)
+                .orElseThrow(() -> new EntityNotFoundException("Toll entry " + id + " was not found"));
+        return toDetail(entry, true);
+    }
+
+    private TollEntryDetailDto toDetail(TollEntry entry, boolean withDetails) {
+        List<TollEntryDetailRowDto> lines = !withDetails ? List.of()
+                : tollEntryDetailsRepository.findByTollEntryMasterRefId(entry.getId()).stream()
+                        .map(this::toDetailRow)
+                        .toList();
+
+        return TollEntryDetailDto.builder()
+                .id(entry.getId())
+                .companyRefId(entry.getCompanyRefId())
+                .cNumberDisplay(entry.getCNumberDisplay())
+                .cNumber(entry.getCNumber())
+                .saleDate(entry.getSaleDate() == null ? null : entry.getSaleDate().toLocalDate())
+                .truckRefId(entry.getTruckRefid())
+                .truckName(truckName(entry.getTruckRefid()))
+                .employeeRefId(entry.getEmployeeRefId())
+                .amount(toDouble(entry.getAmount()))
+                .remarks(entry.getRemarks())
+                .filePath(entry.getFilePath())
+                .details(lines)
+                .build();
+    }
+
+    private TollEntryDetailRowDto toDetailRow(TollEntryDetails line) {
+        return TollEntryDetailRowDto.builder()
+                .id(line.getId())
+                .tollEntryMasterRefId(line.getTollEntryMasterRefId())
+                .entryAmount(toDouble(line.getEntryAmount()))
+                .entryBalance(toDouble(line.getEntryBalance()))
+                .entryDate(line.getEntryDate() == null ? null : line.getEntryDate().toLocalDate())
+                .entryTime(line.getEntryTime())
+                .transType(line.getTransType())
+                .vehicleClass(line.getVehicleClass())
+                .entrySP(line.getEntrySP())
+                .entryLocation(line.getEntryLocation())
+                .exitSP(line.getExitSP())
+                .exitLocation(line.getExitLocation())
+                .transNo(line.getTransNo())
+                .transactionId(line.getTransactionID())
+                .vehicleNumber(line.getVehicleNumber())
+                .mfgNumber(line.getMfgNumber())
+                .build();
+    }
+
+    // ---------------------------------------------------------------- delete
 
     @Override
     @Transactional
-    public TollEntryDto update(Integer id, TollEntryDto dto) {
-        logger.info("Updating TollEntry with ID: {}", id);
-        validateTollEntryData(dto);
-
-        TollEntry entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TollEntry not found: " + id));
-
-        // Update modified date as per SP_TollEntry logic
-        LocalDateTime now = LocalDateTime.now();
-        entity.setModifiedDate(now);
-        entity.setModifiedBy("SYSTEM");
-
-        mapper.updateEntityFromDto(dto, entity);
-        TollEntry updated = repository.save(entity);
-        logger.info("TollEntry updated with ID: {}", updated.getId());
-        return mapper.toDto(updated);
-    }
-
-    @Override
-    @Transactional
-    public boolean delete(Integer id) {
-        logger.info("Deleting TollEntry with ID: {}", id);
-        if (repository.existsById(id)) {
-            // Delete associated detail records first (foreign key constraint)
-            detailsRepository.deleteByTollEntryMasterRefId(id);
-            repository.deleteById(id);
-            logger.info("TollEntry and details deleted with ID: {}", id);
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public long countByCompanyRefId(Integer companyRefId) {
-        logger.info("Counting TollEntry for company: {}", companyRefId);
-        return repository.countByCompanyRefId(companyRefId);
-    }
-
-    @Override
-    public long countActiveByCompanyRefId(Integer companyRefId) {
-        logger.info("Counting active TollEntry for company: {}", companyRefId);
-        return repository.countByCompanyRefIdAndActive(companyRefId, 1);
-    }
-
-    @Override
-    public void validateTollEntryData(TollEntryDto dto) {
-        if (dto.getCompanyRefId() == null) {
-            throw new RuntimeException("Company Reference ID is required");
-        }
-        if (dto.getSaleDate() == null) {
-            throw new RuntimeException("Sale Date is required");
-        }
-        if (dto.getCNumberDisplay() == null || dto.getCNumberDisplay().trim().isEmpty()) {
-            throw new RuntimeException("C Number Display is required");
-        }
-        if (dto.getCNumber() == null) {
-            throw new RuntimeException("C Number is required");
+    public void delete(Integer id, Integer companyRefId, String username) {
+        requireCompany(companyRefId);
+        int updated = tollEntryRepository.softDelete(id, companyRefId, username);
+        if (updated == 0) {
+            throw new EntityNotFoundException("Toll entry " + id + " was not found");
         }
     }
 
-    @Override
-    @Transactional
-    public TollEntryDto activateTollEntry(Integer id) {
-        logger.info("Activating TollEntry with ID: {}", id);
-        TollEntry entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TollEntry not found: " + id));
+    // --------------------------------------------------------------- helpers
 
-        entity.setActive(1);
-        entity.setModifiedDate(LocalDateTime.now());
-        entity.setModifiedBy("SYSTEM");
-        TollEntry updated = repository.save(entity);
-
-        logger.info("TollEntry activated with ID: {}", id);
-        return mapper.toDto(updated);
+    private Map<Integer, String> truckNames(Integer companyRefId) {
+        Map<Integer, String> names = new HashMap<>();
+        for (TruckMaster truck : truckMasterRepository.findByCompanyRefId(companyRefId)) {
+            names.put(truck.getId(), truck.getTruckName());
+        }
+        return names;
     }
 
-    @Override
-    @Transactional
-    public TollEntryDto deactivateTollEntry(Integer id) {
-        logger.info("Deactivating TollEntry with ID: {}", id);
-        TollEntry entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TollEntry not found: " + id));
-
-        entity.setActive(0);
-        entity.setModifiedDate(LocalDateTime.now());
-        entity.setModifiedBy("SYSTEM");
-        TollEntry updated = repository.save(entity);
-
-        logger.info("TollEntry deactivated with ID: {}", id);
-        return mapper.toDto(updated);
+    private String truckName(Integer truckRefId) {
+        if (truckRefId == null) {
+            return null;
+        }
+        return truckMasterRepository.findById(truckRefId).map(TruckMaster::getTruckName).orElse(null);
     }
 
-    @Override
-    @Transactional
-    public TollEntryDto processTollEntry(TollEntryDto dto, List<TollEntryDetailsDto> details, Integer companyId) {
-        logger.info("Processing TollEntry with SP_TollEntry logic for company: {}", companyId);
-
-        // SP_TollEntry Logic:
-        // 1. Set company ID
-        dto.setCompanyRefId(companyId);
-
-        // 2. Validate referenced entities (User, Employee, Truck)
-        validateReferencedEntities(dto);
-
-        // 3. If update (id > 0), delete existing details
-        if (dto.getId() != null && dto.getId() > 0) {
-            logger.info("Deleting existing TollEntry details for ID: {}", dto.getId());
-            detailsRepository.deleteByTollEntryMasterRefId(dto.getId());
-        }
-
-        // 4. Create or update TollEntry
-        TollEntryDto savedEntry;
-        if (dto.getId() == null || dto.getId() == 0) {
-            logger.info("Processing INSERT operation for TollEntry");
-            savedEntry = create(dto);
-        } else {
-            logger.info("Processing UPDATE operation for TollEntry ID: {}", dto.getId());
-            savedEntry = update(dto.getId(), dto);
-        }
-
-        // 5. Insert detail records with sequence number generation
-        if (details != null && !details.isEmpty()) {
-            logger.info("Inserting {} TollEntry detail records", details.size());
-            for (TollEntryDetailsDto detail : details) {
-                detail.setTollEntryMasterRefId(savedEntry.getId());
-                TollEntryDetails detailEntity = detailsMapper.toEntity(detail);
-                detailsRepository.save(detailEntity);
-            }
-        }
-
-        // 6. Generate sequence number if new record
-        if ((dto.getId() == null || dto.getId() == 0)) {
-            generateSequenceNumber(savedEntry, companyId);
-        }
-
-        logger.info("TollEntry processing complete with ID: {}", savedEntry.getId());
-        return savedEntry;
-    }
-
-    private void validateReferencedEntities(TollEntryDto dto) {
-        // Validations for referenced entities would require calling other repositories
-        // For now, we'll just log the validation
-        logger.debug("Validating referenced entities for TollEntry");
-        if (dto.getUserRefId() != null && dto.getUserRefId() > 0) {
-            logger.debug("User ID to validate: {}", dto.getUserRefId());
-        }
-        if (dto.getEmployeeRefId() != null && dto.getEmployeeRefId() > 0) {
-            logger.debug("Employee ID to validate: {}", dto.getEmployeeRefId());
-        }
-        if (dto.getTruckRefid() != null && dto.getTruckRefid() > 0) {
-            logger.debug("Truck ID to validate: {}", dto.getTruckRefid());
+    private void requireCompany(Integer companyRefId) {
+        if (companyRefId == null || companyRefId == 0) {
+            throw new InvalidRequestException("companyRefId is required");
         }
     }
 
-    private void generateSequenceNumber(TollEntryDto dto, Integer companyId) {
-        // Sequence number generation logic (TE + 9 digits)
-        // This would normally integrate with SequenceNoMaster table
-        logger.debug("Generating sequence number for TollEntry: {}", dto.getId());
-        // Format: TE + 000000001
-        String sequenceDisplay = String.format("TE%09d", dto.getId());
-        logger.debug("Generated sequence: {}", sequenceDisplay);
+    private Integer asInteger(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
+    /**
+     * Widens a value from a SQL Server {@code real} column, rounding away the
+     * 4-byte float noise that otherwise reaches the screen as 4.670000076293945.
+     */
+    private Double toDouble(Float value) {
+        if (value == null) {
+            return null;
+        }
+        return BigDecimal.valueOf(value.doubleValue())
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    private double nullSafe(Double value) {
+        return value == null ? 0d : value;
+    }
+
+    private String blankIfNull(String value) {
+        return value == null ? "" : value;
+    }
+
+    private double round2(double value) {
+        return Math.round(value * 100d) / 100d;
     }
 }
-

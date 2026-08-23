@@ -28,6 +28,17 @@ public interface TruckMasterRepository extends JpaRepository<TruckMaster, Intege
     List<TruckMaster> findByCompanyRefIdAndActive(Integer companyRefId, Integer active);
 
     /**
+     * Active trucks owned by Maleva itself, excluding subcontractor vehicles
+     * kept in the same table (MalevaTruck = 0). On the live data that is 69 of
+     * 71 active trucks.
+     *
+     * Used by the fleet maintenance dashboard: a subcontractor's truck is not
+     * ours to service, so its documents should not appear as our alerts.
+     */
+    List<TruckMaster> findByCompanyRefIdAndActiveAndMalevaTruck(
+            Integer companyRefId, Integer active, Integer malevaTruck);
+
+    /**
      * Find TruckMaster by truck name and company
      */
     Optional<TruckMaster> findByTruckNameAndCompanyRefId(String truckName, Integer companyRefId);

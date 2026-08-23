@@ -133,5 +133,13 @@ public class TruckMaster {
 
     @Column(name = "VehicleType", length = 300)
     private String vehicleType;
+
+    /**
+     * Whether this truck belongs to Maleva itself, as opposed to a
+     * subcontractor's vehicle kept in the same TruckMaster table.
+     * 1 = Maleva-owned, 0 = not. On the live data 69 of 71 active trucks are 1.
+     */
+    @Column(name = "MalevaTruck")
+    private Integer malevaTruck;
 }
 
