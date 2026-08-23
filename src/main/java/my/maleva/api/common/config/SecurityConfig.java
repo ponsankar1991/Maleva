@@ -124,6 +124,9 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/api/ws").permitAll()
                         .requestMatchers("/api/ws/**").permitAll()
+                        // Stored attachments are fetched by <img>/<a> and by new
+                        // tabs, neither of which carries the bearer token.
+                        .requestMatchers("/uploads/**").permitAll()
                         // welcome requires JWT auth
                         .requestMatchers("/api/welcome").authenticated()
                         // all other endpoints require authentication
