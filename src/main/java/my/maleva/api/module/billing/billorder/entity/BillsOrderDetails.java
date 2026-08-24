@@ -102,4 +102,17 @@ public class BillsOrderDetails {
      */
     @Column(name = "InventoryProductRefId")
     private Integer inventoryProductRefId;
+
+    /**
+     * When this line was received into stock, null until it has been.
+     *
+     * The receipt sets this in the same transaction as the stock movement it
+     * causes, so a second attempt on the same line can be refused before any
+     * quantity moves a second time - see InventoryItemServiceImpl.receivePurchaseLine.
+     */
+    @Column(name = "StockPushedDate")
+    private LocalDateTime stockPushedDate;
+
+    @Column(name = "StockPushedQty", precision = 18, scale = 2)
+    private java.math.BigDecimal stockPushedQty;
 }

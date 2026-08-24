@@ -22,6 +22,8 @@ public class JobOrderDetailResponseDto {
     private Integer supplierMasterRefId;
     private String supplierName;
     private BigDecimal cost;
+    private BigDecimal quantity;
+    private Integer inventoryTransactionRefId;
     private String remarks;
     private Integer active;
     

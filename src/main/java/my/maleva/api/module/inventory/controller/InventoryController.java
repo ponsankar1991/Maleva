@@ -3,6 +3,7 @@ package my.maleva.api.module.inventory.controller;
 import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import my.maleva.api.module.inventory.dto.InventoryTransactionDto;
+import my.maleva.api.module.inventory.dto.ReceivePurchaseLineRequestDto;
 import my.maleva.api.module.inventory.dto.StockInRequestDto;
 import my.maleva.api.module.inventory.dto.StockOutRequestDto;
 import my.maleva.api.module.inventory.dto.TruckUsageDto;
@@ -32,6 +33,9 @@ public class InventoryController {
     @Autowired
     private InventoryService inventoryService;
 
+    @Autowired
+    private my.maleva.api.module.inventory.service.InventoryItemService inventoryItemService;
+
     /**
      * Record a stock receipt: opening balance, purchase, return or correction in.
      */
@@ -54,6 +58,25 @@ public class InventoryController {
                 request.getCompanyRefId(), request.getProductRefId(),
                 request.getQuantity(), request.getTruckRefId());
         return ResponseEntity.status(HttpStatus.CREATED).body(inventoryService.stockOut(request));
+    }
+
+    /**
+     * Receive one purchase order line into the store.
+     *
+     * Creates the store record when the product is not carried yet, then records
+     * the movement, both in one transaction. Two steps behind one call on purpose:
+     * a receipt that catalogued the item and then failed to add the quantity would
+     * leave an item reading zero that nobody can explain.
+     */
+    @PostMapping("/receive-purchase-line")
+    @PermitAll
+    public ResponseEntity<InventoryTransactionDto> receivePurchaseLine(
+            @Valid @RequestBody ReceivePurchaseLineRequestDto request) {
+        logger.info("Receive PO line: company={}, product={}, qty={}, po={}",
+                request.getCompanyRefId(), request.getProductRefId(),
+                request.getQuantity(), request.getPurchaseOrderRefId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(inventoryItemService.receivePurchaseLine(request));
     }
 
     /**

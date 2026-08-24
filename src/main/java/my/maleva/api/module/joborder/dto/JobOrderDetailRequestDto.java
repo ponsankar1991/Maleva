@@ -32,6 +32,9 @@ public class JobOrderDetailRequestDto {
 
     private BigDecimal cost;
 
+    /** Units consumed; treated as 1 when absent, matching every pre-quantity row. */
+    private BigDecimal quantity;
+
     @Size(max = 500, message = "Remarks cannot exceed 500 characters")
     private String remarks;
 

@@ -14,6 +14,7 @@ import my.maleva.api.module.inventory.repository.InventoryItemRepository;
 import my.maleva.api.module.inventory.service.InventoryItemService;
 import my.maleva.api.module.inventory.service.InventoryService;
 import my.maleva.api.module.inventory.service.RepairableAssetService;
+import my.maleva.api.module.billing.billorder.repository.BillsOrderDetailsRepository;
 import my.maleva.api.module.productmaster.entity.ProductMaster;
 import my.maleva.api.module.productmaster.entity.ProductMasterCStock;
 import my.maleva.api.module.productmaster.repository.ProductMasterCStockRepository;
@@ -56,9 +57,133 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     @Autowired private InventoryService inventoryService;
     @Autowired private RepairableAssetService repairableAssetService;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private BillsOrderDetailsRepository billsOrderDetailsRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    // ------------------------------------------------------- ensure store item
+
+    @Override
+    @Transactional
+    public InventoryItem ensureStoreItem(Integer companyRefId, Integer productRefId, String itemType,
+                                         Double unitCost, Integer defaultSupplierRefId, String modifiedBy) {
+
+        Optional<InventoryItem> existing = itemRepository
+                .findByCompanyRefIdAndProductRefId(companyRefId, productRefId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        ProductMaster product = productMasterRepository.findById(productRefId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Product not found with ID: " + productRefId));
+
+        // PART when unstated: it is tracked by plain quantity, which is the only
+        // thing a receipt can be sure of. The caller normally does say, because the
+        // person receiving the goods can see whether they are holding a filter or
+        // a drum of oil, and the two are issued in different units.
+        ItemType type = itemType == null || itemType.trim().isEmpty()
+                ? ItemType.PART
+                : parseType(itemType);
+
+        // The product's own UOM if the UOM master recognises it, so the item reads
+        // in the same unit the buyer ordered in; otherwise the type's default.
+        String baseUom = displayUom(uomLookup(companyRefId),
+                defaultUom(product.getUomCode() == null ? null
+                        : String.valueOf(product.getUomCode()), type));
+
+        InventoryItem item = itemRepository.save(InventoryItem.builder()
+                .companyRefId(companyRefId)
+                .productRefId(productRefId)
+                .itemType(type)
+                .baseUom(baseUom)
+                .unitCost(unitCost)
+                .defaultSupplierRefId(defaultSupplierRefId)
+                .active(1)
+                .modifiedBy(modifiedBy)
+                .build());
+
+        // Movements are written against this row, so it has to exist before any
+        // quantity is recorded or the balance would have nothing to hang off.
+        if (cstockRepository.findByCompanyRefIdAndProductRefId(companyRefId, productRefId).isEmpty()) {
+            cstockRepository.save(ProductMasterCStock.builder()
+                    .companyRefId(companyRefId)
+                    .productRefId(productRefId)
+                    .cstock(0.0)
+                    .modifiedBy(modifiedBy)
+                    .build());
+        }
+
+        logger.info("Store item auto-created on receipt: company={}, product={} ({}), uom={}, supplier={}",
+                companyRefId, productRefId, product.getProdCode(), baseUom, defaultSupplierRefId);
+        return item;
+    }
+
+    @Override
+    @Transactional
+    public InventoryTransactionDto receivePurchaseLine(ReceivePurchaseLineRequestDto request) {
+        // Catalogue first: a movement written before the store record exists would
+        // hold quantity against a product no inventory screen lists.
+        InventoryItem item = ensureStoreItem(
+                request.getCompanyRefId(),
+                request.getProductRefId(),
+                request.getItemType(),
+                request.getUnitCost() == null ? null : request.getUnitCost().doubleValue(),
+                request.getSupplierRefId(),
+                request.getCreatedBy());
+
+        // A serialised item's on-hand is counted from its registered units, not from
+        // the quantity balance, so adding to that balance would move a number no
+        // screen reads and leave the item still showing nothing in stock. Refusing
+        // is the honest outcome: these need a serial per unit, which one order line
+        // carrying one serial box cannot supply.
+        if (item.getItemType().isSerialised()) {
+            throw new InvalidRequestException(
+                    "'" + item.getItemType().name() + "' items are tracked by serial number. "
+                  + "Register each unit under Inventory instead of receiving a quantity here.");
+        }
+
+        // Claimed only now, after every reason to refuse has already had its turn -
+        // a line rejected for being serialised, or for any other reason above, must
+        // not come out of this method marked as received when nothing moved.
+        // The WHERE clause inside claimForReceiving is the actual guard: it matches
+        // only a line that has never been claimed, so a second click - or two
+        // clicks arriving together - cannot both succeed. See its Javadoc for why
+        // that holds even under real concurrency, not just under a single click.
+        int claimed = billsOrderDetailsRepository.claimForReceiving(
+                request.getBillsOrderDetailsRefId(), request.getQuantity());
+        if (claimed == 0) {
+            throw new InvalidRequestException(
+                    "This order line has already been received into stock. "
+                  + "Reload the order to see the current quantity on hand.");
+        }
+
+        // The item's unit cost follows the latest priced receipt. Not an average -
+        // averaging needs the valued balance the schema does not yet track - but
+        // "what we last paid" is the figure the workshop charges a job from, and
+        // updating it here is what turns an item catalogued at RM 0 before prices
+        // existed into one the job order screen can actually cost a line with.
+        if (request.getUnitCost() != null && request.getUnitCost().signum() > 0) {
+            double latest = request.getUnitCost().doubleValue();
+            if (item.getUnitCost() == null || Double.compare(item.getUnitCost(), latest) != 0) {
+                item.setUnitCost(latest);
+                item.setModifiedBy(request.getCreatedBy());
+                itemRepository.save(item);
+            }
+        }
+
+        return inventoryService.stockIn(StockInRequestDto.builder()
+                .companyRefId(request.getCompanyRefId())
+                .productRefId(request.getProductRefId())
+                .quantity(request.getQuantity())
+                .unitCost(request.getUnitCost())
+                .referenceType("PURCHASE_ORDER")
+                .referenceId(request.getPurchaseOrderRefId())
+                .remarks(request.getRemarks())
+                .createdBy(request.getCreatedBy())
+                .build());
+    }
 
     // ------------------------------------------------------------------ create
 

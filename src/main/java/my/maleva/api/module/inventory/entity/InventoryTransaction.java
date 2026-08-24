@@ -40,6 +40,20 @@ public class InventoryTransaction {
     @Column(name = "BalanceAfter", precision = 18, scale = 2, nullable = false)
     private BigDecimal balanceAfter;
 
+    /**
+     * Price of one unit on this movement, null when it was never known.
+     *
+     * Held on the movement rather than only on the product because the price of a
+     * part changes between deliveries, and a receipt has to keep the price it
+     * actually arrived at even after the next one supersedes it.
+     */
+    @Column(name = "UnitCost", precision = 18, scale = 4)
+    private BigDecimal unitCost;
+
+    /** Quantity * UnitCost. Null whenever unitCost is. */
+    @Column(name = "TotalValue", precision = 18, scale = 2)
+    private BigDecimal totalValue;
+
     @Column(name = "ReferenceType", length = 50)
     private String referenceType;
 

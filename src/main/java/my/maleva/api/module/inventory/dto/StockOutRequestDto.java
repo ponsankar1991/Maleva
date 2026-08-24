@@ -27,6 +27,15 @@ public class StockOutRequestDto {
     @DecimalMin(value = "0.01", message = "Quantity must be greater than zero")
     private BigDecimal quantity;
 
+    /**
+     * Value of one unit leaving the shelf, when the caller knows it - typically
+     * the store item's recorded unit cost. Optional for the same reason as on
+     * StockInRequestDto: a correction has no price, and inventing one would be
+     * worse than a movement of unrecorded value.
+     */
+    @DecimalMin(value = "0", message = "Unit cost cannot be negative")
+    private BigDecimal unitCost;
+
     @Size(max = 50, message = "Reference Type cannot exceed 50 characters")
     private String referenceType;
 

@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service implementation for BillsOrderMaster insert/update operations
@@ -161,9 +162,6 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 logger.info("  • Calling updateSaleOrderMasterFlags...");
                 updateSaleOrderMasterFlags(dto);
 
-                logger.info("  • Deleting old detail records for BillsOrderMaster ID: {}", dto.getId());
-                billsOrderDetailsRepository.deleteByBillsOrderMasterRefId(dto.getId());
-                
                 logger.info("  • Fetching existing master record...");
                 masterEntity = billsOrderMasterRepository.findById(dto.getId())
                         .orElseThrow(() -> new IllegalArgumentException("BillsOrderMaster not found for id: " + dto.getId()));
@@ -230,11 +228,35 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
             logger.info("✓ Step 7: Master Record saved with ID: {}", newMasterId);
 
             logger.info("Step 8/10: Processing {} Detail Records...", dto.getBillsOrderDetails().size());
-            // Insert Details
+
+            // Matched by id rather than replaced wholesale: a line already received
+            // into stock carries StockPushedDate, and deleting it to insert a fresh
+            // row in its place would erase that fact on the very next save of the
+            // order, silently reopening the line to a second push. Anything the
+            // incoming list drops (the user removed a row in the grid) is deleted
+            // explicitly below instead, once it is known who is still wanted.
+            Map<Integer, BillsOrderDetails> existingDetailsById = new java.util.LinkedHashMap<>();
+            if (!isNewRecord) {
+                for (BillsOrderDetails existing
+                        : billsOrderDetailsRepository.findByBillsOrderMasterRefId(dto.getId())) {
+                    existingDetailsById.put(existing.getId(), existing);
+                }
+            }
+
             List<BillsOrderDetails> detailsList = new ArrayList<>();
             for (int i = 0; i < dto.getBillsOrderDetails().size(); i++) {
                 BillsOrderDetailsInsertDto detailDto = dto.getBillsOrderDetails().get(i);
-                BillsOrderDetails detail = new BillsOrderDetails();
+
+                Integer existingId = (detailDto.getId() != null && detailDto.getId() > 0)
+                        ? detailDto.getId() : null;
+                BillsOrderDetails detail = existingId != null
+                        ? existingDetailsById.remove(existingId) : null;
+                boolean isNewLine = detail == null;
+                if (isNewLine) {
+                    detail = new BillsOrderDetails();
+                    detail.setCreatedDate(LocalDateTime.now());
+                }
+
                 detail.setBillsOrderMasterRefId(newMasterId);
                 detail.setAccountMasterRefId(detailDto.getAccountMasterRefId());
                 detail.setMrp(detailDto.getMrp() != null ? detailDto.getMrp() : 0.0f);
@@ -248,7 +270,6 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 detail.setSalesRate(detailDto.getSalesRate() != null ? detailDto.getSalesRate() : 0.0f);
                 detail.setNetSalesRate(detailDto.getNetSalesRate() != null ? detailDto.getNetSalesRate() : 0.0f);
                 detail.setAmount(detailDto.getAmount() != null ? detailDto.getAmount() : 0.0f);
-                detail.setCreatedDate(LocalDateTime.now());
                 detail.setModifiedDate(LocalDateTime.now());
                 detail.setRemarksD(detailDto.getRemarksD());
                 detail.setCurrencyValue(detailDto.getCurrencyValue() != null ? detailDto.getCurrencyValue() : 0.0f);
@@ -264,9 +285,18 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                                 : null);
 
                 detailsList.add(detail);
-                logger.info("  • Detail[{}] prepared for save - AccountId: {}, Amount: {}",
-                    (i+1), detail.getAccountMasterRefId(), detail.getAmount());
+                logger.info("  • Detail[{}] prepared for save - AccountId: {}, Amount: {}, new={}",
+                    (i+1), detail.getAccountMasterRefId(), detail.getAmount(), isNewLine);
             }
+
+            // Whatever is still in this map was on the order before and is absent
+            // from what was just submitted - removed by the user in the grid.
+            if (!existingDetailsById.isEmpty()) {
+                logger.info("  • Removing {} line(s) dropped from the grid: ids={}",
+                        existingDetailsById.size(), existingDetailsById.keySet());
+                billsOrderDetailsRepository.deleteAll(existingDetailsById.values());
+            }
+
             billsOrderDetailsRepository.saveAll(detailsList);
             logger.info("✓ Step 8: All {} detail records saved", detailsList.size());
 

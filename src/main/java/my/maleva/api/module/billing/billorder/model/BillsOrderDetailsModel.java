@@ -43,5 +43,15 @@ public class BillsOrderDetailsModel {
     private Integer inventoryProductRefId;
     private String storeItemCode;
     private String storeItemName;
+
+    /**
+     * When this line was received into stock, null until it has been. Carried
+     * to the edit screen so a re-opened order shows "already received" from the
+     * saved fact, not only from what happened earlier in the same browser tab.
+     */
+    private java.util.Date stockPushedDate;
+
+    /** True once stockPushedDate is set - the flag the grid actually reads. */
+    private Boolean stockPushed;
 }
 

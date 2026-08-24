@@ -22,6 +22,8 @@ public class InventoryTransactionDto {
     private String transactionType;
     private BigDecimal quantity;
     private BigDecimal balanceAfter;
+    private BigDecimal unitCost;
+    private BigDecimal totalValue;
     private String referenceType;
     private Integer referenceId;
     private Integer truckRefId;

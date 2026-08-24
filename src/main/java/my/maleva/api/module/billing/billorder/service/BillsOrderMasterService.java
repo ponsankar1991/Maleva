@@ -500,7 +500,7 @@ public class BillsOrderMasterService {
                     "B.DiscAmount, B.LandingCost, B.TaxPercent, B.TaxAmount, B.SalesRate, B.NetSalesRate, " +
                     "B.Amount, B.RemarksD, I.GlAccountCode as ProductCode, I.Description as ProductName, " +
                     "B.InventoryProductRefId, ISNULL(P.Prod_Code, '') as StoreItemCode, " +
-                    "ISNULL(P.PName, '') as StoreItemName " +
+                    "ISNULL(P.PName, '') as StoreItemName, B.StockPushedDate " +
                     "FROM BillsOrderMaster A WITH(NOLOCK) " +
                     "INNER JOIN BillsOrderDetails B WITH(NOLOCK) ON A.Id = B.BillsOrderMasterRefId " +
                     "INNER JOIN GLAccounts I WITH(NOLOCK) ON I.RowIndex = B.AccountMasterRefId " +
@@ -603,6 +603,9 @@ public class BillsOrderMasterService {
                 detail.setInventoryProductRefId(storeItemId);
                 detail.setStoreItemCode(rs.getString("StoreItemCode"));
                 detail.setStoreItemName(rs.getString("StoreItemName"));
+                java.sql.Timestamp pushedTs = rs.getTimestamp("StockPushedDate");
+                detail.setStockPushedDate(pushedTs != null ? new java.util.Date(pushedTs.getTime()) : null);
+                detail.setStockPushed(pushedTs != null);
 
                 // Add detail to master only if not already added
                 if (master.getBillsOrderDetails().stream()

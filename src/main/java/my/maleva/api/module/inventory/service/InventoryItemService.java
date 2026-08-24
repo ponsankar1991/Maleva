@@ -4,7 +4,10 @@ import my.maleva.api.module.inventory.dto.AvailableProductDto;
 import my.maleva.api.module.inventory.dto.InventoryItemListDto;
 import my.maleva.api.module.inventory.dto.InventoryItemRequestDto;
 import my.maleva.api.module.inventory.dto.InventoryItemResponseDto;
+import my.maleva.api.module.inventory.dto.InventoryTransactionDto;
+import my.maleva.api.module.inventory.dto.ReceivePurchaseLineRequestDto;
 import my.maleva.api.module.inventory.dto.UomOptionDto;
+import my.maleva.api.module.inventory.entity.InventoryItem;
 
 import java.util.List;
 
@@ -19,6 +22,37 @@ public interface InventoryItemService {
      * leave it null to create a new product from itemCode and itemName.
      */
     InventoryItemResponseDto create(InventoryItemRequestDto request);
+
+    /**
+     * Return the store record for a product, creating a minimal one if the store
+     * does not carry it yet.
+     *
+     * Receiving stock and cataloguing an item are separate acts everywhere else in
+     * this module, which is correct when someone is setting the store up by hand.
+     * A goods receipt has no such luxury: the parts are on the counter, and asking
+     * the receiver to go and create the item first is how stock ends up recorded
+     * against a product that no inventory screen will ever show. Nothing here
+     * overwrites an existing row - a receipt is not the place to redefine an
+     * item's type, bin or reorder level.
+     *
+     * @param itemType kind of stock, used only when creating; PART when null
+     * @param unitCost price from the receipt, used only when creating
+     * @param defaultSupplierRefId supplier the order was raised against, used
+     *                             only when creating; left unset when null
+     * @return the existing or newly created item
+     */
+    InventoryItem ensureStoreItem(Integer companyRefId, Integer productRefId, String itemType,
+                                  Double unitCost, Integer defaultSupplierRefId, String modifiedBy);
+
+    /**
+     * Receive a purchase order line: make sure the store carries the product, then
+     * record the quantity against it, in one transaction.
+     *
+     * Lives here rather than on InventoryService because it needs both halves, and
+     * this service already depends on that one - putting it the other way round
+     * would make the two services depend on each other.
+     */
+    InventoryTransactionDto receivePurchaseLine(ReceivePurchaseLineRequestDto request);
 
     /**
      * Products that exist but are not yet set up for the workshop store - the

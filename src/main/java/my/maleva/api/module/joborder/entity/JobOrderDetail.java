@@ -40,6 +40,18 @@ public class JobOrderDetail {
     @Column(name = "Cost", precision = 12, scale = 2)
     private BigDecimal cost;
 
+    /** How many units this line consumed. The stock issue moves exactly this. */
+    @Column(name = "Quantity", precision = 18, scale = 2)
+    private BigDecimal quantity;
+
+    /**
+     * The stock OUT this line caused, null when the product is not carried by
+     * the workshop store. Kept so removing the line during an edit can reverse
+     * that exact movement rather than reconstruct it from today's figures.
+     */
+    @Column(name = "InventoryTransactionRefId")
+    private Integer inventoryTransactionRefId;
+
     @Column(name = "Remarks", length = 500)
     private String remarks;
 

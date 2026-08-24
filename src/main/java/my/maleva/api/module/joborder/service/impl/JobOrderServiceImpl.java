@@ -25,6 +25,15 @@ import my.maleva.api.module.master.entity.SequenceNoMaster;
 import my.maleva.api.module.master.repository.SequenceNoMasterRepository;
 import my.maleva.api.module.joborder.repository.JobOrderDetailRepository;
 import my.maleva.api.module.joborder.mapper.JobOrderDetailMapper;
+import my.maleva.api.common.exception.InvalidRequestException;
+import my.maleva.api.module.inventory.dto.StockInRequestDto;
+import my.maleva.api.module.inventory.dto.StockOutRequestDto;
+import my.maleva.api.module.inventory.entity.InventoryItem;
+import my.maleva.api.module.inventory.exception.InsufficientStockException;
+import my.maleva.api.module.inventory.repository.InventoryItemRepository;
+import my.maleva.api.module.inventory.repository.InventoryTransactionRepository;
+import my.maleva.api.module.inventory.service.InventoryService;
+import my.maleva.api.module.joborder.entity.JobOrderDetail;
 
 import org.springframework.data.jpa.domain.Specification;
 import my.maleva.api.module.supplier.repository.SupplierRepository;
@@ -55,6 +64,9 @@ public class JobOrderServiceImpl implements JobOrderService {
     private final JobOrderDetailRepository jobOrderDetailRepository;
     private final JobOrderDetailMapper jobOrderDetailMapper;
     private final SupplierRepository supplierRepository;
+    private final InventoryItemRepository inventoryItemRepository;
+    private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final InventoryService inventoryService;
 
     /**
      * Extract user ID from security context
@@ -211,10 +223,14 @@ public class JobOrderServiceImpl implements JobOrderService {
                     detailEntity.setSupplier(supplierRepository.findById(detailEntity.getSupplierMasterRefId()).orElse(null));
                 }
                 my.maleva.api.module.joborder.entity.JobOrderDetail savedDetail = jobOrderDetailRepository.save(detailEntity);
+                // Consuming a store part is what a job order line means - the
+                // shelf goes down in the same transaction the line is written,
+                // so the two can never disagree.
+                issueStockIfDue(savedDetail, saved, userId);
                 savedDetailsDto.add(jobOrderDetailMapper.toDto(savedDetail));
             }
         }
-        
+
         JobOrderResponseDto responseDto = jobOrderMapper.toDto(saved);
         responseDto.setDetails(savedDetailsDto);
         return responseDto;
@@ -273,10 +289,17 @@ public class JobOrderServiceImpl implements JobOrderService {
                 }
 
                 my.maleva.api.module.joborder.entity.JobOrderDetail savedDetail = jobOrderDetailRepository.save(detailEntity);
+                // Same rule as on create: only a line with no movement behind it
+                // issues stock, so a line added during this edit consumes its
+                // part while the already-issued ones are left alone.
+                issueStockIfDue(savedDetail, updated, userId);
                 savedDetailsDto.add(jobOrderDetailMapper.toDto(savedDetail));
             }
 
             for (my.maleva.api.module.joborder.entity.JobOrderDetail detailToDelete : existingDetailsMap.values()) {
+                // The part goes back on the shelf before its line disappears -
+                // deleting first would orphan the movement the return is read from.
+                reverseStockFor(detailToDelete, updated, userId);
                 jobOrderDetailRepository.delete(detailToDelete);
             }
         }
@@ -352,6 +375,80 @@ public class JobOrderServiceImpl implements JobOrderService {
         return priorityRepository.findByIsActiveTrue().stream()
                 .map(p -> new JobOrderLookupDto.LookupItem(p.getId(), p.getPriorityName()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Takes a detail line's parts off the workshop shelf.
+     *
+     * Runs for any saved line that names a product and has no stock movement
+     * behind it yet - which covers a line on a brand new job order and a line
+     * added during an edit with the same rule, and makes a repeat call on an
+     * already-issued line a no-op rather than a second deduction. Products the
+     * store does not carry are skipped silently: buying a part straight from a
+     * vendor for one job is normal, and there is no shelf quantity to reduce.
+     * Serialised items are skipped too - their units leave through the asset
+     * flow one serial at a time, not through a quantity balance.
+     *
+     * Insufficient stock aborts the whole save on purpose. A job order that
+     * claims to have consumed three filters the store did not have would be
+     * exactly the kind of quietly wrong record this flow exists to prevent.
+     */
+    private void issueStockIfDue(JobOrderDetail detail, JobOrderMaster master, Integer userId) {
+        if (detail.getProductRefId() == null || detail.getInventoryTransactionRefId() != null) {
+            return;
+        }
+        InventoryItem item = inventoryItemRepository
+                .findByCompanyRefIdAndProductRefId(master.getCompanyRefId(), detail.getProductRefId())
+                .orElse(null);
+        if (item == null || item.getItemType().isSerialised()) {
+            return;
+        }
+        java.math.BigDecimal qty = detail.getQuantity() == null || detail.getQuantity().signum() <= 0
+                ? java.math.BigDecimal.ONE
+                : detail.getQuantity();
+        try {
+            var txn = inventoryService.stockOut(StockOutRequestDto.builder()
+                    .companyRefId(master.getCompanyRefId())
+                    .productRefId(detail.getProductRefId())
+                    .quantity(qty)
+                    .unitCost(item.getUnitCost() == null ? null
+                            : java.math.BigDecimal.valueOf(item.getUnitCost()))
+                    .truckRefId(master.getTruck() != null ? master.getTruck().getId() : null)
+                    .referenceType("JOB_ORDER")
+                    .referenceId(master.getId())
+                    .remarks("Job " + master.getCNumberDisplay())
+                    .createdBy(String.valueOf(userId))
+                    .build());
+            detail.setInventoryTransactionRefId(txn.getId());
+            jobOrderDetailRepository.save(detail);
+        } catch (InsufficientStockException ex) {
+            throw new InvalidRequestException(
+                    ex.getMessage() + ". Reduce the quantity, or receive stock into the store first.");
+        }
+    }
+
+    /**
+     * Puts back what a removed line took out.
+     *
+     * Reversed from the recorded movement, not from the line: the transaction
+     * holds the exact quantity and unit cost that left the shelf, so the return
+     * restores precisely that even if the item's price has changed since.
+     */
+    private void reverseStockFor(JobOrderDetail detail, JobOrderMaster master, Integer userId) {
+        if (detail.getInventoryTransactionRefId() == null) {
+            return;
+        }
+        inventoryTransactionRepository.findById(detail.getInventoryTransactionRefId()).ifPresent(txn ->
+                inventoryService.stockIn(StockInRequestDto.builder()
+                        .companyRefId(txn.getCompanyRefId())
+                        .productRefId(txn.getProductRefId())
+                        .quantity(txn.getQuantity())
+                        .unitCost(txn.getUnitCost())
+                        .referenceType("JOB_ORDER_REVERSAL")
+                        .referenceId(master.getId())
+                        .remarks("Line removed from job " + master.getCNumberDisplay())
+                        .createdBy(String.valueOf(userId))
+                        .build()));
     }
 
     private JobOrderMaster findByIdAndCompany(Integer id, Integer companyRefId) {

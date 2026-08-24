@@ -2,6 +2,7 @@ package my.maleva.api.module.inventory.service.impl;
 
 import my.maleva.api.common.exception.EntityNotFoundException;
 import my.maleva.api.module.inventory.dto.InventoryTransactionDto;
+import my.maleva.api.module.inventory.dto.ReceivePurchaseLineRequestDto;
 import my.maleva.api.module.inventory.dto.StockInRequestDto;
 import my.maleva.api.module.inventory.dto.StockOutRequestDto;
 import my.maleva.api.module.inventory.dto.TruckUsageDto;
@@ -75,6 +76,12 @@ public class InventoryServiceImpl implements InventoryService {
                         .transactionType(TransactionType.IN)
                         .quantity(request.getQuantity())
                         .balanceAfter(newBalance)
+                        .unitCost(request.getUnitCost())
+                        // Left null rather than zero when no price came in, so a
+                        // receipt of unknown value cannot be read as a free one.
+                        .totalValue(request.getUnitCost() == null ? null
+                                : request.getQuantity().multiply(request.getUnitCost())
+                                        .setScale(2, RoundingMode.HALF_UP))
                         .referenceType(request.getReferenceType())
                         .referenceId(request.getReferenceId())
                         .truckRefId(request.getTruckRefId())
@@ -120,6 +127,11 @@ public class InventoryServiceImpl implements InventoryService {
                         .transactionType(TransactionType.OUT)
                         .quantity(request.getQuantity())
                         .balanceAfter(newBalance)
+                        .unitCost(request.getUnitCost())
+                        // Null rather than zero when no price came in - see stockIn.
+                        .totalValue(request.getUnitCost() == null ? null
+                                : request.getQuantity().multiply(request.getUnitCost())
+                                        .setScale(2, RoundingMode.HALF_UP))
                         .referenceType(request.getReferenceType())
                         .referenceId(request.getReferenceId())
                         .truckRefId(request.getTruckRefId())
@@ -206,6 +218,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .transactionType(e.getTransactionType().name())
                 .quantity(e.getQuantity())
                 .balanceAfter(e.getBalanceAfter())
+                .unitCost(e.getUnitCost())
+                .totalValue(e.getTotalValue())
                 .referenceType(e.getReferenceType())
                 .referenceId(e.getReferenceId())
                 .truckRefId(e.getTruckRefId())

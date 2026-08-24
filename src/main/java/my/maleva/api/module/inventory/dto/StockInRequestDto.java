@@ -27,6 +27,15 @@ public class StockInRequestDto {
     @DecimalMin(value = "0.01", message = "Quantity must be greater than zero")
     private BigDecimal quantity;
 
+    /**
+     * Price of one unit, when the caller knows it.
+     *
+     * A purchase order does; an opening balance or a stock correction does not, so
+     * this stays optional rather than forcing callers to invent a figure.
+     */
+    @DecimalMin(value = "0", message = "Unit cost cannot be negative")
+    private BigDecimal unitCost;
+
     @Size(max = 50, message = "Reference Type cannot exceed 50 characters")
     private String referenceType;
 
