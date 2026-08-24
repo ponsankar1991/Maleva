@@ -34,5 +34,14 @@ public class BillsOrderDetailsModel {
     private String productCode;
     private String productName;
     private String uom;
+
+    /**
+     * The workshop store item, when the line brings one in. Separate from
+     * productCode/productName above, which carry the GL account this line posts
+     * to - the account names the expense, these name the part.
+     */
+    private Integer inventoryProductRefId;
+    private String storeItemCode;
+    private String storeItemName;
 }
 

@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AutoPassEntry {
+public class AutoPassEntry implements PassEntry {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -1,9 +1,9 @@
 package my.maleva.api.module.fleet.repository;
 
 import my.maleva.api.module.fleet.entity.LeviEntry;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+/** LeviEntry data access. Everything it needs is on {@link PassEntryRepository}. */
 @Repository
-public interface LeviEntryRepository extends JpaRepository<LeviEntry, Integer> {
+public interface LeviEntryRepository extends PassEntryRepository<LeviEntry> {
 }

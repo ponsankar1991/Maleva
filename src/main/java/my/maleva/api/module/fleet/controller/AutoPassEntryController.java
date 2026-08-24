@@ -1,23 +1,27 @@
 package my.maleva.api.module.fleet.controller;
 
 import jakarta.annotation.security.PermitAll;
-import my.maleva.api.common.constant.SecurityConstants;
-import my.maleva.api.module.fleet.dto.AutoPassEntryDto;
 import my.maleva.api.module.fleet.service.AutoPassEntryService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import my.maleva.api.module.fleet.service.PassEntryService;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-import java.net.URI;
-import java.util.List;
-
+/**
+ * Auto pass entries, replacing the legacy {@code /AutoPassEntry/*} MVC actions.
+ * The routes are declared on {@link AbstractPassEntryController}.
+ *
+ * The screen files its attachments through {@code /api/attachments} under the
+ * {@code AutoPassEntry} folder. Unlike the levi screen it used the legacy
+ * {@code /Common/UploadFile} action, which also wrote the joined paths back to
+ * {@code AutoPassEntry.FilePath} - so the React form passes that table through
+ * as the attachment API's {@code filePathTable}.
+ */
 @RestController
-@RequestMapping("/api/autopass-entries")
+@RequestMapping("/api/auto-pass-entries")
 @Validated
 @PermitAll
-public class AutoPassEntryController {
+public class AutoPassEntryController extends AbstractPassEntryController {
 
     private final AutoPassEntryService service;
 
@@ -25,30 +29,13 @@ public class AutoPassEntryController {
         this.service = service;
     }
 
-    @GetMapping
-    public List<AutoPassEntryDto> list() {
-        return service.listAll();
+    @Override
+    protected PassEntryService service() {
+        return service;
     }
 
-    @GetMapping("/{id}")
-    public AutoPassEntryDto get(@PathVariable Integer id) {
-        return service.getById(id);
-    }
-
-    @PostMapping
-    public ResponseEntity<AutoPassEntryDto> create(@Valid @RequestBody AutoPassEntryDto dto) {
-        AutoPassEntryDto saved = service.create(dto);
-        return ResponseEntity.created(URI.create("/api/autopass-entries/" + saved.getId())).body(saved);
-    }
-
-    @PutMapping("/{id}")
-    public AutoPassEntryDto update(@PathVariable Integer id, @Valid @RequestBody AutoPassEntryDto dto) {
-        return service.update(id, dto);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
+    @Override
+    protected String documentLabel() {
+        return "Auto pass entry";
     }
 }

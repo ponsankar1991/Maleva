@@ -256,7 +256,13 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 detail.setProductRefId(detailDto.getProductRefId() != null ? detailDto.getProductRefId() : 0);
                 detail.setQuoteValue(detailDto.getQuoteValue() != null ? detailDto.getQuoteValue() : 0.0f);
                 detail.setSerialNo(detailDto.getSerialNo() != null ? detailDto.getSerialNo() : "");
-                
+                // Kept null rather than defaulted to 0: 0 is not a product, and the
+                // stock-in loop skips nulls but would treat a zero as something to look up.
+                detail.setInventoryProductRefId(
+                        detailDto.getInventoryProductRefId() != null && detailDto.getInventoryProductRefId() > 0
+                                ? detailDto.getInventoryProductRefId()
+                                : null);
+
                 detailsList.add(detail);
                 logger.info("  • Detail[{}] prepared for save - AccountId: {}, Amount: {}",
                     (i+1), detail.getAccountMasterRefId(), detail.getAmount());

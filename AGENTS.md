@@ -116,6 +116,28 @@ hikari:
 mvn dependency:tree         # View dependency tree
 ```
 
+**Windows: `clean` can fail while IntelliJ is open.** IntelliJ compiles this
+module into the same `target/classes` Maven does, so its build worker holds
+handles on `.class` files and `mvn clean` dies with:
+
+```
+Failed to clean project: Failed to delete ...\target\classes\my\maleva\api\module
+```
+
+It is a lock, not a code problem — retry, or close the IDE first. The durable
+fix is to leave exactly one writer: in IntelliJ, **Settings → Build, Execution,
+Deployment → Build Tools → Maven → Runner → "Delegate IDE build/run actions to
+Maven"**, so the IDE calls Maven instead of compiling in parallel.
+
+Two related traps:
+- Deleting `target/` by hand while the IDE is open makes IntelliJ resync and
+  wipe the output Maven just wrote, which shows up as
+  `TypeNotPresentException` / "Mockito cannot mock this class" in tests that
+  passed a moment earlier. Recompile and re-run; it settles.
+- `clean` is rarely needed. Reach for it when classes are **renamed or
+  deleted** (stale `.class` files linger otherwise); plain `./mvnw compile` is
+  enough for ordinary edits.
+
 ### Running the Application
 ```bash
 ./mvnw spring-boot:run      # Development mode (port 8082)

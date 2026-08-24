@@ -1,23 +1,25 @@
 package my.maleva.api.module.fleet.controller;
 
 import jakarta.annotation.security.PermitAll;
-import my.maleva.api.common.constant.SecurityConstants;
-import my.maleva.api.module.fleet.dto.LeviEntryDto;
 import my.maleva.api.module.fleet.service.LeviEntryService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import my.maleva.api.module.fleet.service.PassEntryService;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-import java.net.URI;
-import java.util.List;
-
+/**
+ * Levi entries, replacing the legacy {@code /LeviEntry/*} MVC actions.
+ * The routes are declared on {@link AbstractPassEntryController}.
+ *
+ * The screen files its attachments through {@code /api/attachments} under the
+ * {@code LeviEntry} folder, which is where the legacy
+ * {@code /Common/UploadFile2} calls put them.
+ */
 @RestController
 @RequestMapping("/api/levi-entries")
 @Validated
 @PermitAll
-public class LeviEntryController {
+public class LeviEntryController extends AbstractPassEntryController {
 
     private final LeviEntryService service;
 
@@ -25,30 +27,13 @@ public class LeviEntryController {
         this.service = service;
     }
 
-    @GetMapping
-    public List<LeviEntryDto> list() {
-        return service.listAll();
+    @Override
+    protected PassEntryService service() {
+        return service;
     }
 
-    @GetMapping("/{id}")
-    public LeviEntryDto get(@PathVariable Integer id) {
-        return service.getById(id);
-    }
-
-    @PostMapping
-    public ResponseEntity<LeviEntryDto> create(@Valid @RequestBody LeviEntryDto dto) {
-        LeviEntryDto saved = service.create(dto);
-        return ResponseEntity.created(URI.create("/api/levi-entries/" + saved.getId())).body(saved);
-    }
-
-    @PutMapping("/{id}")
-    public LeviEntryDto update(@PathVariable Integer id, @Valid @RequestBody LeviEntryDto dto) {
-        return service.update(id, dto);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
+    @Override
+    protected String documentLabel() {
+        return "Levi entry";
     }
 }

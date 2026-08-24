@@ -498,10 +498,15 @@ public class BillsOrderMasterService {
                     "ISNULL(SA.CNumberDisplay, '') as JobNo, B.Id as SDId, B.ProductRefId, B.QuoteValue, " +
                     "B.SerialNo, B.AccountMasterRefId, B.MRP, B.PurchaseRate, B.ItemQty, B.DiscPer, " +
                     "B.DiscAmount, B.LandingCost, B.TaxPercent, B.TaxAmount, B.SalesRate, B.NetSalesRate, " +
-                    "B.Amount, B.RemarksD, I.GlAccountCode as ProductCode, I.Description as ProductName " +
+                    "B.Amount, B.RemarksD, I.GlAccountCode as ProductCode, I.Description as ProductName, " +
+                    "B.InventoryProductRefId, ISNULL(P.Prod_Code, '') as StoreItemCode, " +
+                    "ISNULL(P.PName, '') as StoreItemName " +
                     "FROM BillsOrderMaster A WITH(NOLOCK) " +
                     "INNER JOIN BillsOrderDetails B WITH(NOLOCK) ON A.Id = B.BillsOrderMasterRefId " +
                     "INNER JOIN GLAccounts I WITH(NOLOCK) ON I.RowIndex = B.AccountMasterRefId " +
+                    // Left joined: service lines carry no store item, and an inner join
+                    // would silently drop every vessel booking from the edit screen.
+                    "LEFT JOIN ProductMaster P WITH(NOLOCK) ON P.Id = B.InventoryProductRefId " +
                     "LEFT JOIN SaleOrderMaster SA WITH(NOLOCK) ON SA.Id = A.SaleMasterRefId " +
                     "WHERE A.Id = :id AND A.CompanyRefId = :comid " +
                     "ORDER BY A.Id, B.Id";
@@ -592,6 +597,12 @@ public class BillsOrderMasterService {
                 detail.setSerialNo(rs.getString("SerialNo"));
                 detail.setProductCode(rs.getString("ProductCode"));
                 detail.setProductName(rs.getString("ProductName"));
+                // getInt returns 0 for SQL NULL, so read the object and keep null -
+                // the grid uses null to mean "this line has no store item".
+                Integer storeItemId = (Integer) rs.getObject("InventoryProductRefId");
+                detail.setInventoryProductRefId(storeItemId);
+                detail.setStoreItemCode(rs.getString("StoreItemCode"));
+                detail.setStoreItemName(rs.getString("StoreItemName"));
 
                 // Add detail to master only if not already added
                 if (master.getBillsOrderDetails().stream()

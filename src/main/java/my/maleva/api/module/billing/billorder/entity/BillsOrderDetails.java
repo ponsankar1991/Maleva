@@ -91,4 +91,15 @@ public class BillsOrderDetails {
 
     @Column(name = "SerialNo", length = 150)
     private String serialNo;
+
+    /**
+     * The workshop store item this line brings in, as a ProductMaster id.
+     *
+     * Distinct from accountMasterRefId, which is a chart-of-accounts entry and
+     * posts the money: an account such as "Vehicle Spare Parts" covers hundreds
+     * of parts and cannot say which one arrived. Null on service lines - a vessel
+     * booking has an account and no product.
+     */
+    @Column(name = "InventoryProductRefId")
+    private Integer inventoryProductRefId;
 }

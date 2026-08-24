@@ -85,5 +85,13 @@ public class BillsOrderDetailsInsertDto implements Serializable {
     private Integer billsOrderMasterRefId = 0;
 
     private Integer editMode = 1;
+
+    /**
+     * ProductMaster id of the store item this line brings in, when it is one.
+     *
+     * Left null by service lines, so it defaults to null rather than 0 - a zero
+     * would look like a real product to the stock-in loop.
+     */
+    private Integer inventoryProductRefId;
 }
 
