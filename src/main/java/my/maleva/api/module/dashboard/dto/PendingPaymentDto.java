@@ -80,6 +80,13 @@ public class PendingPaymentDto {
     @JsonProperty("completedPayments")
     private List<CompletedPaymentDto> completedPayments;
 
+    /**
+     * One completed payment, from the legacy SelectPaymentDone union.
+     *
+     * The earlier version of this DTO carried CustomerName/NetAmt, which no
+     * query ever produced — the service returned an empty list, so nothing
+     * surfaced the mismatch. These are the columns the union actually selects.
+     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -88,10 +95,40 @@ public class PendingPaymentDto {
         @JsonProperty("Id")
         private Integer id;
 
-        @JsonProperty("CustomerName")
-        private String customerName;
+        /** Payment date, pre-formatted dd/MM/yyyy by the query. */
+        @JsonProperty("SSaleDate")
+        private String sSaleDate;
 
-        @JsonProperty("NetAmt")
-        private Double netAmt;
+        @JsonProperty("CNumberDisplay")
+        private String cNumberDisplay;
+
+        /** PayTo on a voucher, SupplierName on a supplier payment. */
+        @JsonProperty("ExpenseName")
+        private String expenseName;
+
+        @JsonProperty("RefNumber")
+        private String refNumber;
+
+        @JsonProperty("Amount")
+        private Double amount;
+
+        @JsonProperty("Remarks")
+        private String remarks;
+
+        /**
+         * 0 = PaymentVoucherMaster, 1 = Payment.
+         *
+         * The dashboard uses it to pick which screen a row opens and which
+         * upload folder to look in for that row's documents.
+         */
+        @JsonProperty("DetailedId")
+        private Integer detailedId;
+
+        @JsonProperty("FilePath")
+        private String filePath;
+
+        /** Sum across vouchers sharing a Description; null on the supplier arm. */
+        @JsonProperty("TotalAmount")
+        private Double totalAmount;
     }
 }

@@ -346,8 +346,8 @@ public class DashboardServiceImpl implements DashboardService {
     // ========== PAYMENT DATA ==========
 
     @Override
-    public List<PendingPaymentDto.PendingPaymentItemDto> getPendingPayments(Integer comId, String dueDate) {
-        return dashboardRepository.getPendingPayments(comId, dueDate).stream()
+    public List<PendingPaymentDto.PendingPaymentItemDto> getPendingPayments(Integer comId, String dueDate, String toDate) {
+        return dashboardRepository.getPendingPayments(comId, dueDate, toDate).stream()
                 .map(r -> PendingPaymentDto.PendingPaymentItemDto.builder()
                         .id(r.Id)
                         .expenseName(r.ExpenseName)
@@ -362,10 +362,35 @@ public class DashboardServiceImpl implements DashboardService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Payments already made in the range.
+     *
+     * This was a stub returning an empty list, so every caller showed nothing
+     * and looked like a quiet day rather than a missing query. It now runs the
+     * union ported from the .NET SelectPaymentDone.
+     */
     @Override
     public List<PendingPaymentDto.CompletedPaymentDto> getCompletedPayments(Integer comId, String fromDate, String toDate) {
-        // This needs separate query
-        return Collections.emptyList();
+        log.info("Fetching completed payments for comId={} {} to {}", comId, fromDate, toDate);
+        try {
+            return dashboardRepository.getCompletedPayments(comId, fromDate, toDate).stream()
+                    .map(r -> PendingPaymentDto.CompletedPaymentDto.builder()
+                            .id(r.Id)
+                            .sSaleDate(r.SSaleDate)
+                            .cNumberDisplay(r.CNumberDisplay)
+                            .expenseName(r.ExpenseName)
+                            .refNumber(r.RefNumber)
+                            .amount(r.Amount)
+                            .remarks(r.Remarks)
+                            .detailedId(r.DetailedId)
+                            .filePath(r.FilePath)
+                            .totalAmount(r.TotalAmount)
+                            .build())
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error fetching completed payments: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     @Override

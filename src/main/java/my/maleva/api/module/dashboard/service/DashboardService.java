@@ -98,7 +98,7 @@ public interface DashboardService {
     /**
      * Get pending payments
      */
-    List<PendingPaymentDto.PendingPaymentItemDto> getPendingPayments(Integer comId, String dueDate);
+    List<PendingPaymentDto.PendingPaymentItemDto> getPendingPayments(Integer comId, String dueDate, String toDate);
 
     /**
      * Get completed payments

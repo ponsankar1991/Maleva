@@ -288,11 +288,14 @@ public class DashboardController {
     @PermitAll
     public ResponseEntity<ApiResponse<List<PendingPaymentDto.PendingPaymentItemDto>>> getPendingPayments(
             @PathVariable Integer comId,
-            @RequestParam(required = false, defaultValue = "") String dueDate) {
+            @RequestParam(required = false, defaultValue = "") String dueDate,
+            @RequestParam(required = false, defaultValue = "") String toDate) {
 
-        log.info("GET /api/dashboard/pending-payment/{}", comId);
+        log.info("GET /api/dashboard/pending-payment/{} dueDate={} toDate={}", comId, dueDate, toDate);
         String due = dueDate.isEmpty() ? LocalDate.now().toString() : dueDate;
-        List<PendingPaymentDto.PendingPaymentItemDto> data = dashboardService.getPendingPayments(comId, due);
+        // The vendor arm bounds bills by their own date; today is the legacy default.
+        String to = toDate.isEmpty() ? LocalDate.now().toString() : toDate;
+        List<PendingPaymentDto.PendingPaymentItemDto> data = dashboardService.getPendingPayments(comId, due, to);
         return ResponseEntity.ok(ApiResponse.success("Pending payments fetched successfully", data));
     }
 

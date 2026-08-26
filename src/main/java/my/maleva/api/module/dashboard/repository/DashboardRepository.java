@@ -9,6 +9,7 @@ import my.maleva.api.module.dashboard.dto.SaleOrderInvoiceCheckModel;
 import my.maleva.api.module.dashboard.dto.DashBoardMonthWiseModel;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -865,28 +866,208 @@ public class DashboardRepository {
 
     // ========== PENDING PAYMENT QUERY ==========
 
-    public List<PendingPaymentRow> getPendingPayments(Integer comId, String dueDate) {
+    /**
+     * Everything still owed, from the two places a debt can sit.
+     *
+     * Ported from the .NET {@code DashBoardServices.SelectPendingPaymentDB}.
+     * The earlier migration kept only the first arm and hardcoded
+     * {@code 0 as Id, 0 as DetailedId}, so every row came back
+     * indistinguishable and the whole vendor half — unpaid supplier bills —
+     * was missing. Both arms are here now:
+     *
+     * <ul>
+     *   <li>DetailedId 0 — a scheduled sub-expense that is not fully paid.
+     *       Id is genuinely 0: these rows have no single record to open, which
+     *       is why the dashboard sends them to a blank payment voucher.</li>
+     *   <li>DetailedId 1 — a credit BillMaster past its payment terms. Id is
+     *       the real bill id, so the dashboard can open that bill.</li>
+     * </ul>
+     *
+     * BankName and AccountNo are empty strings because the legacy query never
+     * selected them either; the DTO carries them for callers that do.
+     *
+     * @param dueDate look-ahead cut-off for sub-expenses (today + 5 days)
+     * @param toDate  latest bill date to consider (today)
+     */
+    public List<PendingPaymentRow> getPendingPayments(Integer comId, String dueDate, String toDate) {
         String sql = """
-            SELECT 0 as Id, ExpenseName, SubExpenseName, Amount - paidamount as Amount,
-                CASE WHEN DueDate < GETDATE() THEN 2
-                     WHEN DueDate > DATEADD(DAY, -5, GETDATE()) AND DueDate <= GETDATE() THEN 1
-                     ELSE 0 END as DueReportId,
-                0 as DetailedId, '' as BankName, '' as AccountNo
-            FROM (
-                SELECT B.Name as ExpenseName, A.Description as SubExpenseName, A.DueAmount as Amount,
-                    PP.DueDate,
-                    ISNULL((SELECT SUM(ISNULL(PD.Amount, 0)) FROM PaymentVoucherMaster PM WITH (NOLOCK)
-                        INNER JOIN PaymentVoucherDetails PD WITH (NOLOCK) ON PD.PaymentVoucherMasterRefId = PM.Id
-                        WHERE PD.PendingPaymentRefId = PP.id AND PM.Active = 1 AND PD.SubExpenseRefid = A.Id), 0) as paidamount
-                FROM SubExpenseMaster A WITH (NOLOCK)
-                INNER JOIN ExpenseMaster B WITH (NOLOCK) ON A.ExpenseMasterRefId = B.Id
-                INNER JOIN PendingPayment PP WITH (NOLOCK) ON PP.SubExpenseRefId = A.Id
-                WHERE PP.DueDate < ? AND A.Active = 1 AND A.CompanyRefId = ?
-            ) t
-            WHERE Amount != paidamount
+            SELECT 0 AS Id, ExpenseName, SubExpenseName, Amount - paidamount AS Amount,
+                   CASE WHEN DueDate < GETDATE() THEN 2
+                        WHEN DueDate > DATEADD(DAY, -5, GETDATE()) AND DueDate <= GETDATE() THEN 1
+                        ELSE 0 END AS DueReportId,
+                   0 AS DetailedId, '' AS BankName, '' AS AccountNo,
+                   DueDate AS DueDateOut
+              FROM (
+                SELECT B.Name AS ExpenseName, A.Description AS SubExpenseName,
+                       A.DueAmount AS Amount, A.DueFromDate, A.DueToDate, PP.DueDate,
+                       ISNULL((SELECT SUM(ISNULL(PD.Amount, 0))
+                                 FROM PaymentVoucherMaster PM WITH (NOLOCK)
+                                INNER JOIN PaymentVoucherDetails PD WITH (NOLOCK)
+                                   ON PD.PaymentVoucherMasterRefId = PM.Id
+                                WHERE PD.PendingPaymentRefId = PP.id
+                                  AND PM.Active = 1
+                                  AND PD.SubExpenseRefid = A.Id), 0) AS paidamount
+                  FROM SubExpenseMaster A WITH (NOLOCK)
+                 INNER JOIN ExpenseMaster B WITH (NOLOCK) ON A.ExpenseMasterRefId = B.Id
+                 INNER JOIN PendingPayment PP WITH (NOLOCK) ON PP.SubExpenseRefId = A.Id
+                 WHERE PP.DueDate < ?
+                   AND A.Active = 1
+                   AND A.CompanyRefId = ?
+                   AND A.DueToDate >= CAST(GETDATE() AS DATE)
+                   AND A.DueFromDate <= CAST(GETDATE() AS DATE)
+              ) t
+             WHERE Amount != paidamount
+            UNION
+            SELECT t.id AS Id, 'VENDOR' AS ExpenseName, t.SupplierName AS SubExpenseName,
+                   (SUM(t.BillAmount) - SUM(t.Payment)) AS Amount,
+                   CASE WHEN t.duedate < GETDATE() THEN 2
+                        WHEN t.duedate > DATEADD(DAY, -5, GETDATE()) AND t.duedate <= GETDATE() THEN 1
+                        ELSE 0 END AS DueReportId,
+                   1 AS DetailedId, '' AS BankName, '' AS AccountNo,
+                   t.duedate AS DueDateOut
+              FROM (
+                SELECT P.id, S.SupplierName,
+                       DATEADD(DAY, PTM.TDays, P.SaleDate) AS duedate,
+                       P.SaleDate AS BillDate, P.Amount AS BillAmount,
+                       ISNULL((SELECT SUM(ISNULL(pd.PaymentAmount, 0))
+                                 FROM PaymentDetails pd
+                                INNER JOIN Payment py ON py.id = pd.PaymentRefId
+                                WHERE pd.BillMasterRefId = P.id), 0) AS Payment
+                  FROM BillMaster P WITH (NOLOCK)
+                  LEFT JOIN Supplier S WITH (NOLOCK) ON P.SupplierRefId = S.Id
+                  LEFT JOIN PaymentTermsMaster PTM WITH (NOLOCK) ON PTM.Id = P.PaymentTermsRefid
+                 WHERE P.CompanyRefId = ?
+                   AND P.Active = 1
+                   AND P.SaleType = 'CREDIT'
+                   AND DATEADD(DAY, PTM.TDays, P.SaleDate) <= GETDATE()
+              ) t
+             WHERE (t.BillAmount - t.Payment) != 0
+               AND t.BillDate <= ?
+             GROUP BY t.id, t.SupplierName, t.duedate
+             ORDER BY Id
             """;
-        return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(PendingPaymentRow.class), dueDate, comId);
+        return jdbcTemplate.query(sql, PENDING_PAYMENT_MAPPER, dueDate, comId, comId, toDate);
     }
+
+    /**
+     * Explicit mapper for {@link PendingPaymentRow}.
+     *
+     * BeanPropertyRowMapper cannot fill this class: it maps to public setters,
+     * and the row classes here are public fields with none. It silently returns
+     * the right number of rows with every field null, which reads on screen as
+     * a quiet day rather than as a broken query. Reading the columns by name is
+     * the only version that actually populates anything.
+     */
+    static RowMapper<PendingPaymentRow> pendingPaymentMapper() {
+        return PENDING_PAYMENT_MAPPER;
+    }
+
+    private static final RowMapper<PendingPaymentRow> PENDING_PAYMENT_MAPPER = (rs, rowNum) -> {
+        PendingPaymentRow row = new PendingPaymentRow();
+        row.Id = getInteger(rs, "Id");
+        row.ExpenseName = rs.getString("ExpenseName");
+        row.SubExpenseName = rs.getString("SubExpenseName");
+        row.Amount = getDouble(rs, "Amount");
+        row.DueDate = rs.getString("DueDateOut");
+        row.DueReportId = getInteger(rs, "DueReportId");
+        row.DetailedId = getInteger(rs, "DetailedId");
+        row.BankName = rs.getString("BankName");
+        row.AccountNo = rs.getString("AccountNo");
+        return row;
+    };
+
+    /** Null-preserving getInt: a SQL NULL must not arrive as 0. */
+    private static Integer getInteger(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    /** Null-preserving getDouble, so a missing amount is not read as 0.00. */
+    private static Double getDouble(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        double value = rs.getDouble(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    // ========== COMPLETED PAYMENT QUERY ==========
+
+    /**
+     * Payments already made in a date range.
+     *
+     * Ported from the .NET {@code TransactionReportServices.SelectPaymentDone}.
+     * It is a UNION of the two places a payment can be recorded, and the screens
+     * need to tell them apart afterwards, so each arm stamps a DetailedId:
+     * 0 = PaymentVoucherMaster (paid to a name typed on the voucher),
+     * 1 = Payment (paid against a supplier).
+     *
+     * TotalAmount is only meaningful on the voucher arm, where it sums every
+     * voucher sharing the same Description; the supplier arm sends null rather
+     * than an unrelated number.
+     *
+     * The legacy version concatenated the dates and company id straight into
+     * the SQL. They are bound parameters here — same rows, no injection.
+     */
+    public List<CompletedPaymentRow> getCompletedPayments(Integer comId, String fromDate, String toDate) {
+        String sql = """
+            SELECT PM.Id,
+                   FORMAT(ISNULL(PM.PaymentVoucherDate, '1900-01-01'), 'dd/MM/yyyy') AS SSaleDate,
+                   PM.CNumberDisplay,
+                   PM.PayTo AS ExpenseName,
+                   PM.RefNo AS RefNumber,
+                   PM.Amount,
+                   PM.QNECode AS Remarks,
+                   0 AS DetailedId,
+                   PM.Description AS FilePath,
+                   (SELECT SUM(x.Amount) FROM PaymentVoucherMaster x WITH (NOLOCK)
+                     WHERE x.Description = PM.Description) AS TotalAmount
+              FROM PaymentVoucherMaster PM WITH (NOLOCK)
+             WHERE PM.Active = 1
+               AND PM.CompanyRefId = ?
+               AND PM.PaymentVoucherDate BETWEEN ? AND ?
+            UNION
+            SELECT P.Id,
+                   FORMAT(ISNULL(P.PaymentDate, '1900-01-01'), 'dd/MM/yyyy') AS SSaleDate,
+                   P.CNumberDisplay,
+                   S.SupplierName AS ExpenseName,
+                   P.RefNumber,
+                   P.Amount,
+                   P.QNECode AS Remarks,
+                   1 AS DetailedId,
+                   P.Description AS FilePath,
+                   CAST(NULL AS DECIMAL(19, 4)) AS TotalAmount
+              FROM Payment P WITH (NOLOCK)
+             INNER JOIN Supplier S WITH (NOLOCK) ON P.SupplierRefId = S.Id
+             WHERE P.CompanyRefId = ?
+               AND P.PaymentDate BETWEEN ? AND ?
+             ORDER BY CNumberDisplay
+            """;
+
+        // The legacy query bracketed each day with 00:00:00 / 23:59:59 so a
+        // payment stamped late on the To date still counted. Keep that.
+        String from = fromDate + " 00:00:00";
+        String to = toDate + " 23:59:59";
+
+        return jdbcTemplate.query(sql, COMPLETED_PAYMENT_MAPPER, comId, from, to, comId, from, to);
+    }
+
+    /** Explicit mapper for {@link CompletedPaymentRow}; see PENDING_PAYMENT_MAPPER. */
+    static RowMapper<CompletedPaymentRow> completedPaymentMapper() {
+        return COMPLETED_PAYMENT_MAPPER;
+    }
+
+    private static final RowMapper<CompletedPaymentRow> COMPLETED_PAYMENT_MAPPER = (rs, rowNum) -> {
+        CompletedPaymentRow row = new CompletedPaymentRow();
+        row.Id = getInteger(rs, "Id");
+        row.SSaleDate = rs.getString("SSaleDate");
+        row.CNumberDisplay = rs.getString("CNumberDisplay");
+        row.ExpenseName = rs.getString("ExpenseName");
+        row.RefNumber = rs.getString("RefNumber");
+        row.Amount = getDouble(rs, "Amount");
+        row.Remarks = rs.getString("Remarks");
+        row.DetailedId = getInteger(rs, "DetailedId");
+        row.FilePath = rs.getString("FilePath");
+        row.TotalAmount = getDouble(rs, "TotalAmount");
+        return row;
+    };
 
     // ========== VESSEL PLANNING & AIR FREIGHT QUERIES ==========
 
@@ -1591,6 +1772,24 @@ public class DashboardRepository {
         public Integer DetailedId;
         public String BankName;
         public String AccountNo;
+    }
+
+    /** One row of {@link #getCompletedPayments}; mirrors the legacy ExpenseReportModel. */
+    public static class CompletedPaymentRow {
+        public Integer Id;
+        /** Payment date, already formatted dd/MM/yyyy by the query. */
+        public String SSaleDate;
+        public String CNumberDisplay;
+        /** PayTo on a voucher, SupplierName on a supplier payment. */
+        public String ExpenseName;
+        public String RefNumber;
+        public Double Amount;
+        public String Remarks;
+        /** 0 = PaymentVoucherMaster, 1 = Payment. Decides which screen opens. */
+        public Integer DetailedId;
+        public String FilePath;
+        /** Sum across vouchers sharing a Description; null on the supplier arm. */
+        public Double TotalAmount;
     }
 
     public static class EmployeeWiseSalesRow {
