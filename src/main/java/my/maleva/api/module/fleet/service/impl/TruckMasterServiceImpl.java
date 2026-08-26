@@ -171,9 +171,16 @@ public class TruckMasterServiceImpl implements TruckMasterService {
         // Update modified date as per SP_Truck logic
         LocalDateTime now = LocalDateTime.now();
         entity.setModifiedDate(now);
-        entity.setModifiedBy("SYSTEM");
 
         mapper.updateEntityFromDto(dto, entity);
+
+        // Who edited it. Stamped after the mapper so a DTO that leaves this
+        // blank cannot wipe the previous value, and SYSTEM only stands in when
+        // nobody was named - it used to be written unconditionally, which meant
+        // Modified_By said SYSTEM for every truck ever edited and the column
+        // answered nothing.
+        String editedBy = dto.getModifiedBy();
+        entity.setModifiedBy(editedBy == null || editedBy.isBlank() ? "SYSTEM" : editedBy);
 
         // Convert to uppercase as per SP_Truck
         entity.setTruckName(entity.getTruckName().toUpperCase());

@@ -35,6 +35,9 @@ public class JobOrderDetailRequestDto {
     /** Units consumed; treated as 1 when absent, matching every pre-quantity row. */
     private BigDecimal quantity;
 
+    /** Purchase order this line's part was bought on; null when taken from stock. */
+    private Integer billsOrderMasterRefId;
+
     @Size(max = 500, message = "Remarks cannot exceed 500 characters")
     private String remarks;
 

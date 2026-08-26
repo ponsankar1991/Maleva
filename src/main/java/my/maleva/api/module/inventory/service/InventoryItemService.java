@@ -45,6 +45,16 @@ public interface InventoryItemService {
                                   Double unitCost, Integer defaultSupplierRefId, String modifiedBy);
 
     /**
+     * As above, but the caller states the unit to catalogue a new item under.
+     *
+     * @param baseUomOverride UOM master id or unit name; null falls back to the
+     *                        product's own UOM and then the type default
+     */
+    InventoryItem ensureStoreItem(Integer companyRefId, Integer productRefId, String itemType,
+                                  Double unitCost, Integer defaultSupplierRefId, String modifiedBy,
+                                  String baseUomOverride);
+
+    /**
      * Receive a purchase order line: make sure the store carries the product, then
      * record the quantity against it, in one transaction.
      *

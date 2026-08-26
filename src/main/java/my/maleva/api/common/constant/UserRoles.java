@@ -21,7 +21,8 @@ public enum UserRoles {
     RECEIVABLE(1200),
     MAINTENANCE(1300),
     FowardingAgent (1400),
-    Fowarding (1500);
+    Fowarding (1500),
+    DriverMaintenance (1600);
 
 
 

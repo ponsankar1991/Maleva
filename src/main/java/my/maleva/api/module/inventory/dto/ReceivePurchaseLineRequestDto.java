@@ -57,6 +57,18 @@ public class ReceivePurchaseLineRequestDto {
     private String itemType;
 
     /**
+     * Unit to catalogue or re-catalogue this item under, as a UOM master id or
+     * a plain unit name.
+     *
+     * Optional. Left null the item keeps the unit resolved from ProductMaster
+     * (or the type default), which is the old behaviour. Sent, it wins - the
+     * person receiving the goods is holding the box and can see whether it is
+     * pieces or litres, and that beats whatever the product master was set to
+     * years ago.
+     */
+    private String baseUom;
+
+    /**
      * Supplier.Id the order was raised against.
      *
      * Used only when the store does not carry the product yet, to set the item's

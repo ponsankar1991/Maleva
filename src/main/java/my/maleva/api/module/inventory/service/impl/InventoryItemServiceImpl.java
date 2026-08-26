@@ -68,6 +68,15 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     @Transactional
     public InventoryItem ensureStoreItem(Integer companyRefId, Integer productRefId, String itemType,
                                          Double unitCost, Integer defaultSupplierRefId, String modifiedBy) {
+        return ensureStoreItem(companyRefId, productRefId, itemType, unitCost,
+                defaultSupplierRefId, modifiedBy, null);
+    }
+
+    @Override
+    @Transactional
+    public InventoryItem ensureStoreItem(Integer companyRefId, Integer productRefId, String itemType,
+                                         Double unitCost, Integer defaultSupplierRefId, String modifiedBy,
+                                         String baseUomOverride) {
 
         Optional<InventoryItem> existing = itemRepository
                 .findByCompanyRefIdAndProductRefId(companyRefId, productRefId);
@@ -87,11 +96,14 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 ? ItemType.PART
                 : parseType(itemType);
 
-        // The product's own UOM if the UOM master recognises it, so the item reads
-        // in the same unit the buyer ordered in; otherwise the type's default.
-        String baseUom = displayUom(uomLookup(companyRefId),
-                defaultUom(product.getUomCode() == null ? null
-                        : String.valueOf(product.getUomCode()), type));
+        // The unit the caller chose wins - on a goods receipt the person is
+        // holding the box. Failing that, the product's own UOM if the UOM master
+        // recognises it, so the item reads in the same unit the buyer ordered
+        // in; failing that, the type's default.
+        String suppliedUom = baseUomOverride == null || baseUomOverride.trim().isEmpty()
+                ? (product.getUomCode() == null ? null : String.valueOf(product.getUomCode()))
+                : baseUomOverride.trim();
+        String baseUom = displayUom(uomLookup(companyRefId), defaultUom(suppliedUom, type));
 
         InventoryItem item = itemRepository.save(InventoryItem.builder()
                 .companyRefId(companyRefId)
@@ -131,7 +143,16 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 request.getItemType(),
                 request.getUnitCost() == null ? null : request.getUnitCost().doubleValue(),
                 request.getSupplierRefId(),
-                request.getCreatedBy());
+                request.getCreatedBy(),
+                request.getBaseUom());
+
+        // An item the store already carries keeps what it was catalogued as
+        // unless this receipt says otherwise. It often does: the first receipt
+        // guessed the kind or inherited a stale unit from ProductMaster, and the
+        // person now holding the goods can see what they really are. Applied
+        // before the serialised guard below, so switching an item to a
+        // serial-tracked kind is refused with the same clear message.
+        applyReceiptOverrides(item, request);
 
         // A serialised item's on-hand is counted from its registered units, not from
         // the quantity balance, so adding to that balance would move a number no
@@ -183,6 +204,46 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .remarks(request.getRemarks())
                 .createdBy(request.getCreatedBy())
                 .build());
+    }
+
+    /**
+     * Re-catalogues an existing store item when the receipt states a different
+     * kind or unit.
+     *
+     * Only ever moves the item to what the receipt says; a request that leaves
+     * these blank changes nothing. The unit is stored in display form, the same
+     * way ensureStoreItem writes it, so the two paths cannot drift apart.
+     */
+    private void applyReceiptOverrides(InventoryItem item, ReceivePurchaseLineRequestDto request) {
+        boolean changed = false;
+
+        String requestedType = trimOrNull(request.getItemType());
+        if (requestedType != null) {
+            ItemType parsed = parseType(requestedType);
+            if (parsed != item.getItemType()) {
+                logger.info("Re-cataloguing item {} from {} to {} on receipt",
+                        item.getId(), item.getItemType(), parsed);
+                item.setItemType(parsed);
+                changed = true;
+            }
+        }
+
+        String requestedUom = trimOrNull(request.getBaseUom());
+        if (requestedUom != null) {
+            String resolved = displayUom(uomLookup(item.getCompanyRefId()),
+                    defaultUom(requestedUom, item.getItemType()));
+            if (resolved != null && !resolved.equalsIgnoreCase(item.getBaseUom())) {
+                logger.info("Changing item {} unit from {} to {} on receipt",
+                        item.getId(), item.getBaseUom(), resolved);
+                item.setBaseUom(resolved);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            item.setModifiedBy(request.getCreatedBy());
+            itemRepository.save(item);
+        }
     }
 
     // ------------------------------------------------------------------ create

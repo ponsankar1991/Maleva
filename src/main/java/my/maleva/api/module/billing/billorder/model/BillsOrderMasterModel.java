@@ -47,6 +47,11 @@ public class BillsOrderMasterModel {
     private Integer driverRefid;
     private Integer saleMasterRefId;
     private String jobNo;
+
+    /** Workshop job order this PO was raised for; null for ordinary purchases. */
+    private Integer jobOrderMasterRefId;
+    /** Its number as it reads on screen, e.g. JO000000009. */
+    private String jobOrderNo;
     private Integer pStatus;
     private Float currencyValue;
     private Float actualAmount;

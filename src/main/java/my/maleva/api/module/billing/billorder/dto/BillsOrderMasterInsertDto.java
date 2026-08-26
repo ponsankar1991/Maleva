@@ -124,6 +124,12 @@ public class BillsOrderMasterInsertDto implements Serializable {
     @DecimalMin(value = "0.0", message = "Actual Amount must be positive")
     private Float actualAmount = 0.0f;
 
+    /** Workshop job order this PO was raised for; null for ordinary purchases. */
+    private Integer jobOrderMasterRefId;
+
+    /** Job order number as it reads on screen, e.g. JO000000009. */
+    private String jobOrderNo;
+
     @Size(max = 50, message = "Description cannot exceed 50 characters")
     private String description;
 

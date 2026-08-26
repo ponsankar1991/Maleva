@@ -31,9 +31,9 @@ import java.util.function.BiConsumer;
  * appears in several sources becomes one row.
  *
  * Cost sources: JobOrderMaster, BillsOrderMaster (purchases), FuelEntry,
- * AutoPassEntry, TollEntry, LeviEntry. Earnings source: RTIMaster — its
- * Amount plus the surcharge columns the Driver RTI report also lists
- * (Sleeping / Pickup / Drop / Exit / EmptyDelivery / Manpower).
+ * AutoPassEntry, TollEntry, LeviEntry. RTIMaster is counted only - how many
+ * orders were delivered - because its amount columns are trip payment figures,
+ * not customer revenue, so reporting them as income would mislead.
  *
  * Date semantics: JobOrderMaster.JobDate is a DATE and is compared inclusive;
  * every other table carries DATETIME SaleDate, compared as [from, to + 1 day).
@@ -52,12 +52,20 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
     /** Job order cost: the actual cost once known, the estimate until then. */
     private static final String JOB_COST = "COALESCE(NULLIF(JOM.ActualCost, 0), JOM.EstimatedCost, 0)";
 
-    /** All five FuelEntry amount buckets together. */
-    private static final String FUEL_COST =
-            "(COALESCE(X.AAmount,0) + COALESCE(X.PAmount,0) + COALESCE(X.GAmount,0) + COALESCE(X.DPAmount,0) + COALESCE(X.DGAmount,0))";
+    /**
+     * What a fuel entry actually cost: AAmount, the receipt total.
+     *
+     * The other amount columns are NOT extra spend. PAmount and GAmount are the
+     * same purchase measured two other ways - what the patron billed and what
+     * the tank sensor saw - and DPAmount / DGAmount are the differences between
+     * those readings. Adding them together would count the same litres three
+     * times over. SUM(AAmount) is also what the fuel entry list reports as its
+     * total, so the two screens agree.
+     */
+    private static final String FUEL_COST = "COALESCE(X.AAmount,0)";
 
-    private static final String FUEL_LITERS =
-            "(COALESCE(X.Aliter,0) + COALESCE(X.Pliter,0) + COALESCE(X.Gliter,0) + COALESCE(X.DPliter,0) + COALESCE(X.DGliter,0))";
+    /** Litres on the receipt, matching FUEL_COST. */
+    private static final String FUEL_LITERS = "COALESCE(X.Aliter,0)";
 
     // ── Truck-wise ─────────────────────────────────────────────────────────
 

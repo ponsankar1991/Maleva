@@ -135,6 +135,28 @@ public class TruckMaster {
     private String vehicleType;
 
     /**
+     * Service kilometres, kept as text.
+     *
+     * The legacy screen writes whatever the workshop typed - "185000",
+     * "185,000", the odd "approx 185k" - and these are read back onto the same
+     * screen rather than calculated with, so parsing them to a number here
+     * would reject rows that have been valid for years.
+     */
+    @Column(name = "LastServiceKM", length = 50)
+    private String lastServiceKM;
+
+    @Column(name = "NextServiceKM", length = 50)
+    private String nextServiceKM;
+
+    /** Odometer reading the next service is due at. */
+    @Column(name = "NextodometerKm", length = 50)
+    private String nextodometerKm;
+
+    /** When the battery was last replaced. */
+    @Column(name = "BatteryDate")
+    private LocalDate batteryDate;
+
+    /**
      * Whether this truck belongs to Maleva itself, as opposed to a
      * subcontractor's vehicle kept in the same TruckMaster table.
      * 1 = Maleva-owned, 0 = not. On the live data 69 of 71 active trucks are 1.

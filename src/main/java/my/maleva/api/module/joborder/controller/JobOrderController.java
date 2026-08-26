@@ -72,6 +72,17 @@ public class JobOrderController {
         return ResponseEntity.ok(ApiResponse.success(null, "Job Order deleted successfully"));
     }
 
+    /**
+     * Purchase orders raised against this job order.
+     * GET /api/job-orders/{id}/purchase-orders
+     */
+    @GetMapping("/{id}/purchase-orders")
+    public ResponseEntity<ApiResponse<java.util.List<my.maleva.api.module.joborder.dto.JobOrderPurchaseOrderDto>>>
+            getPurchaseOrders(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                jobOrderService.getPurchaseOrdersForJob(id), "Purchase orders retrieved"));
+    }
+
     @GetMapping("/next-number")
     public ResponseEntity<ApiResponse<String>> getNextJobNumber(@RequestParam Integer companyRefId) {
         String nextNumber = jobOrderService.getNextJobNumber(companyRefId);

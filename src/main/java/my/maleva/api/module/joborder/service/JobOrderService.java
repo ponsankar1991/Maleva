@@ -20,6 +20,16 @@ public interface JobOrderService {
 
     void deleteJobOrder(Integer id, Integer companyRefId);
 
+    /**
+     * Every purchase order raised against one job order, newest first.
+     *
+     * A repair buys from several vendors, so this normally returns more than
+     * one row - and one PO can cover several repair lines, which is why the
+     * count of covered lines comes back with it.
+     */
+    java.util.List<my.maleva.api.module.joborder.dto.JobOrderPurchaseOrderDto>
+            getPurchaseOrdersForJob(Integer jobOrderMasterRefId);
+
     String getNextJobNumber(Integer companyRefId);
 
     JobOrderLookupDto getLookups();

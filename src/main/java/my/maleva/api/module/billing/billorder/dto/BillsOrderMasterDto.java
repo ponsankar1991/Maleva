@@ -97,6 +97,12 @@ public class BillsOrderMasterDto {
 
     private Integer pStatus;
 
+    /** Workshop job order this PO was raised for; null for ordinary purchases. */
+    private Integer jobOrderMasterRefId;
+
+    /** Job order number as it reads on screen, e.g. JO000000009. */
+    private String jobOrderNo;
+
     @Size(max = 200)
     private String description;
 

@@ -293,6 +293,28 @@ public class ProductMasterController {
     }
 
     /**
+     * Save a batch of products in one transaction.
+     * POST /api/product-masters/batch?companyId=6
+     *
+     * Rows without an id are inserted, rows with one are updated - the shape
+     * the grid screen posts when several rows were edited before saving.
+     */
+    @PostMapping("/batch")
+    @PermitAll
+    public ResponseEntity<?> saveBatch(
+            @Valid @RequestBody List<ProductMasterDto> products,
+            @RequestParam Integer companyId) {
+        logger.info("Saving batch of {} products for company {}", products.size(), companyId);
+        try {
+            return ResponseEntity.ok(productMasterService.saveBatch(products, companyId));
+        } catch (RuntimeException e) {
+            logger.error("Batch save failed", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error saving products: " + e.getMessage());
+        }
+    }
+
+    /**
      * Execute SP_ProductMaster stored procedure for bulk operations
      */
     @PostMapping("/bulk-import")

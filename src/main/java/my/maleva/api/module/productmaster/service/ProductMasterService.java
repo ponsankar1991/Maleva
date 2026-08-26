@@ -37,6 +37,18 @@ public interface ProductMasterService {
     boolean delete(Integer id);
 
     /**
+     * Saves a batch of products in one transaction: rows without an id are
+     * inserted, rows with one are updated.
+     *
+     * The legacy grid posted every modified row at once, so a batch either
+     * lands completely or not at all - a half-saved price list is worse than
+     * an error message.
+     */
+    java.util.List<my.maleva.api.module.productmaster.dto.ProductMasterDto> saveBatch(
+            java.util.List<my.maleva.api.module.productmaster.dto.ProductMasterDto> products,
+            Integer companyRefId);
+
+    /**
      * Get ProductMaster by product code
      */
     Optional<ProductMasterDto> getByProdCode(Integer companyRefId, String prodCode);

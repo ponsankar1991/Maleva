@@ -117,6 +117,26 @@ public class BillsOrderMaster {
     @Column(name = "PStatus")
     private Integer pStatus;
 
+    /**
+     * The workshop job order this PO was raised for, when it was.
+     *
+     * One repair job buys from several vendors, so a job raises several POs -
+     * the link lives here rather than on the job so each PO names its own job.
+     * Null for every ordinary purchase that has nothing to do with a repair.
+     */
+    @Column(name = "JobOrderMasterRefId")
+    private Integer jobOrderMasterRefId;
+
+    /**
+     * The job order's number as it reads on screen, e.g. JO000000009.
+     *
+     * Stored beside the id on purpose: the PO list shows this on every row, and
+     * carrying the text means that list does not have to join JobOrderMaster
+     * just to print a number that never changes once the job is raised.
+     */
+    @Column(name = "JobOrderNo", length = 50)
+    private String jobOrderNo;
+
     @Column(name = "Description", length = 200)
     private String description;
 

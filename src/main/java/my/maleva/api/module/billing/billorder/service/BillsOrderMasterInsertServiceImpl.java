@@ -194,6 +194,11 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
             masterEntity.setFileupload(dto.getFileupload() != null ? dto.getFileupload() : 0);
             masterEntity.setPaymentTermsRefid(dto.getPaymentTermsRefid());
             masterEntity.setDescription(dto.getDescription());
+            // Set when the PO was raised from a workshop job order, so the job
+            // can list every PO opened against it - one repair buys from
+            // several vendors, so there is normally more than one.
+            masterEntity.setJobOrderMasterRefId(dto.getJobOrderMasterRefId());
+            masterEntity.setJobOrderNo(dto.getJobOrderNo());
             masterEntity.setSaleDate(dto.getSaleDate() != null ? dto.getSaleDate().atStartOfDay() : LocalDateTime.now());
             masterEntity.setSaleType(dto.getSaleType() != null ? dto.getSaleType() : "");
             masterEntity.setCoinage(dto.getCoinage() != null ? dto.getCoinage() : 0.0f);

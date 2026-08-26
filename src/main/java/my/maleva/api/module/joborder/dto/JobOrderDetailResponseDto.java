@@ -24,6 +24,9 @@ public class JobOrderDetailResponseDto {
     private BigDecimal cost;
     private BigDecimal quantity;
     private Integer inventoryTransactionRefId;
+    /** Purchase order this line's part was bought on; null when taken from stock. */
+    private Integer billsOrderMasterRefId;
+
     private String remarks;
     private Integer active;
     

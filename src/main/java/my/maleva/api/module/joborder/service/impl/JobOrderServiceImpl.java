@@ -67,6 +67,7 @@ public class JobOrderServiceImpl implements JobOrderService {
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final InventoryService inventoryService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     /**
      * Extract user ID from security context
@@ -518,5 +519,48 @@ public class JobOrderServiceImpl implements JobOrderService {
         if (entity.getActualCost() != null) {
             entity.setActualCost(entity.getActualCost().setScale(2, java.math.RoundingMode.HALF_UP));
         }
+    }
+
+    /**
+     * Every purchase order raised against one job order, newest first.
+     *
+     * Read with plain SQL: the answer spans BillsOrderMaster, its details and
+     * the supplier, and the covered-line count comes from JobOrderDetail - four
+     * tables that no single JPA relation on this module reaches.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<my.maleva.api.module.joborder.dto.JobOrderPurchaseOrderDto>
+            getPurchaseOrdersForJob(Integer jobOrderMasterRefId) {
+
+        final String sql = """
+            SELECT BOM.Id,
+                   BOM.CNumberDisplay,
+                   CAST(BOM.SaleDate AS DATE) AS PoDate,
+                   S.SupplierName,
+                   BOM.Description,
+                   BOM.Amount,
+                   BOM.BillStatus,
+                   (SELECT COUNT(*) FROM JobOrderDetail JOD
+                     WHERE JOD.BillsOrderMasterRefId = BOM.Id
+                       AND JOD.JobOrderMasterRefId = ?) AS LineCount
+            FROM BillsOrderMaster BOM
+            LEFT JOIN Supplier S ON BOM.SupplierRefId = S.Id
+            WHERE BOM.JobOrderMasterRefId = ? AND BOM.Active = 1
+            ORDER BY BOM.SaleDate DESC, BOM.Id DESC
+            """;
+
+        return jdbcTemplate.query(sql, (rs, i) ->
+                my.maleva.api.module.joborder.dto.JobOrderPurchaseOrderDto.builder()
+                        .id(rs.getInt("Id"))
+                        .poNumber(rs.getString("CNumberDisplay"))
+                        .poDate(rs.getDate("PoDate") == null ? null : rs.getDate("PoDate").toLocalDate())
+                        .supplierName(rs.getString("SupplierName"))
+                        .description(rs.getString("Description"))
+                        .amount(rs.getDouble("Amount"))
+                        .status(rs.getString("BillStatus"))
+                        .lineCount(rs.getLong("LineCount"))
+                        .build(),
+                jobOrderMasterRefId, jobOrderMasterRefId);
     }
 }

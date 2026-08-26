@@ -66,6 +66,22 @@ public class DriverMasterController {
     }
 
     /**
+     * Insert or update one driver (legacy SP_Driver behaviour).
+     * POST /api/driver-masters/process?companyId=1
+     *
+     * A new driver gets its CNumber / CNumberDisplay allocated here, so the
+     * screen never has to know how the numbering works.
+     */
+    @PostMapping("/process")
+    public ResponseEntity<DriverMasterDto> processDriver(
+            @Valid @RequestBody DriverMasterDto dto,
+            @RequestParam Integer companyId) {
+        logger.info("Processing driver for company: {}", companyId);
+        DriverMasterDto result = service.processDriver(dto, companyId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Update driver
      * PUT /api/driver-masters/{id}
      */
@@ -76,14 +92,24 @@ public class DriverMasterController {
     }
 
     /**
-     * Delete driver
+     * Soft delete a driver (Active = 2 - the marker the driver search excludes).
      * DELETE /api/driver-masters/{id}
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        logger.info("Deleting driver with ID: {}", id);
+        logger.info("Soft deleting driver with ID: {}", id);
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Restore a soft-deleted driver.
+     * PUT /api/driver-masters/{id}/restore
+     */
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<DriverMasterDto> restore(@PathVariable Integer id) {
+        logger.info("Restoring driver with ID: {}", id);
+        return ResponseEntity.ok(service.restore(id));
     }
 
     /**

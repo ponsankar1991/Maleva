@@ -358,7 +358,10 @@ public class BillsOrderMasterService {
                     "FORMAT(ISNULL(A.Created_Date, '1900-01-01'), 'dd/MM/yyyy hh:mm:ss') as BillTime, " +
                     "B.SupplierName, A.Amount as NetAmt, A.SaleType, A.CNumber as BillNo, " +
                     "ISNULL(J.TruckName, '') as TruckName, ISNULL(K.DriverName, '') as DriverName, " +
-                    "ISNULL(SA.CNumberDisplay, '') as BillNoDisplay1 " +
+                    "ISNULL(SA.CNumberDisplay, '') as BillNoDisplay1, " +
+                    // Stored on the row, so the list prints it without joining
+                    // JobOrderMaster - see BillsOrderMaster.jobOrderNo.
+                    "ISNULL(A.JobOrderNo, '') as JobOrderNo " +
                     "FROM BillsOrderMaster A WITH(NOLOCK) " +
                     "INNER JOIN Supplier B WITH(NOLOCK) ON A.SupplierRefId = B.Id " +
                     "LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = A.EmployeeRefId " +
@@ -387,6 +390,7 @@ public class BillsOrderMasterService {
                             .truckName(rs.getString("TruckName"))
                             .driverName(rs.getString("DriverName"))
                             .billNoDisplay1(rs.getString("BillNoDisplay1"))
+                            .jobOrderNo(rs.getString("JobOrderNo"))
                             .build()
             );
 
@@ -494,6 +498,8 @@ public class BillsOrderMasterService {
                     "A.PlusAmount, A.MinusAmount, A.Amount, A.Remarks, A.Active, A.BillStatus, " +
                     "A.PayTo, A.OffVessal, A.LodingVessal, A.Created_Date, A.Created_By, " +
                     "A.Modified_Date, A.Modified_By, A.TruckRefid, A.DriverRefid, A.SaleMasterRefId, " +
+                    // So reopening a PO still shows which job order it serves.
+                    "A.JobOrderMasterRefId, A.JobOrderNo, " +
                     "A.Description, A.DueDate, ISNULL(A.DueDate, '') as SDueDate, A.PaymentTermsRefid, " +
                     "ISNULL(SA.CNumberDisplay, '') as JobNo, B.Id as SDId, B.ProductRefId, B.QuoteValue, " +
                     "B.SerialNo, B.AccountMasterRefId, B.MRP, B.PurchaseRate, B.ItemQty, B.DiscPer, " +
@@ -568,6 +574,12 @@ public class BillsOrderMasterService {
                     master.setSDueDate(rs.getString("SDueDate"));
                     master.setPaymentTermsRefid(rs.getInt("PaymentTermsRefid"));
                     master.setJobNo(rs.getString("JobNo"));
+                    // The workshop job order this PO serves. Selected above and
+                    // set here, or the edit screen gets the column back from SQL
+                    // and then drops it on the way into the model.
+                    int jobOrderRefId = rs.getInt("JobOrderMasterRefId");
+                    master.setJobOrderMasterRefId(rs.wasNull() ? null : jobOrderRefId);
+                    master.setJobOrderNo(rs.getString("JobOrderNo"));
                     master.setBillsOrderDetails(new ArrayList<>());
                     masterDictionary.put(masterId, master);
                 } else {

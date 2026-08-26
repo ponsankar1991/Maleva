@@ -100,23 +100,51 @@ public class ProductMasterServiceImpl implements ProductMasterService {
         return mapper.toDto(updated);
     }
 
+    /**
+     * Soft delete: the product is deactivated, not removed.
+     *
+     * Sale orders, invoices and stock rows reference products by id, so
+     * deleting the row would orphan that history - and the CStock delete this
+     * used to run first would take the stock ledger with it. Activestatus = 0
+     * hides the product from the pickers while every past document still
+     * resolves its name and price.
+     */
     @Override
     @Transactional
     public boolean delete(Integer id) {
-        logger.info("Deleting ProductMaster with ID: {}", id);
+        logger.info("Soft deleting ProductMaster with ID: {}", id);
 
-        if (!productMasterRepository.existsById(id)) {
+        ProductMaster entity = productMasterRepository.findById(id).orElse(null);
+        if (entity == null) {
             logger.warn("ProductMaster not found with ID: {}", id);
             return false;
         }
 
-        // Delete associated CStock records first
-        cstockRepository.deleteByProductRefId(id);
-
-        productMasterRepository.deleteById(id);
-        logger.info("ProductMaster deleted successfully with ID: {}", id);
+        entity.setActivestatus(0);
+        entity.setModifiedDate(java.time.LocalDateTime.now());
+        productMasterRepository.save(entity);
+        logger.info("ProductMaster deactivated with ID: {}", id);
 
         return true;
+    }
+
+    /**
+     * Saves a batch in one transaction - rows without an id are inserted, rows
+     * with one are updated. Either the whole batch lands or none of it does.
+     */
+    @Override
+    @Transactional
+    public List<ProductMasterDto> saveBatch(List<ProductMasterDto> products, Integer companyRefId) {
+        logger.info("Saving batch of {} products for company {}", products.size(), companyRefId);
+
+        return products.stream()
+                .map(dto -> {
+                    dto.setCompanyRefId(companyRefId);
+                    return dto.getId() == null || dto.getId() == 0
+                            ? create(dto)
+                            : update(dto.getId(), dto);
+                })
+                .collect(Collectors.toList());
     }
 
     @Override

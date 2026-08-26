@@ -107,6 +107,17 @@ public class TruckMasterDto {
     @Size(max = 300, message = "Vehicle Type must not exceed 300 characters")
     private String vehicleType;
 
+    @Size(max = 50, message = "Last Service KM must not exceed 50 characters")
+    private String lastServiceKM;
+
+    @Size(max = 50, message = "Next Service KM must not exceed 50 characters")
+    private String nextServiceKM;
+
+    @Size(max = 50, message = "Next Odometer KM must not exceed 50 characters")
+    private String nextodometerKm;
+
+    private LocalDate batteryDate;
+
     // 1 = Maleva-owned truck, 0 = outside/subcontractor truck
     private Integer malevaTruck;
 

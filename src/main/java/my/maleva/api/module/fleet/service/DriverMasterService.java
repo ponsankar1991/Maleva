@@ -32,9 +32,23 @@ public interface DriverMasterService {
     DriverMasterDto update(Integer id, DriverMasterDto dto);
 
     /**
-     * Delete driver
+     * Soft delete a driver (Active = 2, the marker the driver search excludes).
      */
     void delete(Integer id);
+
+    /**
+     * Bring a soft-deleted driver back as active.
+     */
+    DriverMasterDto restore(Integer id);
+
+    /**
+     * Insert or update one driver the way the legacy screen did.
+     *
+     * Generates CNumber / CNumberDisplay for a new driver, fills the defaults
+     * the table requires (Active, AccountRefid, Modified_By), and decides
+     * insert vs update from the id on the payload.
+     */
+    DriverMasterDto processDriver(DriverMasterDto dto, Integer companyId);
 
     /**
      * Search drivers with pagination and filtering

@@ -52,6 +52,15 @@ public class JobOrderDetail {
     @Column(name = "InventoryTransactionRefId")
     private Integer inventoryTransactionRefId;
 
+    /**
+     * The purchase order this line's part was bought on.
+     *
+     * Several lines share one PO when they were ordered from the same vendor,
+     * which is why this is a plain reference and not a one-to-one.
+     */
+    @Column(name = "BillsOrderMasterRefId")
+    private Integer billsOrderMasterRefId;
+
     @Column(name = "Remarks", length = 500)
     private String remarks;
 

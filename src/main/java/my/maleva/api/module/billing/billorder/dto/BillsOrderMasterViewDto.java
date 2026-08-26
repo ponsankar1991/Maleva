@@ -30,6 +30,12 @@ public class BillsOrderMasterViewDto {
     private String billNoDisplay1;
     private String billStatus;
     private String payTo;
+    /** Workshop job order this PO was raised for; null for ordinary purchases. */
+    private Integer jobOrderMasterRefId;
+
+    /** Job order number as it reads on screen, e.g. JO000000009. */
+    private String jobOrderNo;
+
     private String description;
     private Integer fileupload;
 }

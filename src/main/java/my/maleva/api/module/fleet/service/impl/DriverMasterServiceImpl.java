@@ -65,6 +65,9 @@ public class DriverMasterServiceImpl implements DriverMasterService {
         return mapper.toDto(ent);
     }
 
+    /** Legacy delete marker on DriverMaster.Active - see {@link #delete(Integer)}. */
+    private static final int DELETED = 2;
+
     @Override
     @Transactional
     public DriverMasterDto create(DriverMasterDto dto) {
@@ -76,6 +79,45 @@ public class DriverMasterServiceImpl implements DriverMasterService {
         DriverMaster saved = repository.save(ent);
         logger.info("Driver created with ID: {}", saved.getId());
         return mapper.toDto(saved);
+    }
+
+    /**
+     * Insert or update, generating the driver number for a new record.
+     *
+     * The legacy screen relied on SP_Driver to allocate CNumber; this does the
+     * same by taking the company's highest number and adding one, so the
+     * displayed number keeps the D000000123 shape the reports expect.
+     */
+    @Override
+    @Transactional
+    public DriverMasterDto processDriver(DriverMasterDto dto, Integer companyId) {
+        logger.info("Processing driver for company: {}", companyId);
+        dto.setCompanyRefId(companyId);
+
+        if (dto.getActive() == null) {
+            dto.setActive(1);
+        }
+        if (dto.getAccountRefid() == null) {
+            dto.setAccountRefid(1);
+        }
+        if (dto.getModifiedBy() == null || dto.getModifiedBy().isBlank()) {
+            dto.setModifiedBy("SYSTEM");
+        }
+
+        if (dto.getCNumber() == null || dto.getCNumber() == 0) {
+            Integer maxCNumber = repository.findByCompanyRefId(companyId).stream()
+                    .map(DriverMaster::getCNumber)
+                    .filter(java.util.Objects::nonNull)
+                    .max(Integer::compareTo)
+                    .orElse(0);
+            dto.setCNumber(maxCNumber + 1);
+            dto.setCNumberDisplay(String.format("D%09d", maxCNumber + 1));
+        }
+
+        if (dto.getId() == null || dto.getId() == 0) {
+            return create(dto);
+        }
+        return update(dto.getId(), dto);
     }
 
     @Override
@@ -91,14 +133,41 @@ public class DriverMasterServiceImpl implements DriverMasterService {
         return mapper.toDto(saved);
     }
 
+    /**
+     * Soft delete, the way the legacy screen did it.
+     *
+     * Active = 2 is the delete marker the whole system already reads: the
+     * driver search filters on `active != 2`, and RTI / fuel / planning rows
+     * keep pointing at the driver, so removing the row outright would orphan
+     * years of history. Active = 0 is a different thing - a driver still on
+     * the books but not currently driving - so it must not be reused here.
+     */
     @Override
     @Transactional
     public void delete(Integer id) {
-        logger.info("Deleting driver with ID: {}", id);
+        logger.info("Soft deleting driver with ID: {}", id);
         DriverMaster ent = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("DriverMaster not found: " + id));
-        repository.delete(ent);
-        logger.info("Driver deleted with ID: {}", id);
+        ent.setActive(DELETED);
+        ent.setModifiedDate(LocalDateTime.now());
+        repository.save(ent);
+        logger.info("Driver marked as deleted with ID: {}", id);
+    }
+
+    /**
+     * Brings a soft-deleted driver back, as active.
+     */
+    @Override
+    @Transactional
+    public DriverMasterDto restore(Integer id) {
+        logger.info("Restoring driver with ID: {}", id);
+        DriverMaster ent = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("DriverMaster not found: " + id));
+        ent.setActive(1);
+        ent.setModifiedDate(LocalDateTime.now());
+        DriverMaster saved = repository.save(ent);
+        logger.info("Driver restored with ID: {}", id);
+        return mapper.toDto(saved);
     }
 
     /**
