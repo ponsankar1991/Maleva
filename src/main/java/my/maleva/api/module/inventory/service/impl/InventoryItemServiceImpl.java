@@ -418,9 +418,30 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
         ItemType type = parseType(request.getItemType());
         if (type != item.getItemType()) {
-            throw new InvalidRequestException("Item type cannot be changed after creation. "
-                    + "This item is tracked as " + item.getItemType()
-                    + "; create a separate item to track it as " + type + ".");
+            // Re-cataloguing is allowed - an item is often created as the wrong
+            // kind and nobody notices until later - but not across the line
+            // between serial-tracked and quantity-tracked while it holds stock.
+            // The two count on-hand from different places: a serialised item
+            // from its registered units, a quantity item from its balance. Move
+            // one across with stock on it and that stock stops being counted by
+            // anything, which reads as inventory vanishing.
+            boolean crossesTrackingFamily = type.isSerialised() != item.getItemType().isSerialised();
+            if (crossesTrackingFamily) {
+                double balance = cstockRepository
+                        .findByCompanyRefIdAndProductRefId(item.getCompanyRefId(), item.getProductRefId())
+                        .stream()
+                        .findFirst()
+                        .map(stock -> stock.getCstock() == null ? 0.0 : stock.getCstock())
+                        .orElse(0.0);
+                if (balance != 0.0) {
+                    throw new InvalidRequestException(
+                            "This item still holds " + balance + " in stock. "
+                          + item.getItemType() + " and " + type + " count stock in different ways, "
+                          + "so the balance has to be issued or written off before the kind can change.");
+                }
+            }
+            logger.info("Re-cataloguing item {} from {} to {}", id, item.getItemType(), type);
+            item.setItemType(type);
         }
 
         ProductMaster product = productMasterRepository.findById(item.getProductRefId())
