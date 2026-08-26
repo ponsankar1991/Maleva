@@ -2,6 +2,7 @@ package my.maleva.api.module.rti.repository;
 
 import my.maleva.api.module.rti.entity.RTIRouteActivities;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,6 +14,16 @@ import java.util.List;
 public interface RTIRouteActivitiesRepository extends JpaRepository<RTIRouteActivities, Integer> {
     List<RTIRouteActivities> findByRtiMasterRefIdOrderBySequenceNoAsc(Integer rtiMasterRefId);
     void deleteByRtiMasterRefId(Integer rtiMasterRefId);
+
+    @Modifying
+    @Query("""
+        UPDATE RTIRouteActivities ra
+        SET ra.active = false,
+            ra.modifiedDate = CURRENT_TIMESTAMP
+        WHERE ra.rtiMasterRefId = :rtiMasterRefId
+          AND ra.active = true
+    """)
+    int softDeleteByRtiMasterRefId(@Param("rtiMasterRefId") Integer rtiMasterRefId);
 
     @Query(value = """
         SELECT 
@@ -47,7 +58,9 @@ public interface RTIRouteActivitiesRepository extends JpaRepository<RTIRouteActi
         LEFT JOIN DriverMaster DM ON RM.DriverRefid = DM.Id
         INNER JOIN EmployeeMaster EM ON RA.EmployeeRefId = EM.Id
         WHERE RA.CompanyRefId = :companyRefId
-          AND RA.ETA >= :fromDate 
+          AND RA.Active = 1
+          AND RM.Active = 1
+          AND RA.ETA >= :fromDate
           AND RA.ETA <= :toDate
         ORDER BY RA.ETA ASC
     """, nativeQuery = true)

@@ -408,7 +408,9 @@ public class RTIMasterServiceImpl implements RTIMasterService {
             entity.setActive(0);
             entity.setModifiedDate(LocalDateTime.now());
             rtiMasterRepository.save(entity);
-            logger.info("RTIMaster marked as inactive with ID: {}", id);
+
+            int deactivatedActivities = rtiRouteActivitiesRepository.softDeleteByRtiMasterRefId(id);
+            logger.info("RTIMaster marked as inactive with ID: {}, {} route activities deactivated", id, deactivatedActivities);
             return true;
         }
         logger.warn("RTIMaster not found with ID: {}", id);

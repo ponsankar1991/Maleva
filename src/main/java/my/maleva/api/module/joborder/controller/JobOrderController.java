@@ -56,7 +56,6 @@ public class JobOrderController {
         JobOrderResponseDto result = jobOrderService.createJobOrder(requestDto);
         return ResponseEntity.ok(ApiResponse.success(result, "Job Order created successfully"));
     }
-
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<JobOrderResponseDto>> updateJobOrder(
             @PathVariable Integer id,
