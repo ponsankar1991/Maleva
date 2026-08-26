@@ -53,8 +53,12 @@ public class UomService {
 
     @Transactional
     public void delete(Integer id) {
+        // Soft delete: items may reference this UOM, so the row is deactivated
+        // rather than removed — same rule as the other masters.
         Uom uom = uomRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("UOM not found: " + id));
-        uomRepository.delete(uom);
+        uom.setActive(0);
+        uom.setModifiedDate(LocalDateTime.now());
+        uomRepository.save(uom);
     }
 
     /**
