@@ -188,4 +188,8 @@ public class PlanningDetailsModel {
 
     @JsonProperty("DODescription")
     private String doDescription;
+
+    /** Latest active RTI number created for this job's sale order, '' if none. */
+    @JsonProperty("RTINo")
+    private String rtiNo;
 }

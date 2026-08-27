@@ -95,6 +95,19 @@ public class RTIDetailsController {
         }
     }
 
+    /**
+     * Batch lookup: for each posted sale order id, the latest active RTI that
+     * contains it. Used by the planning grid to badge jobs whose RTI exists.
+     * Body: [101, 102, ...] → [{saleOrderMasterRefId, rtiMasterRefId, rtiNo}, ...]
+     */
+    @PostMapping("/rti-status")
+    @PermitAll
+    public ResponseEntity<List<java.util.Map<String, Object>>> getRtiStatusBySaleOrders(
+            @RequestBody List<Integer> saleOrderIds) {
+        logger.info("Fetching RTI status for {} sale orders", saleOrderIds == null ? 0 : saleOrderIds.size());
+        return ResponseEntity.ok(rtiDetailsService.getRtiStatusBySaleOrderIds(saleOrderIds));
+    }
+
     @GetMapping("/sale-order/{saleOrderMasterRefId}")
     @PermitAll
     public ResponseEntity<List<RTIDetailsDto>> getBySaleOrderMasterId(@PathVariable Integer saleOrderMasterRefId) {

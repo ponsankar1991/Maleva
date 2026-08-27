@@ -111,5 +111,35 @@ public class RTIDetailsServiceImpl implements RTIDetailsService {
         logger.info("Deleting all RTIDetails for RTIMaster: {}", rtiMasterRefId);
         rtiDetailsRepository.deleteByRtiMasterRefId(rtiMasterRefId);
     }
+
+    @Override
+    public List<java.util.Map<String, Object>> getRtiStatusBySaleOrderIds(List<Integer> saleOrderIds) {
+        if (saleOrderIds == null || saleOrderIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Integer> validIds = saleOrderIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        if (validIds.isEmpty()) {
+            return List.of();
+        }
+
+        // Rows come newest RTI first; keep only the latest RTI per sale order.
+        java.util.Map<Integer, java.util.Map<String, Object>> latestBySaleOrder = new java.util.LinkedHashMap<>();
+        for (Object[] row : rtiDetailsRepository.findRtiStatusBySaleOrderIds(validIds)) {
+            Integer saleOrderId = (Integer) row[0];
+            latestBySaleOrder.computeIfAbsent(saleOrderId, key -> {
+                java.util.Map<String, Object> status = new java.util.LinkedHashMap<>();
+                status.put("saleOrderMasterRefId", key);
+                status.put("rtiMasterRefId", row[1]);
+                status.put("rtiNo", row[2]);
+                return status;
+            });
+        }
+
+        return new java.util.ArrayList<>(latestBySaleOrder.values());
+    }
 }
 

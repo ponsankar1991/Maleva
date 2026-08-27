@@ -91,7 +91,15 @@ public class PlanningMasterService {
                 ISNULL(B.pickuptimelist, '') as pickuptimelist,
                 ISNULL(B.pickupQuantitylist, '') as pickupQuantitylist,
                 ISNULL(B.DeliveryQuantitylist, '') as DeliveryQuantitylist,
-                ISNULL(B.Delivertimelist, '') as Delivertimelist
+                ISNULL(B.Delivertimelist, '') as Delivertimelist,
+                ISNULL((
+                    SELECT TOP 1 RM.CNumberDisplay
+                    FROM RTIDetails RD WITH(NOLOCK)
+                    INNER JOIN RTIMaster RM WITH(NOLOCK) ON RM.Id = RD.RTIMasterRefId
+                    WHERE RD.SaleOrderMasterRefId = B.SaleOrderMasterRefId
+                      AND RM.Active = 1
+                    ORDER BY RM.Id DESC
+                ), '') as RTINo
             FROM PLANINGDetails B WITH(NOLOCK)
             INNER JOIN PLANINGMaster A WITH(NOLOCK) ON B.PLANINGMasterRefId = A.Id
             INNER JOIN SaleOrderMaster SM WITH(NOLOCK) ON SM.Id = B.SaleOrderMasterRefId
@@ -176,7 +184,15 @@ public class PlanningMasterService {
                 ISNULL(SM.pickuptimelist, '') as pickuptimelist,
                 ISNULL(SM.pickupQuantitylist, '') as pickupQuantitylist,
                 ISNULL(SM.DeliveryQuantitylist, '') as DeliveryQuantitylist,
-                ISNULL(SM.Delivertimelist, '') as Delivertimelist
+                ISNULL(SM.Delivertimelist, '') as Delivertimelist,
+                ISNULL((
+                    SELECT TOP 1 RM.CNumberDisplay
+                    FROM RTIDetails RD WITH(NOLOCK)
+                    INNER JOIN RTIMaster RM WITH(NOLOCK) ON RM.Id = RD.RTIMasterRefId
+                    WHERE RD.SaleOrderMasterRefId = B.SaleOrderMasterRefId
+                      AND RM.Active = 1
+                    ORDER BY RM.Id DESC
+                ), '') as RTINo
             FROM PLANINGMaster A WITH(NOLOCK)
             INNER JOIN PLANINGDetails B WITH(NOLOCK) ON A.Id = B.PLANINGMasterRefId
             INNER JOIN SaleOrderMaster SM WITH(NOLOCK) ON SM.Id = B.SaleOrderMasterRefId
@@ -468,6 +484,7 @@ public class PlanningMasterService {
                         .pickupQuantityList(getNullableString(rs, "pickupQuantitylist"))
                         .deliveryQuantityList(getNullableString(rs, "DeliveryQuantitylist"))
                         .deliveryTimeList(getNullableString(rs, "Delivertimelist"))
+                        .rtiNo(getNullableString(rs, "RTINo"))
                         .build()
         );
 
@@ -541,6 +558,7 @@ public class PlanningMasterService {
                         .pickupQuantityList(getNullableString(rs, "pickupQuantitylist"))
                         .deliveryQuantityList(getNullableString(rs, "DeliveryQuantitylist"))
                         .deliveryTimeList(getNullableString(rs, "Delivertimelist"))
+                        .rtiNo(getNullableString(rs, "RTINo"))
                         .build()
         );
 

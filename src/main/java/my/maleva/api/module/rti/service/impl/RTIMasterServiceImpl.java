@@ -162,6 +162,56 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                 });
     }
 
+    /**
+     * Atomically claims the next RTI sequence number for the company, matching
+     * legacy SP_RTIMaster which numbered new RTIs from SequenceNoMaster inside
+     * the save transaction. The single UPDATE..OUTPUT statement increments and
+     * reads in one step, so concurrent creates can never receive the same number.
+     */
+    private int claimNextRtiSequence(Integer companyRefId) {
+        List<Integer> claimed = jdbcTemplate.query("""
+                UPDATE SequenceNoMaster
+                SET SequenceNo = SequenceNo + 1, SequenceDate = GETDATE()
+                OUTPUT INSERTED.SequenceNo
+                WHERE CompanyRefId = ? AND SequenceName = 'RTIMaster'
+                """,
+                (rs, rowNum) -> rs.getInt(1),
+                companyRefId);
+        if (!claimed.isEmpty()) {
+            return claimed.get(0);
+        }
+
+        // First RTI ever for this company: seed the sequence row at 1.
+        jdbcTemplate.update("""
+                INSERT INTO SequenceNoMaster (CompanyRefId, SequenceName, SequenceNo, SequenceDate, SequenceYear, SequenceMonth)
+                VALUES (?, 'RTIMaster', 1, GETDATE(), YEAR(GETDATE()), MONTH(GETDATE()))
+                """, companyRefId);
+        return 1;
+    }
+
+    /**
+     * Copies warehouse data from SaleOrderMaster into every RTIDetails row of the
+     * given RTI. Legacy SP_RTIMaster and RTIServices.cs run this unconditionally
+     * after (re)inserting details — PWDType only gates how the values are read back,
+     * never whether they are written.
+     */
+    private void syncWarehouseDataFromSaleOrder(Integer rtiMasterRefId) {
+        int rowsUpdated = jdbcTemplate.update("""
+                UPDATE RD
+                SET
+                    RD.WareHouseEnterDate = SM.WareHouseEnterDate,
+                    RD.WareHouseExitDate = SM.WareHouseExitDate,
+                    RD.WareHouseAddress = SM.WareHouseAddress
+                FROM RTIDetails RD
+                INNER JOIN SaleOrderMaster SM
+                    ON SM.Id = RD.SaleOrderMasterRefId
+                WHERE RD.RTIMasterRefId = ?
+                """,
+                rtiMasterRefId);
+        logger.info("RTI_WAREHOUSE: Synced warehouse data for RTIMasterRefId: {} ({} detail rows)",
+                rtiMasterRefId, rowsUpdated);
+    }
+
     @Override
     @Transactional
     public RTIMasterDto create(RTIMasterDto dto) {
@@ -203,8 +253,14 @@ public class RTIMasterServiceImpl implements RTIMasterService {
             entity.setExitYN(0);
         }
 
+        // The RTI number is assigned here, inside the transaction, regardless of
+        // what the client posted — legacy SP_RTIMaster behavior.
+        int nextSequenceNo = claimNextRtiSequence(dto.getCompanyRefId());
+        entity.setCNumber(nextSequenceNo);
+        entity.setCNumberDisplay(generateCNumberDisplay(nextSequenceNo));
+
         RTIMaster saved = rtiMasterRepository.save(entity);
-        logger.info("RTIMaster created with ID: {}", saved.getId());
+        logger.info("RTIMaster created with ID: {} and number: {}", saved.getId(), saved.getCNumberDisplay());
 
         List<my.maleva.api.module.rti.dto.RTIDetailsDto> savedDetailsDto = new java.util.ArrayList<>();
         if (dto.getRtiDetails() != null && !dto.getRtiDetails().isEmpty()) {
@@ -259,38 +315,10 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                             WHERE SaleOrderMasterRefId = ?
                             """,
                             rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
-
-                    // CONDITIONAL: Warehouse Data Update - Only if pwdType = 1 or 2
-                    if (detailDto.getPwdType() != null && detailDto.getPwdType() > 0) {
-                        if (detailDto.getPwdType() == 1 || detailDto.getPwdType() == 2) {
-                            logger.info("RTI_WAREHOUSE: Executing warehouse update - RTIMasterRefId: {}, SaleOrderMasterRefId: {}, pwdType: {}",
-                                    rtiMasterRefId, saleOrderMasterRefId, detailDto.getPwdType());
-
-                            int rowsUpdated = jdbcTemplate.update("""
-                                UPDATE RD
-                                SET
-                                    RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
-                                    RD.WareHouseExitDate = SOM.WareHouseExitDate,
-                                    RD.WareHouseAddress = SOM.WareHouseAddress
-                                FROM RTIDetails RD
-                                INNER JOIN SaleOrderMaster SOM
-                                    ON SOM.Id = ?
-                                WHERE RD.RTIMasterRefId = ?
-                                  AND RD.SaleOrderMasterRefId = ?
-                                """,
-                                saleOrderMasterRefId,
-                                rtiMasterRefId,
-                                saleOrderMasterRefId);
-
-                            logger.info("RTI_WAREHOUSE: Completed - Rows: {}, RTIMasterRefId: {}, pwdType: {}",
-                                    rowsUpdated, rtiMasterRefId, detailDto.getPwdType());
-                        }
-                    } else if (detailDto.getPwdType() == null || detailDto.getPwdType() == 0) {
-                        logger.debug("RTI_WAREHOUSE: Skipped warehouse update - pwdType is 0 or null (disabled)");
-                    }
-
                 }
             }
+
+            syncWarehouseDataFromSaleOrder(saved.getId());
         }
 
         List<my.maleva.api.module.rti.dto.RTIRouteActivitiesDto> savedRouteActivitiesDto = new java.util.ArrayList<>();
@@ -339,43 +367,9 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                 detailEntity.setRtiMasterRefId(updated.getId());
                 my.maleva.api.module.rti.entity.RTIDetails savedDetail = rtiDetailsRepository.save(detailEntity);
                 savedDetailsDto.add(rtiDetailsMapper.toDto(savedDetail));
-
-                // Synchronize RTIPickup and RTIDelivery tables on update matching legacy .NET behavior
-                if (savedDetail.getSaleOrderMasterRefId() != null) {
-                    int rtiMasterRefId = updated.getId();
-                    int saleOrderMasterRefId = savedDetail.getSaleOrderMasterRefId();
-
-
-                    // CONDITIONAL: Warehouse Data Update - Only if pwdType = 1 or 2
-                    if (detailDto.getPwdType() != null && detailDto.getPwdType() > 0) {
-                        if (detailDto.getPwdType() == 1 || detailDto.getPwdType() == 2) {
-                            logger.info("RTI_WAREHOUSE: Executing warehouse update - RTIMasterRefId: {}, SaleOrderMasterRefId: {}, pwdType: {}",
-                                    rtiMasterRefId, saleOrderMasterRefId, detailDto.getPwdType());
-
-                            int rowsUpdated = jdbcTemplate.update("""
-                                UPDATE RD
-                                SET
-                                    RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
-                                    RD.WareHouseExitDate = SOM.WareHouseExitDate,
-                                    RD.WareHouseAddress = SOM.WareHouseAddress
-                                FROM RTIDetails RD
-                                INNER JOIN SaleOrderMaster SOM
-                                    ON SOM.Id = ?
-                                WHERE RD.RTIMasterRefId = ?
-                                  AND RD.SaleOrderMasterRefId = ?
-                                """,
-                                saleOrderMasterRefId,
-                                rtiMasterRefId,
-                                saleOrderMasterRefId);
-
-                            logger.info("RTI_WAREHOUSE: Completed - Rows: {}, RTIMasterRefId: {}, pwdType: {}",
-                                    rowsUpdated, rtiMasterRefId, detailDto.getPwdType());
-                        }
-                    } else if (detailDto.getPwdType() == null || detailDto.getPwdType() == 0) {
-                        logger.debug("RTI_WAREHOUSE: Skipped warehouse update - pwdType is 0 or null (disabled)");
-                    }
-                }
             }
+
+            syncWarehouseDataFromSaleOrder(updated.getId());
         }
 
         List<my.maleva.api.module.rti.dto.RTIRouteActivitiesDto> savedRouteActivitiesDto = new java.util.ArrayList<>();
@@ -660,41 +654,10 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                             WHERE SaleOrderMasterRefId = ?
                             """,
                             rtiMasterRefId, saleOrderMasterRefId, saleOrderMasterRefId);
-
-                    // CONDITIONAL: Warehouse Data Update - Only if pwdType = 1 or 2
-                    if (item.getPwdType() != null && item.getPwdType() > 0) {
-                        if (item.getPwdType() == 1 || item.getPwdType() == 2) {
-                            logger.info("RTI_WAREHOUSE: Executing warehouse update in getForRevise - RTIMasterRefId: {}, SaleOrderMasterRefId: {}, pwdType: {}",
-                                    rtiMasterRefId, saleOrderMasterRefId, item.getPwdType());
-
-                            int rowsUpdated = jdbcTemplate.update("""
-                                UPDATE RD
-                                SET
-                                    RD.WareHouseEnterDate = SOM.WareHouseEnterDate,
-                                    RD.WareHouseExitDate = SOM.WareHouseExitDate,
-                                    RD.WareHouseAddress = SOM.WareHouseAddress
-                                FROM RTIDetails RD
-                                INNER JOIN SaleOrderMaster SOM
-                                    ON SOM.Id = ?
-                                WHERE RD.RTIMasterRefId = ?
-                                  AND RD.SaleOrderMasterRefId = ?
-                                """,
-                                saleOrderMasterRefId,
-                                rtiMasterRefId,
-                                saleOrderMasterRefId);
-
-                            logger.info("RTI_WAREHOUSE: Completed in getForRevise - Rows: {}, RTIMasterRefId: {}, pwdType: {}",
-                                    rowsUpdated, rtiMasterRefId, item.getPwdType());
-                        }
-                    } else if (item.getPwdType() == null || item.getPwdType() == 0) {
-                        logger.debug("RTI_WAREHOUSE: Skipped warehouse update in getForRevise - pwdType is 0 or null (disabled)");
-                    }
-
-
-
-
                 }
             }
+
+            syncWarehouseDataFromSaleOrder(source.getId());
         }
 
         masterDto.setRtiDetails(detailDtos);

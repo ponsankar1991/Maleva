@@ -49,5 +49,11 @@ public interface RTIDetailsService {
      * Delete all RTIDetails for an RTIMaster
      */
     void deleteByRtiMasterId(Integer rtiMasterRefId);
+
+    /**
+     * For each given sale order id, the latest active RTI containing it.
+     * Sale orders with no RTI are omitted from the result.
+     */
+    List<java.util.Map<String, Object>> getRtiStatusBySaleOrderIds(List<Integer> saleOrderIds);
 }
 

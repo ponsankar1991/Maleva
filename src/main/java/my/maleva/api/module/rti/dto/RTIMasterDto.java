@@ -34,11 +34,11 @@ public class RTIMasterDto {
     @NotNull(message = "Sale Date is required")
     private LocalDateTime saleDate;
 
-    @NotBlank(message = "CNumber Display is required")
+    // Assigned by the server inside the create transaction (see
+    // RTIMasterServiceImpl.claimNextRtiSequence) — clients no longer send it.
     @Size(max = 300, message = "CNumber Display cannot exceed 300 characters")
     private String CNumberDisplay;
 
-    @NotNull(message = "CNumber is required")
     private Integer CNumber;
 
     @Size(max = 2000, message = "Remarks cannot exceed 2000 characters")

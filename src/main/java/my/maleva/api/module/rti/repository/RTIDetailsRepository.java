@@ -44,5 +44,18 @@ public interface RTIDetailsRepository extends JpaRepository<RTIDetails, Integer>
         "WHERE d.rtiMasterRefId = :rtiMasterId"
     )
     List<Object[]> findDetailsWithEnrichment(@org.springframework.data.repository.query.Param("rtiMasterId") Integer rtiMasterId);
+
+    /**
+     * For each given sale order, the active RTI(s) that contain it.
+     * Ordered newest-first so callers can keep the latest RTI per sale order.
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT d.saleOrderMasterRefId, d.rtiMasterRefId, m.CNumberDisplay " +
+        "FROM RTIDetails d " +
+        "JOIN RTIMaster m ON m.id = d.rtiMasterRefId " +
+        "WHERE m.active = 1 AND d.saleOrderMasterRefId IN :saleOrderIds " +
+        "ORDER BY d.rtiMasterRefId DESC"
+    )
+    List<Object[]> findRtiStatusBySaleOrderIds(@org.springframework.data.repository.query.Param("saleOrderIds") List<Integer> saleOrderIds);
 }
 
