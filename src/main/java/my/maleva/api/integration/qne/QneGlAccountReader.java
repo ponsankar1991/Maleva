@@ -47,6 +47,10 @@ public class QneGlAccountReader {
              WHERE IsActive = 1 AND GLAccountCode = ?
             """;
 
+    /** The same projection with no code filter — the whole active chart. */
+    private static final String ALL_QUERY =
+            QUERY.substring(0, QUERY.indexOf("AND GLAccountCode = ?"));
+
     private final JdbcTemplate qneJdbcTemplate;
 
     public QneGlAccountReader(@Qualifier("qneJdbcTemplate") JdbcTemplate qneJdbcTemplate) {
@@ -54,25 +58,49 @@ public class QneGlAccountReader {
     }
 
     /**
+     * Every active account in QNE's chart.
+     *
+     * <p>Legacy reached this by leaving the account code blank: it set an
+     * error message, then ran the query anyway without the code filter and
+     * imported the lot. The blank case is a real feature — a first-time import
+     * has no code to name — so it is spelled out here rather than inherited by
+     * accident.
+     */
+    public List<Map<String, Object>> findAll() {
+        List<Map<String, Object>> rows = qneJdbcTemplate.queryForList(ALL_QUERY);
+        log.info("Read {} GL account row(s) from QNE", rows.size());
+        return rows.stream().map(QneGlAccountReader::legacyShape).collect(Collectors.toList());
+    }
+
+    /**
      * The active GL accounts under one code, as ordered column-name → value
      * maps ready to serialise for {@code SP_GLAccounts}.
-     *
-     * <p>Nulls become empty strings and apostrophes are removed from text
-     * values — both replicate the legacy post-processing
-     * ({@code Replace("null", "\"\"")} and {@code Replace("'", "")}), so the
-     * SP receives byte-identical data to what it has always received.
      */
     public List<Map<String, Object>> findByAccountCode(String accountCode) {
         List<Map<String, Object>> rows = qneJdbcTemplate.queryForList(QUERY, accountCode);
         return rows.stream().map(QneGlAccountReader::legacyShape).collect(Collectors.toList());
     }
 
+    /**
+     * Post-processing for the SP payload.
+     *
+     * <p>Apostrophes are stripped from text, replicating the legacy
+     * {@code Replace("'", "")} so re-imported rows stay byte-identical to the
+     * 2,502 already stored (none of which carry one).
+     *
+     * <p>Nulls stay <b>null</b>, deliberately not the legacy-looking {@code ""}:
+     * OPENJSON converts {@code ''} to a {@code uniqueidentifier} by throwing
+     * ("Conversion failed…", verified against the live server), while a JSON
+     * null lands as SQL NULL for every column type. Legacy never hit this
+     * because its C# model used non-nullable {@code Guid}s — the
+     * {@code Replace("null", "\"\"")} only ever touched varchar fields. Mapping
+     * every null to {@code ""} here would crash the import on the first QNE
+     * account with a NULL guid column (ATCCodeId is routinely null).
+     */
     private static Map<String, Object> legacyShape(Map<String, Object> row) {
         Map<String, Object> shaped = new LinkedHashMap<>();
         row.forEach((column, value) -> {
-            if (value == null) {
-                shaped.put(column, "");
-            } else if (value instanceof String text) {
+            if (value instanceof String text) {
                 shaped.put(column, text.replace("'", ""));
             } else {
                 shaped.put(column, value);

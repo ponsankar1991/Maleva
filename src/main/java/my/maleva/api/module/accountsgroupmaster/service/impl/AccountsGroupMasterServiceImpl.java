@@ -17,15 +17,21 @@ import my.maleva.api.module.accountsgroupmaster.repository.AccountsGroupMasterRe
 import my.maleva.api.module.accountsgroupmaster.repository.ClassificationRepository;
 import my.maleva.api.module.accountsgroupmaster.repository.GLAccountRepository;
 import my.maleva.api.module.accountsgroupmaster.service.AccountsGroupMasterService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import my.maleva.api.integration.qne.QneGlAccountReader;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,7 +50,6 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
     private final ClassificationMapper classificationMapper;
     private final ObjectProvider<QneGlAccountReader> qneGlAccountReader;
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -52,22 +57,24 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
         try {
             log.info("Getting accounts group master for companyRefId: {}, type: {}", companyRefId, type);
 
-            String codes = getAccountCodesByType(type);
-            List<AccountsGroupMaster> accounts = accountsGroupMasterRepository
-                .findAccountsByTypeAndCompany(companyRefId, codes);
+            List<String> codes = getAccountCodesByType(type);
+            List<AccountsGroupMaster> accounts = codes.isEmpty()
+                    ? accountsGroupMasterRepository.findByCompanyRefIdAndActive(companyRefId, 1)
+                    : accountsGroupMasterRepository.findAccountsByTypeAndCompany(companyRefId, codes);
 
             List<ComboListDto> result = accounts.stream()
                 .map(acc -> ComboListDto.builder()
                     .id(acc.getId())
-                    .name(acc.getAccountName() + " (" + acc.getAccountCode() + ")")
+                    // Four spaces before the bracket, as legacy rendered it —
+                    // these labels line up in the dropdowns that show them.
+                    .name(acc.getAccountName() + "    (" + acc.getAccountCode() + ")")
                     .code(acc.getAccountCode())
                     .build())
                 .collect(Collectors.toList());
 
-            if (result.isEmpty()) {
-                return ApiResponse.error("No accounts found", 404);
-            }
-
+            // An empty list is an answer, not a failure: legacy returned
+            // success with no rows, and a 404 here makes callers treat "this
+            // company has no accounts of that type yet" as a broken request.
             log.info("Retrieved {} accounts for type: {}", result.size(), type);
             return ApiResponse.success(result, "Accounts retrieved successfully");
         } catch (Exception ex) {
@@ -77,49 +84,42 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
     }
 
     /**
-     * Imports one chart-of-accounts entry from QNE into the local database.
+     * Imports chart-of-accounts entries from QNE into the local database.
      *
-     * <p>Port of the legacy {@code InsertGLAccounts}: read the account row
-     * from <b>QNE's own database</b> (their REST API has no GLAccounts
-     * endpoint), then hand the serialised rows to the local
-     * {@code SP_GLAccounts}, which upserts them for the company. An earlier
-     * migration of this method queried the <em>local</em> table — where the
-     * account by definition does not exist yet — and inserted nothing, so the
-     * import silently did no work.
-     *
-     * <p>The JSON payload replicates the legacy shape: PascalCase column
-     * names, nulls as empty strings, apostrophes stripped (see
-     * {@link QneGlAccountReader}). The JSON travels as a bound parameter; the
-     * legacy pasted it into the statement text.
+     * <p>Port of the legacy {@code InsertGLAccounts}: read the rows from
+     * <b>QNE's own database</b> (their REST API has no GLAccounts endpoint),
+     * then upsert them locally by {@code GLAccountCode} — {@code SP_GLAccounts}
+     * reimplemented in {@link #upsertGlAccounts} rather than called, matching
+     * how every other SP in this migration was ported. An earlier migration of
+     * this method queried the <em>local</em> table — where the account by
+     * definition does not exist yet — and inserted nothing, so the import
+     * silently did no work.
      */
     @Override
     public ApiResponse<Void> insertGLAccounts(Integer companyRefId, String accountCode) {
         try {
-            if (accountCode == null || accountCode.trim().isEmpty()) {
-                return ApiResponse.error("Please Enter the Account Code", 400);
-            }
-
             QneGlAccountReader reader = qneGlAccountReader.getIfAvailable();
             if (reader == null) {
                 return ApiResponse.error(
                         "QNE database access is not configured on this server (qne.datasource)", 503);
             }
 
-            List<Map<String, Object>> rows = reader.findByAccountCode(accountCode.trim());
+            // Blank imports the whole chart. Legacy reached the same outcome by
+            // accident — it set "Please Enter the Account Code", then ran the
+            // unfiltered query and imported everything anyway — but a
+            // first-time import genuinely has no code to name, so refusing it
+            // would remove a working path.
+            String code = accountCode == null ? "" : accountCode.trim();
+            List<Map<String, Object>> rows = code.isEmpty()
+                    ? reader.findAll()
+                    : reader.findByAccountCode(code);
             if (rows.isEmpty()) {
-                return ApiResponse.error("GL account not found in QNE: " + accountCode, 404);
+                return ApiResponse.error(code.isEmpty()
+                        ? "QNE returned no chart of accounts to import"
+                        : "GL account not found in QNE: " + code, 404);
             }
 
-            String payload = objectMapper.writeValueAsString(rows);
-            Map<String, Object> result = jdbcTemplate.queryForMap(
-                    "EXEC [SP_GLAccounts] ?, ?", payload, companyRefId);
-
-            Object resultCode = result.get("Result");
-            if (resultCode == null || ((Number) resultCode).intValue() != 1) {
-                String message = String.valueOf(result.getOrDefault("Msg", "SP_GLAccounts failed"));
-                log.warn("SP_GLAccounts rejected the import of {}: {}", accountCode, message);
-                return ApiResponse.error(message, 400);
-            }
+            upsertGlAccounts(rows, companyRefId);
 
             log.info("Imported {} GL account row(s) for code {} from QNE", rows.size(), accountCode);
             return ApiResponse.success(null, "InsertGLAccounts created successfully");
@@ -129,26 +129,162 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
         }
     }
 
+    /** The reader's projection, in its order. Insert binds all of these plus CompanyRefId. */
+    private static final String[] GL_COLUMNS = {
+            "Id", "ParentId", "GLAccountCode", "AccountId", "SpecialAccountId", "CurrencyId",
+            "GSTTypeId", "Description", "DRCR", "IsCreditCard", "IsActive", "GSTGroup",
+            "IsRevaluation", "Notes", "IsSubAccount", "BankAccountNo", "GSTMSICCode",
+            "OptimisticLockField", "SAC", "SSTTariffCode", "RowIndex", "HasChildInCoa",
+            "IncludeInCashFlowForecastAdvisor", "TariffCodeId", "ATCCodeId", "Description2"};
+
+    /**
+     * What a re-import may change. Deliberately absent: {@code GLAccountCode}
+     * (the match key), {@code CompanyRefId} (the first importer keeps
+     * ownership), and {@code RowIndex} — the stable key every local detail
+     * table joins on, which is why re-importing can never break a bill or
+     * purchase-order line's account reference.
+     */
+    private static final String[] GL_UPDATE_COLUMNS = {
+            "Id", "ParentId", "AccountId", "SpecialAccountId", "CurrencyId", "GSTTypeId",
+            "Description", "DRCR", "IsCreditCard", "IsActive", "GSTGroup", "IsRevaluation",
+            "Notes", "IsSubAccount", "BankAccountNo", "GSTMSICCode", "OptimisticLockField",
+            "SAC", "SSTTariffCode", "HasChildInCoa", "IncludeInCashFlowForecastAdvisor",
+            "TariffCodeId", "ATCCodeId", "Description2"};
+
+    private static final String GL_INSERT_SQL =
+            "INSERT INTO GLAccounts (Id, CompanyRefId, "
+                    + Arrays.stream(GL_COLUMNS).filter(c -> !"Id".equals(c))
+                            .collect(Collectors.joining(", "))
+                    + ") VALUES (" + String.join(", ",
+                            Collections.nCopies(GL_COLUMNS.length + 1, "?")) + ")";
+
+    private static final String GL_UPDATE_SQL =
+            "UPDATE GLAccounts SET "
+                    + Arrays.stream(GL_UPDATE_COLUMNS).map(c -> c + " = ?")
+                            .collect(Collectors.joining(", "))
+                    + " WHERE GLAccountCode = ?";
+
+    /**
+     * {@code SP_GLAccounts}, reimplemented — the procedure stays in the
+     * database untouched for the legacy .NET screen, but the Java no longer
+     * calls it, so a fix here ships once instead of being ALTERed into four
+     * databases.
+     *
+     * <p>Kept from the SP on purpose: the upsert matches {@code GLAccountCode}
+     * with <b>no company filter</b> (the chart is global by code; a second
+     * company's import updates the first company's row without re-owning it),
+     * and the update re-points the QNE {@code Id} while leaving
+     * {@code RowIndex} alone. Not kept: the {@code @Notes=@Notes}
+     * self-assignment (Notes now updates), and the leaked
+     * {@code IDENTITY_INSERT} — here it is switched off in a finally, because a
+     * rollback does not reset session state and the pooled connection would
+     * carry it to whatever ran next.
+     */
+    private void upsertGlAccounts(List<Map<String, Object>> rows, Integer companyRefId) {
+        // Last row wins for a repeated code — where the SP's sequential
+        // insert-then-update loop also ended up.
+        Map<String, Map<String, Object>> byCode = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            byCode.put(String.valueOf(row.get("GLAccountCode")), row);
+        }
+
+        Set<String> existing = new HashSet<>();
+        List<String> codes = new ArrayList<>(byCode.keySet());
+        for (int i = 0; i < codes.size(); i += 1000) { // SQL Server caps ~2100 binds
+            List<String> chunk = codes.subList(i, Math.min(i + 1000, codes.size()));
+            String in = String.join(",", Collections.nCopies(chunk.size(), "?"));
+            existing.addAll(jdbcTemplate.queryForList(
+                    "SELECT GLAccountCode FROM GLAccounts WITH(NOLOCK) WHERE GLAccountCode IN (" + in + ")",
+                    String.class, chunk.toArray()));
+        }
+
+        List<Object[]> inserts = new ArrayList<>();
+        List<Object[]> updates = new ArrayList<>();
+        for (Map<String, Object> row : byCode.values()) {
+            if (existing.contains(String.valueOf(row.get("GLAccountCode")))) {
+                Object[] args = new Object[GL_UPDATE_COLUMNS.length + 1];
+                for (int i = 0; i < GL_UPDATE_COLUMNS.length; i++) {
+                    args[i] = row.get(GL_UPDATE_COLUMNS[i]);
+                }
+                args[GL_UPDATE_COLUMNS.length] = row.get("GLAccountCode");
+                updates.add(args);
+            } else {
+                Object[] args = new Object[GL_COLUMNS.length + 1];
+                args[0] = row.get("Id");
+                args[1] = companyRefId;
+                int i = 2;
+                for (String column : GL_COLUMNS) {
+                    if (!"Id".equals(column)) {
+                        args[i++] = row.get(column);
+                    }
+                }
+                inserts.add(args);
+            }
+        }
+
+        if (!updates.isEmpty()) {
+            jdbcTemplate.batchUpdate(GL_UPDATE_SQL, updates);
+        }
+        if (!inserts.isEmpty()) {
+            // RowIndex is an identity column and QNE's value must carry across.
+            jdbcTemplate.execute("SET IDENTITY_INSERT GLAccounts ON");
+            try {
+                jdbcTemplate.batchUpdate(GL_INSERT_SQL, inserts);
+            } finally {
+                jdbcTemplate.execute("SET IDENTITY_INSERT GLAccounts OFF");
+            }
+        }
+        log.info("GL account upsert: {} inserted, {} updated", inserts.size(), updates.size());
+    }
+
+    /**
+     * Insert or update one account group — the Java port of
+     * {@code SP_AccountsGroupMaster}.
+     *
+     * <p>Id 0/null inserts, anything else updates, and the two branches
+     * deliberately touch different columns. The update writes only
+     * AccountName, AccountCode, ParentId and Active; it leaves
+     * {@code QNECode}, {@code UpdateId} and {@code CompanyRefId} alone, so a
+     * rename cannot wipe the QNE mapping the import put there. Mapping the
+     * whole DTO over the row would do exactly that whenever the caller omits a
+     * field.
+     */
     @Override
     public ApiResponse<AccountsGroupMasterDto> insertAccountsGroupMaster(
             AccountsGroupMasterDto dto, Integer companyRefId) {
         try {
-            log.info("Inserting accounts group master for companyRefId: {}", companyRefId);
+            boolean isNew = dto.getId() == null || dto.getId() == 0;
+            AccountsGroupMaster entity;
 
-            AccountsGroupMaster entity = accountsMapper.toEntity(dto);
-            entity.setCompanyRefId(companyRefId);
-            if (entity.getActive() == null) {
-                entity.setActive(1);
+            if (isNew) {
+                entity = new AccountsGroupMaster();
+                entity.setCompanyRefId(companyRefId);
+                // The SP seeds QNECode from the account code on insert and
+                // ignores any QNECode sent with the request.
+                entity.setQneCode(dto.getAccountCode());
+            } else {
+                entity = accountsGroupMasterRepository
+                        .findByIdAndCompanyRefId(dto.getId(), companyRefId)
+                        .orElse(null);
+                if (entity == null) {
+                    return ApiResponse.error("Account not found: " + dto.getId(), 404);
+                }
             }
 
+            entity.setAccountName(dto.getAccountName());
+            entity.setAccountCode(dto.getAccountCode());
+            entity.setParentId(dto.getParentId());
+            entity.setActive(dto.getActive() == null ? 1 : dto.getActive());
+
             AccountsGroupMaster saved = accountsGroupMasterRepository.save(entity);
-            log.info("Saved accounts group master with id: {}", saved.getId());
+            log.info("{} accounts group master id {}", isNew ? "Inserted" : "Updated", saved.getId());
 
             AccountsGroupMasterDto result = accountsMapper.toDto(saved);
-            return ApiResponse.success(result, "Account group created successfully");
+            return ApiResponse.success(result,
+                    isNew ? "Account group created successfully" : "Account group updated successfully");
         } catch (Exception ex) {
             log.error("Error in insertAccountsGroupMaster", ex);
-            return ApiResponse.error("Error creating account group: " + ex.getMessage(), 500);
+            return ApiResponse.error("Error saving account group: " + ex.getMessage(), 500);
         }
     }
 
@@ -238,6 +374,13 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
             }
 
             GLAccount account = glAccount.get();
+            // The company was already a parameter here but went unused, so the
+            // update was keyed on the account id alone — as legacy's raw UPDATE
+            // was. Checking it stops one company's request touching another's
+            // chart of accounts.
+            if (!Objects.equals(account.getCompanyRefId(), companyRefId)) {
+                return ApiResponse.error("GL Account does not belong to company " + companyRefId, 403);
+            }
             account.setClassification(classificationId);
             glAccountRepository.save(account);
 
@@ -274,16 +417,22 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
      * @param type The type parameter from API
      * @return Comma-separated account codes
      */
-    private String getAccountCodesByType(String type) {
-        return switch (type) {
-            case "PV" -> "AGE,SCR,CUS,DRI,TRU,SEM,EMP,SUP,BAK";
-            case "CUSTOMER" -> "CUS";
-            case "EMPLOYEE" -> "EMP";
-            case "SUPPLIER" -> "SUP";
-            case "AGENT" -> "AGE";
-            case "TRUCK" -> "TRU";
-            case "DRIVER" -> "DRI";
-            default -> "";
+    /**
+     * Parent account codes a type is filed under, or empty for "no filter".
+     *
+     * <p>An unrecognised type returns every active account, which is what
+     * legacy did — it simply appended no WHERE clause.
+     */
+    private List<String> getAccountCodesByType(String type) {
+        return switch (type == null ? "" : type.trim().toUpperCase()) {
+            case "PV" -> List.of("AGE", "SCR", "CUS", "DRI", "TRU", "SEM", "EMP", "SUP", "BAK");
+            case "CUSTOMER" -> List.of("CUS");
+            case "EMPLOYEE" -> List.of("EMP");
+            case "SUPPLIER" -> List.of("SUP");
+            case "AGENT" -> List.of("AGE");
+            case "TRUCK" -> List.of("TRU");
+            case "DRIVER" -> List.of("DRI");
+            default -> List.of();
         };
     }
 }
