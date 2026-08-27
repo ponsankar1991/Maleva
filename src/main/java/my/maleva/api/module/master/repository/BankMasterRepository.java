@@ -23,4 +23,7 @@ public interface BankMasterRepository extends JpaRepository<BankMaster, Integer>
            "WHERE b.companyRefId = :companyRefId AND b.active = 1 " +
            "ORDER BY b.name")
     List<ComboListModel> findActiveBanksByCompany(@Param("companyRefId") Integer companyRefId);
+
+    /** Reference check for the payment screen — SP_Payment refused an unknown or inactive bank. */
+    boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
 }

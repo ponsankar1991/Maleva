@@ -33,7 +33,7 @@ spring:
   datasource:
     # Default JDBC URL includes encrypt=true and trustServerCertificate=true to MalevanewDemo ,LiveMaleva2, avoid SSL certificate path errors
     # For production, prefer to set trustServerCertificate=false and import the DemoMaleva server certificate into the JVM truststore
-    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=LiveMaleva2;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=30000}
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=MalevanewDemo;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=30000}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
     password: ${SPRING_DATASOURCE_PASSWORD:Kassamy@123}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver

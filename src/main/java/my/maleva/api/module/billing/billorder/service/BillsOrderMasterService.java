@@ -503,8 +503,16 @@ public class BillsOrderMasterService {
                     "A.Description, A.DueDate, ISNULL(A.DueDate, '') as SDueDate, A.PaymentTermsRefid, " +
                     "ISNULL(SA.CNumberDisplay, '') as JobNo, B.Id as SDId, B.ProductRefId, B.QuoteValue, " +
                     "B.SerialNo, B.AccountMasterRefId, B.MRP, B.PurchaseRate, B.ItemQty, B.DiscPer, " +
-                    "B.DiscAmount, B.LandingCost, B.TaxPercent, B.TaxAmount, B.SalesRate, B.NetSalesRate, " +
-                    "B.Amount, B.RemarksD, I.GlAccountCode as ProductCode, I.Description as ProductName, " +
+                    // Aliased, and they must stay aliased: the master's TaxAmount and
+                    // Amount are selected above under those very names, and JDBC
+                    // resolves a duplicate label to the FIRST column. Read plainly,
+                    // every line came back carrying the master's total instead of its
+                    // own — a 10 x 160 line showed the order's 2,500. B.Id already had
+                    // the same treatment as SDId.
+                    "B.DiscAmount, B.LandingCost, B.TaxPercent, B.TaxAmount AS DTaxAmount, " +
+                    "B.SalesRate, B.NetSalesRate, " +
+                    "B.Amount AS DAmount, B.RemarksD, " +
+                    "I.GlAccountCode as ProductCode, I.Description as ProductName, " +
                     "B.InventoryProductRefId, ISNULL(P.Prod_Code, '') as StoreItemCode, " +
                     "ISNULL(P.PName, '') as StoreItemName, B.StockPushedDate " +
                     "FROM BillsOrderMaster A WITH(NOLOCK) " +
@@ -601,10 +609,12 @@ public class BillsOrderMasterService {
                 detail.setDiscAmount(rs.getFloat("DiscAmount"));
                 detail.setLandingCost(rs.getFloat("LandingCost"));
                 detail.setTaxPercent(rs.getFloat("TaxPercent"));
-                detail.setTaxAmount(rs.getFloat("TaxAmount"));
+                // DTaxAmount / DAmount, not TaxAmount / Amount — those names belong
+                // to the master in this joined row and would shadow the line's own.
+                detail.setTaxAmount(rs.getFloat("DTaxAmount"));
                 detail.setSalesRate(rs.getFloat("SalesRate"));
                 detail.setNetSalesRate(rs.getFloat("NetSalesRate"));
-                detail.setAmount(rs.getFloat("Amount"));
+                detail.setAmount(rs.getFloat("DAmount"));
                 detail.setRemarksD(rs.getString("RemarksD"));
                 detail.setSerialNo(rs.getString("SerialNo"));
                 detail.setProductCode(rs.getString("ProductCode"));
