@@ -2,9 +2,12 @@ package my.maleva.api.module.salecreditmaster.repository;
 
 import my.maleva.api.module.salecreditmaster.entity.SaleCreditMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -112,5 +115,18 @@ public interface SaleCreditMasterRepository extends JpaRepository<SaleCreditMast
      * Find SaleCreditMaster records by company and employee
      */
     List<SaleCreditMaster> findByCompanyRefIdAndEmployeeRefId(Integer companyRefId, Integer employeeRefId);
+
+    /**
+     * One-time write-back of the QNE identity after a successful credit-note
+     * push (QNE's Id and CnCode land in QNEId/QNECode). The empty-code guard
+     * is the only dedup mechanism — the CN POST is create-once.
+     */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleCreditMaster scm SET scm.qneId = :qneId, scm.qneCode = :qneCode " +
+           "WHERE scm.id = :id AND (scm.qneCode IS NULL OR scm.qneCode = '')")
+    int claimQneIdentity(@Param("id") Integer id,
+                         @Param("qneId") String qneId,
+                         @Param("qneCode") String qneCode);
 }
 

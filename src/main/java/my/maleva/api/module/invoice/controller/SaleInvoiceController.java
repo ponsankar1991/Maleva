@@ -2,11 +2,13 @@ package my.maleva.api.module.invoice.controller;
 
 import my.maleva.api.module.invoice.dto.SaleMasterDto;
 import my.maleva.api.module.invoice.dto.SaleDetailsDto;
+import my.maleva.api.module.invoice.service.SaleInvoiceQneService;
 import my.maleva.api.module.invoice.service.SaleMasterService;
 import my.maleva.api.module.invoice.service.SaleDetailsService;
 import my.maleva.api.module.saleorder.service.SaleOrderMasterService;
 import my.maleva.api.module.saleorder.dto.JobNumberDto;
 import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.integration.qne.QnePushResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +56,9 @@ public class SaleInvoiceController {
 
     @Autowired
     private SaleOrderMasterService saleOrderMasterService;
+
+    @Autowired
+    private SaleInvoiceQneService saleInvoiceQneService;
 
     /**
      * Get next invoice number
@@ -440,12 +445,18 @@ public class SaleInvoiceController {
      * Push invoice to QNE system
      * POST /api/v1/sale-invoices/{id}/push-qne?companyId=1
      *
+     * While the invoice has no QNECode this creates it in QNE and persists the
+     * returned id/code (legacy InvoiceConvert); once it has one, the same call
+     * re-sends the current data as QNE's live PUT update (legacy
+     * InvoiceConvertEdit). A QNE rejection answers 200 with IsSuccess=false
+     * and QNE's own message — the local invoice is already committed.
+     *
      * @param id Invoice ID to push
      * @param companyId Company ID for validation
-     * @return QNE response with code, ID, and file URL
+     * @return QNE response with code, ID, and file URL (when qne.view is on)
      */
     @PostMapping("/{id}/push-qne")
-    public ResponseEntity<ApiResponse<?>> pushToQne(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> pushToQne(
             @PathVariable Integer id,
             @RequestParam Integer companyId) {
         logger.info("Pushing invoice ID: {} to QNE system for company: {}", id, companyId);
@@ -455,41 +466,7 @@ public class SaleInvoiceController {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.error("Invalid ID or company ID", 400));
             }
-
-            Optional<SaleMasterDto> invoice = saleMasterService.getById(id);
-
-            if (!invoice.isPresent()) {
-                logger.warn("Invoice not found with ID: {}", id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error("Invoice not found", 404));
-            }
-
-            SaleMasterDto invoiceData = invoice.get();
-
-            // Verify company match
-            if (!invoiceData.getCompanyRefId().equals(companyId)) {
-                logger.warn("Company ID mismatch for invoice ID: {}", id);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ApiResponse.error("Unauthorized access to invoice", 403));
-            }
-
-            // Check if already pushed
-            if (invoiceData.getQneCode() != null && !invoiceData.getQneCode().isEmpty()) {
-                logger.warn("Invoice already pushed to QNE, ID: {}", id);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(ApiResponse.error("Invoice already pushed to QNE", 400));
-            }
-
-            // TODO: Implement QNE integration
-            // For now, return success response with placeholder data
-            Map<String, Object> qneResponse = new HashMap<>();
-            qneResponse.put("qneCode", "QNE" + System.currentTimeMillis());
-            qneResponse.put("qneId", "ID" + id);
-            qneResponse.put("fileUrl", "https://qne.system.com/files/" + id);
-            qneResponse.put("status", "success");
-
-            logger.info("Invoice pushed to QNE successfully, ID: {}", id);
-            return ResponseEntity.ok(ApiResponse.success(qneResponse, "Invoice pushed to QNE successfully"));
+            return QnePushResponses.toResponse(saleInvoiceQneService.push(id, companyId));
         } catch (Exception e) {
             logger.error("Error pushing invoice to QNE", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

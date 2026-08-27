@@ -1,10 +1,12 @@
 package my.maleva.api.module.customer.controller;
 
 import jakarta.annotation.security.PermitAll;
+import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.customer.dto.CustomerDto;
 import my.maleva.api.module.customer.dto.request.CustomerSelectRequest;
 import my.maleva.api.module.customer.dto.response.CustomerSelectResult;
+import my.maleva.api.module.customer.service.CustomerQneService;
 import my.maleva.api.module.customer.service.CustomerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,9 +23,37 @@ import java.util.Map;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final CustomerQneService customerQneService;
 
-    public CustomerController(CustomerService customerService) {
+    public CustomerController(CustomerService customerService, CustomerQneService customerQneService) {
         this.customerService = customerService;
+        this.customerQneService = customerQneService;
+    }
+
+    /* ================= QNE ================= */
+
+    /**
+     * Repair customers whose QNE code is set but whose QNE id (UpdateId) was
+     * never stored — the Java port of legacy UpdateCustomerId1.
+     * POST /api/customers/qne/backfill?companyId=1
+     */
+    @PostMapping("/qne/backfill")
+    public ResponseEntity<?> qneBackfill(@RequestParam Integer companyId) {
+        return QnePushResponses.toResponse(customerQneService.backfill(companyId));
+    }
+
+    /**
+     * QNE-hosted customer statement URL for one month, addressed by the
+     * customer's QNE id — gated by qne.report-view, the one QNE report gate
+     * the legacy system shipped enabled.
+     * GET /api/customers/{id}/qne-statement?year=2026&month=8
+     */
+    @GetMapping("/{id}/qne-statement")
+    public ResponseEntity<?> qneStatement(
+            @PathVariable Integer id,
+            @RequestParam int year,
+            @RequestParam int month) {
+        return QnePushResponses.toResponse(customerQneService.statementUrl(id, year, month));
     }
 
     /* ================= CREATE ================= */

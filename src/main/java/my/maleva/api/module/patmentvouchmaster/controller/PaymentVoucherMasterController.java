@@ -1,9 +1,12 @@
 package my.maleva.api.module.patmentvouchmaster.controller;
 
 import jakarta.annotation.security.PermitAll;
+import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.patmentvouchmaster.dto.PaymentVoucherMasterDto;
 import my.maleva.api.module.patmentvouchmaster.dto.PaymentVoucherComboResponse;
 import my.maleva.api.module.patmentvouchmaster.service.PaymentVoucherMasterService;
+import my.maleva.api.module.patmentvouchmaster.service.PaymentVoucherQneService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment-voucher-masters")
@@ -24,9 +28,31 @@ public class PaymentVoucherMasterController {
     private static final Logger logger = LoggerFactory.getLogger(PaymentVoucherMasterController.class);
 
     private final PaymentVoucherMasterService service;
+    private final PaymentVoucherQneService qneService;
 
-    public PaymentVoucherMasterController(PaymentVoucherMasterService service) {
+    public PaymentVoucherMasterController(PaymentVoucherMasterService service,
+                                          PaymentVoucherQneService qneService) {
         this.service = service;
+        this.qneService = qneService;
+    }
+
+    /**
+     * Push payment voucher to QNE
+     * POST /api/payment-voucher-masters/{id}/push-qne?companyId=1
+     *
+     * Create-once via the empty-QNECode guard (legacy PaymentVoucherConvert).
+     * A QNE rejection answers 200 with IsSuccess=false and QNE's own message.
+     */
+    @PostMapping("/{id}/push-qne")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> pushToQne(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        logger.info("Pushing payment voucher ID: {} to QNE for company: {}", id, companyId);
+        if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Invalid ID or company ID", 400));
+        }
+        return QnePushResponses.toResponse(qneService.push(id, companyId));
     }
 
     @GetMapping

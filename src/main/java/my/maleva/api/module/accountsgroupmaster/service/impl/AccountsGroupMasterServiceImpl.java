@@ -17,10 +17,15 @@ import my.maleva.api.module.accountsgroupmaster.repository.AccountsGroupMasterRe
 import my.maleva.api.module.accountsgroupmaster.repository.ClassificationRepository;
 import my.maleva.api.module.accountsgroupmaster.repository.GLAccountRepository;
 import my.maleva.api.module.accountsgroupmaster.service.AccountsGroupMasterService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import my.maleva.api.integration.qne.QneGlAccountReader;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,6 +42,9 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
     private final AccountsGroupMasterMapper accountsMapper;
     private final GLAccountMapper glAccountMapper;
     private final ClassificationMapper classificationMapper;
+    private final ObjectProvider<QneGlAccountReader> qneGlAccountReader;
+    private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -68,24 +76,53 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
         }
     }
 
+    /**
+     * Imports one chart-of-accounts entry from QNE into the local database.
+     *
+     * <p>Port of the legacy {@code InsertGLAccounts}: read the account row
+     * from <b>QNE's own database</b> (their REST API has no GLAccounts
+     * endpoint), then hand the serialised rows to the local
+     * {@code SP_GLAccounts}, which upserts them for the company. An earlier
+     * migration of this method queried the <em>local</em> table — where the
+     * account by definition does not exist yet — and inserted nothing, so the
+     * import silently did no work.
+     *
+     * <p>The JSON payload replicates the legacy shape: PascalCase column
+     * names, nulls as empty strings, apostrophes stripped (see
+     * {@link QneGlAccountReader}). The JSON travels as a bound parameter; the
+     * legacy pasted it into the statement text.
+     */
     @Override
     public ApiResponse<Void> insertGLAccounts(Integer companyRefId, String accountCode) {
         try {
             if (accountCode == null || accountCode.trim().isEmpty()) {
-                return ApiResponse.error("Please enter the account code", 400);
+                return ApiResponse.error("Please Enter the Account Code", 400);
             }
 
-            log.info("Inserting GL accounts for code: {}", accountCode);
-
-            List<GLAccount> glAccounts = glAccountRepository
-                .findByGlAccountCodeAndIsActive(accountCode, 1);
-
-            if (glAccounts.isEmpty()) {
-                return ApiResponse.error("GL account not found", 404);
+            QneGlAccountReader reader = qneGlAccountReader.getIfAvailable();
+            if (reader == null) {
+                return ApiResponse.error(
+                        "QNE database access is not configured on this server (qne.datasource)", 503);
             }
 
-            log.info("Found {} GL accounts for code: {}", glAccounts.size(), accountCode);
-            return ApiResponse.success(null, "GL accounts retrieved successfully");
+            List<Map<String, Object>> rows = reader.findByAccountCode(accountCode.trim());
+            if (rows.isEmpty()) {
+                return ApiResponse.error("GL account not found in QNE: " + accountCode, 404);
+            }
+
+            String payload = objectMapper.writeValueAsString(rows);
+            Map<String, Object> result = jdbcTemplate.queryForMap(
+                    "EXEC [SP_GLAccounts] ?, ?", payload, companyRefId);
+
+            Object resultCode = result.get("Result");
+            if (resultCode == null || ((Number) resultCode).intValue() != 1) {
+                String message = String.valueOf(result.getOrDefault("Msg", "SP_GLAccounts failed"));
+                log.warn("SP_GLAccounts rejected the import of {}: {}", accountCode, message);
+                return ApiResponse.error(message, 400);
+            }
+
+            log.info("Imported {} GL account row(s) for code {} from QNE", rows.size(), accountCode);
+            return ApiResponse.success(null, "InsertGLAccounts created successfully");
         } catch (Exception ex) {
             log.error("Error in insertGLAccounts", ex);
             return ApiResponse.error("Internal server error: " + ex.getMessage(), 500);

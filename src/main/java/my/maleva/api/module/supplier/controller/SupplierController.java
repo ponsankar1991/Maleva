@@ -3,7 +3,9 @@ package my.maleva.api.module.supplier.controller;
 import my.maleva.api.module.supplier.dto.SupplierDto;
 import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
 import my.maleva.api.module.supplier.dto.SupplierComboList;
+import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
+import my.maleva.api.module.supplier.service.SupplierQneService;
 import my.maleva.api.module.supplier.service.SupplierService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,19 @@ public class SupplierController {
 
     @Autowired
     private SupplierService service;
+
+    @Autowired
+    private SupplierQneService qneService;
+
+    /**
+     * Repair suppliers whose QNE code is set but whose QNE id was never
+     * stored — the Java port of legacy UpdateSupplierId1.
+     * POST /api/suppliers/qne/backfill?companyId=1
+     */
+    @PostMapping("/qne/backfill")
+    public ResponseEntity<?> qneBackfill(@RequestParam Integer companyId) {
+        return QnePushResponses.toResponse(qneService.backfill(companyId));
+    }
 
     /**
      * Get all Supplier records by company ID

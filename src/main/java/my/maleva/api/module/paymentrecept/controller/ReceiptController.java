@@ -1,6 +1,9 @@
 package my.maleva.api.module.paymentrecept.controller;
 
+import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.paymentrecept.dto.ReceiptDto;
+import my.maleva.api.module.paymentrecept.service.ReceiptQneService;
 import my.maleva.api.module.paymentrecept.service.ReceiptService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -30,6 +34,38 @@ public class ReceiptController {
 
     @Autowired
     private ReceiptService receiptService;
+
+    @Autowired
+    private ReceiptQneService receiptQneService;
+
+    /**
+     * Push receipt to QNE (create + invoice knockoff)
+     * POST /api/receipts/{id}/push-qne?companyId=1
+     *
+     * Legacy synced the receipt as a side effect of viewing it (ReceiptVIEW);
+     * here it is this explicit call, still create-once via the empty-QNECode
+     * guard. Unlike legacy, a failed knockoff is reported (IsSuccess=false)
+     * instead of silently swallowed — the receipt's QNE ids are still
+     * persisted, because the receipt does exist in QNE at that point.
+     */
+    @PostMapping("/{id}/push-qne")
+    @PermitAll
+    public ResponseEntity<ApiResponse<Map<String, Object>>> pushToQne(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        logger.info("Pushing receipt ID: {} to QNE for company: {}", id, companyId);
+        try {
+            if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Invalid ID or company ID", 400));
+            }
+            return QnePushResponses.toResponse(receiptQneService.push(id, companyId));
+        } catch (Exception e) {
+            logger.error("Error pushing receipt to QNE", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error pushing to QNE: " + e.getMessage(), 500));
+        }
+    }
 
     /**
      * Get all Receipt records by company ID

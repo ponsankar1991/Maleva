@@ -4,9 +4,12 @@ import my.maleva.api.module.supplier.dto.SupplierComboList;
 import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.module.supplier.entity.Supplier;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -214,4 +217,34 @@ public interface SupplierRepository extends JpaRepository<Supplier, Integer> {
             "ORDER BY S.SupplierName",
             nativeQuery = true)
     List<SupplierExtendedResponse> findAllSupplierWithMasterData(@Param("comid") Integer comid);
+
+    /**
+     * One-time write-back of the QNE identity after a successful create push
+     * (QNE's Id and CompanyCode land in QNEId/QNECode). The empty-code guard
+     * is the only dedup mechanism — QNE sync is create-once. REQUIRES_NEW
+     * because the push runs in an after-commit hook.
+     */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE Supplier s SET s.qneId = :qneId, s.qneCode = :qneCode " +
+           "WHERE s.id = :id AND (s.qneCode IS NULL OR s.qneCode = '')")
+    int claimQneIdentity(@Param("id") Integer id,
+                         @Param("qneId") String qneId,
+                         @Param("qneCode") String qneCode);
+
+    /** Suppliers that exist in QNE (QNECode set) but whose GUID was never stored. */
+    @Query("SELECT s FROM Supplier s WHERE s.companyRefId = :companyRefId " +
+           "AND s.qneCode IS NOT NULL AND s.qneCode <> '' " +
+           "AND (s.qneId IS NULL OR s.qneId = '')")
+    List<Supplier> findQneBackfillCandidates(@Param("companyRefId") Integer companyRefId);
+
+    /** Repairs QNEId from a QNE lookup, matching on the QNE company code (legacy UpdateSupplierId1). */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE Supplier s SET s.qneId = :qneId " +
+           "WHERE s.companyRefId = :companyRefId AND s.qneCode = :qneCode " +
+           "AND (s.qneId IS NULL OR s.qneId = '')")
+    int backfillQneId(@Param("companyRefId") Integer companyRefId,
+                      @Param("qneCode") String qneCode,
+                      @Param("qneId") String qneId);
 }

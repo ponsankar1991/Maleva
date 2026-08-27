@@ -33,11 +33,8 @@ public class BillsOrderCommonServiceImpl implements BillsOrderCommonService {
     @Value("${app.email.api.url:#{null}}")
     private String emailApiUrl;
 
-    @Value("${app.qne.api.url:#{null}}")
-    private String qneApiUrl;
-
-    @Value("${app.qne.api.key:#{null}}")
-    private String qneApiKey;
+    private final my.maleva.api.integration.qne.QneClient qneClient;
+    private final my.maleva.api.common.config.QneProperties qneProperties;
 
     @Value("${app.whatsapp.enabled:false}")
     private boolean whatsAppEnabled;
@@ -45,7 +42,11 @@ public class BillsOrderCommonServiceImpl implements BillsOrderCommonService {
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
 
-    public BillsOrderCommonServiceImpl(RestTemplate restTemplate) {
+    public BillsOrderCommonServiceImpl(RestTemplate restTemplate,
+            my.maleva.api.integration.qne.QneClient qneClient,
+            my.maleva.api.common.config.QneProperties qneProperties) {
+        this.qneClient = qneClient;
+        this.qneProperties = qneProperties;
         this.restTemplate = restTemplate;
     }
 
@@ -228,57 +229,36 @@ public class BillsOrderCommonServiceImpl implements BillsOrderCommonService {
     }
 
     /**
-     * Make API call to QNE system for external integration
-     * Equivalent to .NET CallQneApi method
+     * Make API call to QNE system for external integration.
      *
-     * @param url  The API endpoint
-     * @param data Request data
+     * <p>Delegates to {@link my.maleva.api.integration.qne.QneClient}. The
+     * previous inline version read {@code app.qne.api.url}, a key that exists
+     * nowhere, so it always logged "not configured" and returned null. The
+     * relative-URL contract is kept: {@code url} is appended to the configured
+     * QNE base URL.
+     *
+     * @param url  endpoint path relative to the QNE base URL
+     * @param data request body for POST/PUT
      * @param type 1=GET, 2=POST, 3=PUT
-     * @return Response from QNE
+     * @return the QNE response body, or null on failure (legacy contract)
+     * @deprecated new code should use {@link my.maleva.api.integration.qne.QneGateway}
      */
+    @Deprecated
     @Override
     public String callQneApi(String url, Object data, int type) {
-        try {
-            logger.info("Calling QNE API: {} (Type: {})", url, type);
-
-            if (qneApiUrl == null || qneApiUrl.trim().isEmpty()) {
-                logger.warn("QNE API URL not configured");
-                return null;
-            }
-
-            String fullUrl = qneApiUrl + url;
-
-            try {
-                Object response = null;
-
-                switch (type) {
-                    case 1: // GET
-                        response = restTemplate.getForObject(fullUrl, String.class);
-                        break;
-                    case 2: // POST
-                        response = restTemplate.postForObject(fullUrl, data, String.class);
-                        break;
-                    case 3: // PUT
-                        restTemplate.put(fullUrl, data);
-                        response = "PUT request completed";
-                        break;
-                    default:
-                        logger.warn("Unknown API call type: {}", type);
-                        return null;
-                }
-
-                logger.info("✓ QNE API call successful");
-                return response != null ? response.toString() : null;
-
-            } catch (RestClientException ex) {
-                logger.error("✗ QNE API call failed", ex);
-                return null;
-            }
-
-        } catch (Exception ex) {
-            logger.error("✗ Error calling QNE API", ex);
+        String base = qneProperties.getBaseUrl();
+        String fullUrl = base.endsWith("/") || url.startsWith("/") ? base + url : base + "/" + url;
+        my.maleva.api.integration.qne.QneResult result = switch (type) {
+            case 1 -> qneClient.get(fullUrl);
+            case 2 -> qneClient.post(fullUrl, data);
+            case 3 -> qneClient.put(fullUrl, data);
+            default -> null;
+        };
+        if (result == null) {
+            logger.warn("Unknown QNE API call type: {}", type);
             return null;
         }
+        return result.success() ? result.message() : null;
     }
 
     /**

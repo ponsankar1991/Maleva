@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +14,13 @@ import java.util.UUID;
 public interface GLAccountsRepository extends JpaRepository<GLAccounts, UUID> {
     List<GLAccounts> findByCompanyRefId(Integer companyRefId);
     List<GLAccounts> findByParentId(UUID parentId);
+
+    /**
+     * RowIndex is QNE's own key for the chart of accounts, and it is what
+     * BillDetails.AccountMasterRefId and PaymentVoucherDetails.AccountGroupRefId
+     * reference (legacy joined on RowIndex, not Id).
+     */
+    List<GLAccounts> findByRowIndexIn(Collection<Integer> rowIndexes);
 
     /**
      * Find GL Accounts by company ID with optional expense ID filter

@@ -8,6 +8,7 @@ import my.maleva.api.module.customer.mapper.CustomerMapper;
 import my.maleva.api.module.customer.entity.Customer;
 import my.maleva.api.module.customer.repository.CustomerQueryRepository;
 import my.maleva.api.module.customer.repository.CustomerRepository;
+import my.maleva.api.module.customer.service.CustomerQneService;
 import my.maleva.api.module.customer.service.CustomerService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -25,11 +26,14 @@ public class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository repository;
     private final CustomerQueryRepository queryRepository;
     private final CustomerMapper mapper;
+    private final CustomerQneService qneService;
 
-    public CustomerServiceImpl(CustomerRepository repository, CustomerQueryRepository queryRepository, CustomerMapper mapper) {
+    public CustomerServiceImpl(CustomerRepository repository, CustomerQueryRepository queryRepository,
+                               CustomerMapper mapper, CustomerQneService qneService) {
         this.repository = repository;
         this.queryRepository = queryRepository;
         this.mapper = mapper;
+        this.qneService = qneService;
     }
 
     @Override
@@ -40,6 +44,7 @@ public class CustomerServiceImpl implements CustomerService {
         entity.setCreatedDate(now);
         entity.setModifiedDate(now);
         Customer saved = repository.save(entity);
+        qneService.pushCreatedAfterCommit(saved);
         return mapper.toDto(saved);
     }
 

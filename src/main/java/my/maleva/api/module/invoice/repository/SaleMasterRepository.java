@@ -2,9 +2,12 @@ package my.maleva.api.module.invoice.repository;
 
 import my.maleva.api.module.invoice.entity.SaleMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -54,5 +57,19 @@ public interface SaleMasterRepository extends JpaRepository<SaleMaster, Integer>
 
     @Query("SELECT MAX(sm.cNumber) FROM SaleMaster sm WHERE sm.companyRefId = :companyRefId")
     Optional<Integer> findMaxCNumberByCompanyId(@Param("companyRefId") Integer companyRefId);
+
+    /**
+     * One-time write-back of the QNE identity after a successful invoice push
+     * (QNE's Id and InvoiceCode land in QNEId/QNECode). The empty-code guard
+     * is the only dedup mechanism — the invoice POST is create-once, and the
+     * live PUT update never rewrites these columns (legacy contract).
+     */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleMaster sm SET sm.qneId = :qneId, sm.qneCode = :qneCode " +
+           "WHERE sm.id = :id AND (sm.qneCode IS NULL OR sm.qneCode = '')")
+    int claimQneIdentity(@Param("id") Integer id,
+                         @Param("qneId") String qneId,
+                         @Param("qneCode") String qneCode);
 }
 

@@ -135,3 +135,13 @@ qne:
     customer: 700-0000
     supplier: 800-2000
 
+  # Direct SQL access to QNE's own database (legacy QneCon). Used only by the
+  # chart-of-accounts import; always the LIVE catalog (db.live above) — the
+  # demo flag switches the HTTP tenant only, and the legacy QneConDemo trial
+  # connection was deliberately dropped. Blank host disables the feature.
+  datasource:
+    host: ${QNE_DB_HOST:d3.qne.cloud}
+    port: ${QNE_DB_PORT:1433}
+    username: ${QNE_DB_USERNAME:QNEBSS@QNED3}
+    password: "${QNE_DB_PASSWORD:QnE123!@#}"
+

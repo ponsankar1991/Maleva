@@ -20,11 +20,14 @@ public class ItemMasterService {
     private final ItemMasterRepository repository;
     private final ItemMasterMapper mapper;
     private final ProductListMapper productListMapper;
+    private final ItemMasterQneService qneService;
 
-    public ItemMasterService(ItemMasterRepository repository, ItemMasterMapper mapper, ProductListMapper productListMapper) {
+    public ItemMasterService(ItemMasterRepository repository, ItemMasterMapper mapper,
+                             ProductListMapper productListMapper, ItemMasterQneService qneService) {
         this.repository = repository;
         this.mapper = mapper;
         this.productListMapper = productListMapper;
+        this.qneService = qneService;
     }
 
     /**
@@ -57,6 +60,7 @@ public class ItemMasterService {
         entity.setCreatedDate(LocalDateTime.now());
         entity.setModifiedDate(LocalDateTime.now());
         ItemMaster saved = repository.save(entity);
+        qneService.pushCreatedAfterCommit(saved);
         return mapper.toDto(saved);
     }
 

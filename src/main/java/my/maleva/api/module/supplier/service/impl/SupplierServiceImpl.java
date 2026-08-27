@@ -7,6 +7,7 @@ import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.module.supplier.mapper.SupplierMapper;
 import my.maleva.api.module.supplier.entity.Supplier;
 import my.maleva.api.module.supplier.repository.SupplierRepository;
+import my.maleva.api.module.supplier.service.SupplierQneService;
 import my.maleva.api.module.supplier.service.SupplierService;
 import my.maleva.api.common.dto.ResponseViewModel;
 import org.slf4j.Logger;
@@ -36,6 +37,9 @@ public class SupplierServiceImpl implements SupplierService {
 
     @Autowired
     private SupplierMapper mapper;
+
+    @Autowired
+    private SupplierQneService qneService;
 
     @Override
     public List<SupplierDto> getByCompanyRefId(Integer companyRefId) {
@@ -148,6 +152,7 @@ public class SupplierServiceImpl implements SupplierService {
 
         Supplier saved = repository.save(entity);
         logger.info("Supplier created with ID: {}", saved.getId());
+        qneService.pushCreatedAfterCommit(saved);
         return mapper.toDto(saved);
     }
 

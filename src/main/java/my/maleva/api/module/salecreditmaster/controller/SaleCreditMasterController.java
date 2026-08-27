@@ -1,7 +1,10 @@
 package my.maleva.api.module.salecreditmaster.controller;
 
+import my.maleva.api.common.dto.ApiResponse;
+import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.salecreditmaster.dto.SaleCreditMasterDto;
 import my.maleva.api.module.salecreditmaster.service.SaleCreditMasterService;
+import my.maleva.api.module.salecreditmaster.service.SaleCreditQneService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +18,7 @@ import jakarta.validation.Valid;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -31,6 +35,37 @@ public class SaleCreditMasterController {
 
     @Autowired
     private SaleCreditMasterService saleCreditMasterService;
+
+    @Autowired
+    private SaleCreditQneService saleCreditQneService;
+
+    /**
+     * Push credit note to QNE
+     * POST /api/sale-credits/{id}/push-qne?companyId=1
+     *
+     * Legacy synced the CN as a side effect of viewing/printing it
+     * (SaleCreditVIEW); here it is this explicit call, still create-once via
+     * the empty-QNECode guard. A QNE rejection answers 200 with
+     * IsSuccess=false and QNE's own message.
+     */
+    @PostMapping("/{id}/push-qne")
+    @PermitAll
+    public ResponseEntity<ApiResponse<Map<String, Object>>> pushToQne(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        logger.info("Pushing credit note ID: {} to QNE for company: {}", id, companyId);
+        try {
+            if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Invalid ID or company ID", 400));
+            }
+            return QnePushResponses.toResponse(saleCreditQneService.push(id, companyId));
+        } catch (Exception e) {
+            logger.error("Error pushing credit note to QNE", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error pushing to QNE: " + e.getMessage(), 500));
+        }
+    }
 
     /**
      * Get all SaleCreditMaster records by company ID

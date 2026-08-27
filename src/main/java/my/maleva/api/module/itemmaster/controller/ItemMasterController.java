@@ -2,8 +2,10 @@ package my.maleva.api.module.itemmaster.controller;
 
 import jakarta.annotation.security.PermitAll;
 import my.maleva.api.common.constant.SecurityConstants;
+import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.itemmaster.dto.ItemMasterDto;
 import my.maleva.api.module.productmaster.dto.ProductListDto;
+import my.maleva.api.module.itemmaster.service.ItemMasterQneService;
 import my.maleva.api.module.itemmaster.service.ItemMasterService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,9 +22,11 @@ import java.util.List;
 public class ItemMasterController {
 
     private final ItemMasterService service;
+    private final ItemMasterQneService qneService;
 
-    public ItemMasterController(ItemMasterService service) {
+    public ItemMasterController(ItemMasterService service, ItemMasterQneService qneService) {
         this.service = service;
+        this.qneService = qneService;
     }
 
     @GetMapping
@@ -68,5 +72,18 @@ public class ItemMasterController {
     public ResponseEntity<List<ProductListDto>> getProductList(@PathVariable Integer companyRefId) {
         List<ProductListDto> products = service.getProductList(companyRefId);
         return ResponseEntity.ok(products);
+    }
+
+    /**
+     * Reconcile local items against QNE stocks — the Java port of legacy
+     * UpdateItemmasterId: items already in QNE get their ids written back,
+     * items absent from QNE are pushed one by one (failures logged, loop
+     * continues).
+     * POST /api/item-masters/qne/reconcile?companyId=1
+     */
+    @PostMapping("/qne/reconcile")
+    @PermitAll
+    public ResponseEntity<?> qneReconcile(@RequestParam Integer companyId) {
+        return QnePushResponses.toResponse(qneService.reconcile(companyId));
     }
 }
