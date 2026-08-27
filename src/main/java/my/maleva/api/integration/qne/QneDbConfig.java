@@ -3,6 +3,7 @@ package my.maleva.api.integration.qne;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.common.config.QneProperties;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +17,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * QNE's {@code GLAccounts} table directly; the QNE REST API has no endpoint
  * for it. Everything else goes through {@link QneClient} over HTTP, and new
  * code should never reach for this connection when an API route exists.
+ *
+ * <p>This bean must never be {@code @Primary}: it is the second datasource,
+ * and the application's own one is declared in {@code DataSourceConfig}.
+ * Removing that explicit primary makes Spring Boot's datasource
+ * auto-configuration back off and bind JPA to this connection instead, which
+ * fails every query with "Invalid object name".
  *
  * <p>Deliberately defensive, because this is somebody else's database on the
  * far side of the internet:
@@ -63,7 +70,7 @@ public class QneDbConfig {
 
     @Bean(name = "qneJdbcTemplate")
     @Lazy
-    public JdbcTemplate qneJdbcTemplate(HikariDataSource qneDataSource) {
+    public JdbcTemplate qneJdbcTemplate(@Qualifier("qneDataSource") HikariDataSource qneDataSource) {
         JdbcTemplate template = new JdbcTemplate(qneDataSource);
         // A hung query against a remote third-party DB should fail, not wedge
         // a request thread for the transport's 30 minutes.

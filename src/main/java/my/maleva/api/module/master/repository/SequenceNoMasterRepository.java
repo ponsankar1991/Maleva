@@ -111,4 +111,26 @@ public interface SequenceNoMasterRepository extends JpaRepository<SequenceNoMast
             "WHERE s.companyRefId = :companyRefId AND s.sequenceName = 'PurchaseMaster'")
     Integer findMaxPurchaseMasterSequenceNo(
             @Param("companyRefId") Integer companyRefId);
+    /**
+     * Highest BillMaster sequence for one month.
+     *
+     * <p>Bill numbers restart each month (BIL2508/001), so the counter is
+     * scoped by year and month, unlike the other running numbers here.
+     *
+     * @param companyRefId the company ID
+     * @param year the sequence year
+     * @param month the sequence month
+     * @return the maximum sequence number in that month, 0 when none exists
+     */
+    @Query("SELECT COALESCE(MAX(s.sequenceNo), 0) FROM SequenceNoMaster s " +
+            "WHERE s.companyRefId = :companyRefId AND s.sequenceName = 'BillMaster' " +
+            "AND s.sequenceYear = :year AND s.sequenceMonth = :month")
+    Integer findMaxBillMasterSequenceNo(
+            @Param("companyRefId") Integer companyRefId,
+            @Param("year") Integer year,
+            @Param("month") Integer month);
+
+    /** The BillMaster counter row for one month, if it has been started. */
+    Optional<SequenceNoMaster> findByCompanyRefIdAndSequenceNameAndSequenceYearAndSequenceMonth(
+            Integer companyRefId, String sequenceName, Integer sequenceYear, Integer sequenceMonth);
 }
