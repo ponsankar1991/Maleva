@@ -1,7 +1,6 @@
 package my.maleva.api.integration.qne;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
@@ -16,15 +15,25 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Pins the legacy payload shaping for {@code SP_GLAccounts}: the SP has only
- * ever seen rows where SQL NULL arrives as an empty string and apostrophes
- * are stripped, because the legacy post-processed its serialised JSON that
- * way. Feeding it anything else is an untested input.
+ * Pins how QNE rows are shaped before they are written locally.
+ *
+ * <p>Apostrophes are stripped, replicating the legacy {@code Replace("'", "")}
+ * so a re-imported row stays byte-identical to what is already stored.
+ *
+ * <p><b>Nulls stay null.</b> The legacy also ran
+ * {@code Replace("null", "\"\"")} on its serialised JSON, and an earlier
+ * version of this test pinned that. It is wrong here: the values are now bound
+ * straight into the local upsert as JDBC parameters, so an empty string would
+ * be handed to a {@code uniqueidentifier} column and the insert would fail.
+ * (The same holds for the OPENJSON route the procedure used — {@code ''} to
+ * {@code uniqueidentifier} throws.) Legacy never hit it because its C# model
+ * used non-nullable {@code Guid}s, so the replace only ever touched varchar
+ * fields; QNE columns like {@code ATCCodeId} are routinely null.
  */
 class QneGlAccountReaderTest {
 
     @Test
-    void shapesRowsTheWayTheLegacySpExpects() {
+    void stripsApostrophesAndKeepsNullsNull() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
 
         Map<String, Object> row = new LinkedHashMap<>();
@@ -32,6 +41,8 @@ class QneGlAccountReaderTest {
         row.put("GLAccountCode", "6000-001");
         row.put("Description", "O'BRIEN & SONS EXPENSES");
         row.put("Notes", null);
+        // A null guid column is the case that made "" unusable.
+        row.put("ATCCodeId", null);
         row.put("RowIndex", 7);
         row.put("IsActive", Boolean.TRUE);
         List<Map<String, Object>> raw = new ArrayList<>();
@@ -44,15 +55,21 @@ class QneGlAccountReaderTest {
 
         assertThat(shaped).hasSize(1);
         Map<String, Object> out = shaped.get(0);
+
         // Apostrophes stripped, matching the legacy Replace("'", "").
         assertThat(out.get("Description")).isEqualTo("OBRIEN & SONS EXPENSES");
-        // SQL NULL arrives as "", matching the legacy Replace("null", "\"\"").
-        assertThat(out.get("Notes")).isEqualTo("");
+
+        // SQL NULL stays null so it binds as NULL rather than an empty string.
+        assertThat(out.get("Notes")).isNull();
+        assertThat(out.get("ATCCodeId")).isNull();
+
         // Non-strings pass through untouched.
         assertThat(out.get("RowIndex")).isEqualTo(7);
         assertThat(out.get("IsActive")).isEqualTo(Boolean.TRUE);
-        // Column order is preserved — the SP payload has always been ordered.
+
+        // Column order is preserved — the payload has always been ordered, and
+        // the upsert reads columns positionally.
         assertThat(out.keySet()).containsExactly(
-                "Id", "GLAccountCode", "Description", "Notes", "RowIndex", "IsActive");
+                "Id", "GLAccountCode", "Description", "Notes", "ATCCodeId", "RowIndex", "IsActive");
     }
 }
