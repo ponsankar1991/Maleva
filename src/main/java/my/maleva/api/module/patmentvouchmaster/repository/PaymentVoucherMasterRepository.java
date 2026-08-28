@@ -9,7 +9,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentVoucherMasterRepository extends JpaRepository<PaymentVoucherMaster, Integer> {
@@ -62,4 +65,25 @@ public interface PaymentVoucherMasterRepository extends JpaRepository<PaymentVou
     int claimQneIdentity(@Param("id") Integer id,
                          @Param("qneId") String qneId,
                          @Param("qneCode") String qneCode);
+
+    /** Loads a voucher by the running number a clerk typed, rather than its id. */
+    Optional<PaymentVoucherMaster> findByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
+
+    /**
+     * Vouchers entered a moment ago that look identical to the one being
+     * saved — the double-click / retry / second-tab window. Two clerks
+     * genuinely raising the same voucher would be minutes apart, not seconds.
+     */
+    @Query("SELECT v FROM PaymentVoucherMaster v WHERE v.companyRefId = :companyId "
+            + "AND v.payTo = :payTo AND v.paymentById = :paymentById "
+            + "AND v.paymentVoucherDate = :voucherDate AND v.amount = :amount "
+            + "AND COALESCE(v.refNo, '') = :refNo AND v.active = 1 "
+            + "AND v.createdDate >= :since ORDER BY v.id DESC")
+    List<PaymentVoucherMaster> findRecentlyEnteredLikeThis(@Param("companyId") Integer companyId,
+                                                           @Param("payTo") String payTo,
+                                                           @Param("paymentById") Integer paymentById,
+                                                           @Param("voucherDate") LocalDateTime voucherDate,
+                                                           @Param("amount") BigDecimal amount,
+                                                           @Param("refNo") String refNo,
+                                                           @Param("since") LocalDateTime since);
 }
