@@ -31,6 +31,27 @@ public class PettyCashDetail {
     @Column(name = "Notes", length = 255)
     private String notes;
 
+    /**
+     * The chart-of-accounts account this line is booked to — a
+     * {@code GLAccounts.RowIndex}, exactly as
+     * {@code PaymentVoucherDetails.AccountGroupRefId} holds it.
+     *
+     * <p>Nullable and optional: existing rows predate the column, and an unset
+     * dropdown is stored as NULL rather than 0.
+     */
+    @Column(name = "AccountGroupRefId")
+    private Integer accountGroupRefId;
+
+    /**
+     * The e-Invoice classification for this line — a {@code Classification.Id},
+     * exactly as {@code PaymentVoucherDetails.Classification} holds it.
+     *
+     * <p>Nullable and optional: existing rows predate the column, and an unset
+     * picker is stored as NULL rather than 0.
+     */
+    @Column(name = "Classification")
+    private Integer classification;
+
     @Column(name = "PettyCashMasterRefId", nullable = false)
     private Integer pettyCashMasterRefId;
 

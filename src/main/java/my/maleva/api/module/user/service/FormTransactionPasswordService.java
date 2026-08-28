@@ -23,6 +23,25 @@ public class FormTransactionPasswordService {
         this.mapper = mapper;
     }
 
+    /**
+     * Whether {@code password} is the company's password for one transaction
+     * gate. The Java port of legacy {@code POST /Login/EditPassword}, which
+     * every legacy screen called before a privileged action (the QNE push
+     * asked for {@code SpclPower}).
+     *
+     * <p>Answers a boolean and nothing else — the caller never needs the
+     * stored value, and a blank attempt is rejected without a query so an
+     * empty password box cannot match a blank row.
+     */
+    public boolean verify(Integer companyId, String transactionName, String password) {
+        if (companyId == null || transactionName == null || transactionName.isBlank()
+                || password == null || password.isEmpty()) {
+            return false;
+        }
+        return repository.existsByCompanyRefIdAndTransactionNameAndPasswordAndActive(
+                companyId, transactionName, password, 1);
+    }
+
     public List<FormTransactionPasswordDto> listAll() {
         return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }

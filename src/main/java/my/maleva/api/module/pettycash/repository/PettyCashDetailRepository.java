@@ -4,6 +4,10 @@ import my.maleva.api.module.pettycash.entity.PettyCashDetail;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface PettyCashDetailRepository extends JpaRepository<PettyCashDetail, Integer> {
+
+    List<PettyCashDetail> findByPettyCashMasterRefIdOrderByIdAsc(Integer pettyCashMasterRefId);
 }
