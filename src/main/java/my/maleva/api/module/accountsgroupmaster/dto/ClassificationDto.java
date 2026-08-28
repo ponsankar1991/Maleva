@@ -14,6 +14,5 @@ public class ClassificationDto {
     private Integer id;
     private String description;
     private String classificationCode;
-    private Integer active;
 }
 

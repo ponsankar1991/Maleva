@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -24,9 +23,14 @@ import java.util.Optional;
  *
  * Architecture: Service layer handles business logic and validation
  * Repository layer handles database access
+ *
+ * Deliberately NOT {@code @Transactional}: every method here catches and
+ * wraps its own errors, and inside a transaction a repository failure marks
+ * it rollback-only — the caught error is then replaced at commit by an opaque
+ * "Transaction silently rolled back" 500. All methods are single reads that
+ * ride the repository's own transaction.
  */
 @Service
-@Transactional
 public class PaymentTermsServiceImpl implements PaymentTermsService {
 
     private static final Logger logger = LoggerFactory.getLogger(PaymentTermsServiceImpl.class);
@@ -54,7 +58,6 @@ public class PaymentTermsServiceImpl implements PaymentTermsService {
      * - data1: Integer TDays value (number of days for payment terms)
      */
     @Override
-    @Transactional(readOnly = true)
     public ResponseViewModel selectSupplierDue(Integer comid, Integer supplierId) {
         logger.info("Fetching payment terms TDays for supplierId: {} from company: {}", supplierId, comid);
 
@@ -109,7 +112,6 @@ public class PaymentTermsServiceImpl implements PaymentTermsService {
      * @return ResponseViewModel with complete payment terms entity
      */
     @Override
-    @Transactional(readOnly = true)
     public ResponseViewModel getPaymentTermsById(Integer paymentTermsId) {
         logger.info("Fetching payment terms details for ID: {}", paymentTermsId);
 
@@ -152,7 +154,6 @@ public class PaymentTermsServiceImpl implements PaymentTermsService {
      * @return ResponseViewModel with calculated due date
      */
     @Override
-    @Transactional(readOnly = true)
     public ResponseViewModel calculatePaymentDueDate(Integer paymentTermsId, String invoiceDate) {
         logger.info("Calculating payment due date for termId: {} with invoiceDate: {}", paymentTermsId, invoiceDate);
 

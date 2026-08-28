@@ -15,6 +15,7 @@ import my.maleva.api.module.accountsgroupmaster.mapper.ClassificationMapper;
 import my.maleva.api.module.accountsgroupmaster.mapper.GLAccountMapper;
 import my.maleva.api.module.accountsgroupmaster.repository.AccountsGroupMasterRepository;
 import my.maleva.api.module.accountsgroupmaster.repository.ClassificationRepository;
+import org.springframework.transaction.PlatformTransactionManager;
 import my.maleva.api.module.accountsgroupmaster.repository.GLAccountRepository;
 import my.maleva.api.module.accountsgroupmaster.service.impl.AccountsGroupMasterServiceImpl;
 
@@ -58,12 +59,13 @@ class GlAccountImportTest {
     @Mock private ObjectProvider<QneGlAccountReader> readerProvider;
     @Mock private JdbcTemplate jdbcTemplate;
     @Mock private QneGlAccountReader reader;
+    @Mock private PlatformTransactionManager transactionManager;
 
     private AccountsGroupMasterServiceImpl service() {
         return new AccountsGroupMasterServiceImpl(
                 accountsRepo, glRepo, classificationRepo,
                 accountsMapper, glMapper, classificationMapper,
-                readerProvider, jdbcTemplate);
+                readerProvider, jdbcTemplate, transactionManager);
     }
 
     /** LinkedHashMap, as the reader returns: the projection is ordered. */

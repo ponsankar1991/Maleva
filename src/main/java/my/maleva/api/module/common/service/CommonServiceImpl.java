@@ -5,7 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.File;
 import java.nio.file.DirectoryStream;
@@ -25,23 +26,28 @@ public class CommonServiceImpl implements ICommonService {
     private static final Logger logger = LoggerFactory.getLogger(CommonServiceImpl.class);
 
     private final JdbcTemplate jdbcTemplate;
+    private final PlatformTransactionManager transactionManager;
 
-    public CommonServiceImpl(JdbcTemplate jdbcTemplate) {
+    public CommonServiceImpl(JdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
         this.jdbcTemplate = jdbcTemplate;
+        this.transactionManager = transactionManager;
     }
 
     /**
      * Writes through JdbcTemplate, so it needs its own transaction. The pool hands
      * out connections with autocommit off; without a transaction to commit, Hikari
      * rolls the update back when the connection is returned and the path silently
-     * saves nothing.
+     * saves nothing. The transaction is an explicit {@link TransactionTemplate}
+     * rather than {@code @Transactional} so the catch sits outside it — a caught
+     * failure inside a declarative transaction is replaced at commit by an opaque
+     * "Transaction silently rolled back" 500.
      */
     @Override
-    @Transactional
     public ResponseViewModel uploadFile(int id, int comid, String tableName, String paths) {
         try {
             String sql = "UPDATE " + tableName + " SET FilePath = ? WHERE Id = ? AND CompanyRefId = ?";
-            jdbcTemplate.update(sql, paths, id, comid);
+            new TransactionTemplate(transactionManager)
+                    .executeWithoutResult(status -> jdbcTemplate.update(sql, paths, id, comid));
             return ResponseViewModel.success(null, "UploadFile Success", 200);
         } catch (Exception ex) {
             logger.error("Error in uploadFile", ex);

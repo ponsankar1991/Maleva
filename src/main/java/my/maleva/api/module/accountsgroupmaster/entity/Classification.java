@@ -22,10 +22,13 @@ public class Classification {
     @Column(name = "Description")
     private String description;
 
+    // int in the database; JDBC converts on read, and nothing writes this
+    // read-only table from Java.
     @Column(name = "ClassificationCode")
     private String classificationCode;
 
-    @Column(name = "Active")
-    private Integer active;
+    // No Active column exists — the table is just Id, ClassificationCode,
+    // Description (verified on LiveMaleva2 and MalevanewDemo). Mapping one
+    // made every findAll() fail with "Invalid column name".
 }
 

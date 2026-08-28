@@ -10,15 +10,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Deliberately NOT {@code @Transactional}: the one method here catches and
+ * wraps its own errors, and inside a transaction a repository failure marks it
+ * rollback-only — the caught error is then replaced at commit by an opaque
+ * "Transaction silently rolled back" 500. The report is a single
+ * JdbcTemplate read, which needs no transaction at all.
+ */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class DriverRtiReportServiceImpl implements DriverRtiReportService {
 
     private static final Logger log = LoggerFactory.getLogger(DriverRtiReportServiceImpl.class);

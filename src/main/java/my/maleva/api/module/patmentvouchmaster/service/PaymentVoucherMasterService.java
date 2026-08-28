@@ -70,7 +70,11 @@ public class PaymentVoucherMasterService {
      * @param companyRefId Company reference ID
      * @return PaymentVoucherComboResponse with distinct PayTo values
      */
-    @Transactional(readOnly = true)
+    // Deliberately NOT @Transactional: this method catches and wraps its own
+    // errors, and inside a transaction a repository failure marks it
+    // rollback-only — the caught error is then replaced at commit by an opaque
+    // "Transaction silently rolled back" 500. The read rides the repository's
+    // own transaction.
     public PaymentVoucherComboResponse selectPaymentTo(Integer companyRefId) {
         logger.info("SelectPaymentTo request received - companyRefId: {}", companyRefId);
 
@@ -111,7 +115,7 @@ public class PaymentVoucherMasterService {
      * @param companyRefId Company reference ID
      * @return PaymentVoucherComboResponse with distinct PayFrom values
      */
-    @Transactional(readOnly = true)
+    // NOT @Transactional for the same reason as selectPaymentTo.
     public PaymentVoucherComboResponse selectPaymentFrom(Integer companyRefId) {
         logger.info("SelectPaymentFrom request received - companyRefId: {}", companyRefId);
 

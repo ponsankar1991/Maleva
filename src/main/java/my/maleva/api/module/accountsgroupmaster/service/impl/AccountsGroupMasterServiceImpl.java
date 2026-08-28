@@ -21,11 +21,13 @@ import my.maleva.api.integration.qne.QneGlAccountReader;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,9 +38,17 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Deliberately NOT {@code @Transactional}: every method here catches and
+ * wraps its own errors, and inside a shared transaction a repository failure
+ * marks it rollback-only — the caught error is then replaced at commit by an
+ * opaque "Transaction silently rolled back" 500. Repositories run their own
+ * short transactions (legacy issued single raw statements the same way); the
+ * one multi-statement write, the GL import, runs in an explicit
+ * {@link TransactionTemplate} with the catch outside it.
+ */
 @Service
 @RequiredArgsConstructor
-@Transactional
 @Slf4j
 public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterService {
 
@@ -50,9 +60,9 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
     private final ClassificationMapper classificationMapper;
     private final ObjectProvider<QneGlAccountReader> qneGlAccountReader;
     private final JdbcTemplate jdbcTemplate;
+    private final PlatformTransactionManager transactionManager;
 
     @Override
-    @Transactional(readOnly = true)
     public ApiResponse<List<ComboListDto>> getAccountsGroupMaster(Integer companyRefId, String type) {
         try {
             log.info("Getting accounts group master for companyRefId: {}, type: {}", companyRefId, type);
@@ -68,6 +78,7 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
                     // Four spaces before the bracket, as legacy rendered it —
                     // these labels line up in the dropdowns that show them.
                     .name(acc.getAccountName() + "    (" + acc.getAccountCode() + ")")
+                    .name1(acc.getAccountName())
                     .code(acc.getAccountCode())
                     .build())
                 .collect(Collectors.toList());
@@ -119,7 +130,11 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
                         : "GL account not found in QNE: " + code, 404);
             }
 
-            upsertGlAccounts(rows, companyRefId);
+            // One transaction for the whole upsert: the batches must land
+            // together, and SET IDENTITY_INSERT is per-connection — the ON,
+            // the inserts and the OFF have to ride the same one.
+            new TransactionTemplate(transactionManager)
+                    .executeWithoutResult(status -> upsertGlAccounts(rows, companyRefId));
 
             log.info("Imported {} GL account row(s) for code {} from QNE", rows.size(), accountCode);
             return ApiResponse.success(null, "InsertGLAccounts created successfully");
@@ -289,7 +304,6 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ApiResponse<List<AccountsGroupMasterDto>> selectAccountsGroupMaster(Integer companyRefId) {
         try {
             log.info("Selecting all accounts group master for companyRefId: {}", companyRefId);
@@ -300,7 +314,8 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
             List<AccountsGroupMasterDto> result = accounts.stream()
                 .map(acc -> {
                     AccountsGroupMasterDto dto = accountsMapper.toDto(acc);
-                    dto.setAccountName1(acc.getAccountName() + " (" + acc.getAccountCode() + ")");
+                    // Four spaces, matching legacy's '    (' label spacing.
+                    dto.setAccountName1(acc.getAccountName() + "    (" + acc.getAccountCode() + ")");
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -338,7 +353,6 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ApiResponse<List<GLAccountDto>> selectGLAccounts(Integer companyRefId) {
         try {
             log.info("Selecting all GL accounts for companyRefId: {}", companyRefId);
@@ -346,10 +360,26 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
             List<GLAccount> glAccounts = glAccountRepository
                 .findByCompanyRefIdAndIsActiveNot(companyRefId);
 
+            // The classification names legacy pulled in with a LEFT JOIN.
+            Map<Integer, String> classificationNames = new HashMap<>();
+            for (Classification c : classificationRepository.findAll()) {
+                classificationNames.put(c.getId(), c.getDescription());
+            }
+
             List<GLAccountDto> result = glAccounts.stream()
                 .map(gl -> {
                     GLAccountDto dto = glAccountMapper.toDto(gl);
-                    dto.setAccountName1(gl.getDescription() + "(" + gl.getGlAccountCode() + ")");
+                    String classification = gl.getClassification() == null
+                            ? null : classificationNames.get(gl.getClassification());
+                    // Legacy composed this label in T-SQL, where '+' with any
+                    // NULL operand yields NULL — an unclassified account's
+                    // AccountName1 came back null, not a partial label.
+                    dto.setAccountName1(
+                            gl.getDescription() == null || gl.getGlAccountCode() == null
+                                    || classification == null
+                                    ? null
+                                    : gl.getDescription() + "(" + gl.getGlAccountCode() + ")("
+                                            + classification + ")");
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -393,7 +423,6 @@ public class AccountsGroupMasterServiceImpl implements AccountsGroupMasterServic
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ApiResponse<List<ClassificationDto>> selectClassification() {
         try {
             log.info("Selecting all classifications");
