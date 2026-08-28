@@ -16,7 +16,6 @@ import my.maleva.api.module.patmentvouchmaster.service.PaymentVoucherTransaction
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -267,8 +266,11 @@ public class PaymentVoucherMasterController {
      * @param comid Company ID passed as request parameter
      * @return PaymentVoucherComboResponse with distinct PayTo values
      */
+    // No @PreAuthorize: legacy served this combo to every authenticated
+    // session, and every other endpoint on this controller is open the same
+    // way. The old three-role gate 403'd everyone else and left the Pay To
+    // dropdown silently empty.
     @GetMapping("/select-payment-to")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
     public ResponseEntity<PaymentVoucherComboResponse> selectPaymentTo(
             @RequestParam(value = "comid", required = false) Integer comid) {
 
@@ -304,8 +306,8 @@ public class PaymentVoucherMasterController {
      * @param comid Company ID passed as request parameter
      * @return PaymentVoucherComboResponse with distinct PayFrom values
      */
+    // No @PreAuthorize — same reasoning as selectPaymentTo above.
     @GetMapping("/select-payment-from")
-    @PreAuthorize("hasAuthority('ROLE_SUPERADMIN') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_100')")
     public ResponseEntity<PaymentVoucherComboResponse> selectPaymentFrom(
             @RequestParam(value = "comid", required = false) Integer comid) {
 
