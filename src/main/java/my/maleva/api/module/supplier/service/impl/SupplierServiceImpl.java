@@ -450,8 +450,12 @@ public class SupplierServiceImpl implements SupplierService {
      * @param type Supplier Type filter (null/""/ALL for no type filter)
      * @return ResponseViewModel with List<SupplierComboList>
      */
+    // Deliberately NOT @Transactional: this method catches and wraps its own
+    // errors, and inside a transaction a repository failure marks it
+    // rollback-only — the caught error is then replaced at commit by an opaque
+    // "Transaction silently rolled back" 500. The read rides the repository's
+    // own transaction.
     @Override
-    @Transactional(readOnly = true)
     public ResponseViewModel getSupplier(Integer comid, String type) {
         logger.info("Fetching Supplier dropdown list for company: {} with type filter: {}", comid, type);
 
@@ -510,8 +514,9 @@ public class SupplierServiceImpl implements SupplierService {
      * @param comid Company Reference ID
      * @return List of SupplierExtendedResponse with all supplier details and joined master data
      */
+    // NOT @Transactional for the same reason as getSupplier: the catch wraps
+    // the error, which a transaction would replace with an opaque rollback 500.
     @Override
-    @Transactional(readOnly = true)
     public List<SupplierExtendedResponse> selectSupplierAll(Integer comid) {
         logger.info("Fetching all suppliers with master data for company: {}", comid);
 

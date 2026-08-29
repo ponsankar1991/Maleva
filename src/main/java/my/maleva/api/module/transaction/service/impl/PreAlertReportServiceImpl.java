@@ -8,7 +8,8 @@ import my.maleva.api.module.transaction.repository.PreAlertReportRepository;
 import my.maleva.api.module.transaction.service.PreAlertReportService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +19,14 @@ import java.util.Map;
 /**
  * Service implementation for Pre-Alert Report functionality
  * Handles business logic and orchestration for pre-alert operations
+ *
+ * <p>Deliberately NOT {@code @Transactional}: the save methods catch and wrap
+ * their own errors into the response map, and inside a declarative transaction
+ * a database failure marks it rollback-only — the wrapped error is then
+ * replaced at commit by an opaque "Transaction silently rolled back" 500. The
+ * SP_PreAlert call is a JdbcTemplate write, which does need a transaction to
+ * commit (the pool hands out connections with autocommit off), so just that
+ * call runs in an explicit {@link TransactionTemplate} with the catch outside.
  */
 @Slf4j
 @Service
@@ -27,6 +36,7 @@ public class PreAlertReportServiceImpl implements PreAlertReportService {
     private final PreAlertReportRepository preAlertRepository;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final PlatformTransactionManager transactionManager;
 
     /**
      * Get pre-alert report data based on search criteria
@@ -185,7 +195,6 @@ public class PreAlertReportServiceImpl implements PreAlertReportService {
     }
     
     @Override
-    @Transactional
     public Object insertPreAlert(List<PreAlertMasterDto> objBrand, Integer comId) {
         log.info("Inserting {} PreAlert master records for comId: {}",
                 objBrand != null ? objBrand.size() : 0, comId);
@@ -240,12 +249,14 @@ public class PreAlertReportServiceImpl implements PreAlertReportService {
 
             // =====================================================================
             // EXECUTE STORED PROCEDURE
+            // The SP writes, so it needs a transaction to commit; the catch
+            // stays outside it.
             // =====================================================================
-            List<Map<String, Object>> resultRows = jdbcTemplate.queryForList(
-                    "EXEC SP_PreAlert ?, ?",
-                    masterJson,
-                    comId
-            );
+            List<Map<String, Object>> resultRows = new TransactionTemplate(transactionManager)
+                    .execute(status -> jdbcTemplate.queryForList(
+                            "EXEC SP_PreAlert ?, ?",
+                            masterJson,
+                            comId));
 
             if (resultRows.isEmpty()) {
                 response.put("ok", false);
@@ -325,7 +336,6 @@ public class PreAlertReportServiceImpl implements PreAlertReportService {
      * @return Response object with success status (ok=true/false), message, and Id
      */
     @Override
-    @Transactional
     public Object updatePreAlert(PreAlertMasterDto masterDto, Integer comId) {
         log.info("Updating PreAlert master record - id: {}, comId: {}", masterDto.getId(), comId);
 
@@ -363,12 +373,14 @@ public class PreAlertReportServiceImpl implements PreAlertReportService {
 
             // =====================================================================
             // EXECUTE STORED PROCEDURE
+            // The SP writes, so it needs a transaction to commit; the catch
+            // stays outside it.
             // =====================================================================
-            List<Map<String, Object>> resultRows = jdbcTemplate.queryForList(
-                    "EXEC SP_PreAlert ?, ?",
-                    masterJson,
-                    comId
-            );
+            List<Map<String, Object>> resultRows = new TransactionTemplate(transactionManager)
+                    .execute(status -> jdbcTemplate.queryForList(
+                            "EXEC SP_PreAlert ?, ?",
+                            masterJson,
+                            comId));
 
             if (resultRows.isEmpty()) {
                 response.put("ok", false);

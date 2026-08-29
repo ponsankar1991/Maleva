@@ -670,8 +670,12 @@ public class PurchaseMasterServiceImpl implements PurchaseMasterService {
         }
     }
 
+    // Deliberately NOT @Transactional: this method catches and wraps its own
+    // errors, and inside a transaction a repository failure marks it
+    // rollback-only — the caught error is then replaced at commit by an opaque
+    // "Transaction silently rolled back" 500. The reads ride the repository's
+    // own transactions.
     @Override
-    @Transactional(readOnly = true)
     public SelectPurchaseMasterResponseDto selectPurchaseMaster(SelectPurchaseMasterRequestDto request) {
         logger.info("Fetching purchase master records - Company: {}, Supplier: {}, Employee: {}, Driver: {}, Truck: {}, Product: {}",
                 request.getCompanyId(), request.getSupplierId(), request.getEmployeeId(),
@@ -831,8 +835,10 @@ public class PurchaseMasterServiceImpl implements PurchaseMasterService {
                 .build();
     }
 
+    // NOT @Transactional for the same reason as selectPurchaseMaster: the
+    // catch wraps the error, which a transaction would replace with an opaque
+    // rollback 500.
     @Override
-    @Transactional(readOnly = true)
     public EditPurchaseMasterResponseDto editPurchaseMaster(EditPurchaseMasterRequestDto request) {
         logger.info("Fetching purchase master for edit - Company: {}, ID: {}, PurchaseMasterNo: {}",
                 request.getCompanyId(), request.getId(), request.getPurchaseMasterNo());

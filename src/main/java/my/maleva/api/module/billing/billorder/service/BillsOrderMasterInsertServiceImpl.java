@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -45,6 +47,7 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
     private final SequenceNoMasterRepository sequenceNoMasterRepository;
     private final JdbcTemplate jdbcTemplate;
     private final BillsOrderWhatsAppService whatsAppService;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${app.whatsapp.enabled:true}")
     private boolean whatsAppEnabled;
@@ -59,7 +62,8 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
             DriverMasterRepository driverMasterRepository,
             SequenceNoMasterRepository sequenceNoMasterRepository,
             JdbcTemplate jdbcTemplate,
-            BillsOrderWhatsAppService whatsAppService) {
+            BillsOrderWhatsAppService whatsAppService,
+            PlatformTransactionManager transactionManager) {
         this.billsOrderMasterRepository = billsOrderMasterRepository;
         this.billsOrderDetailsRepository = billsOrderDetailsRepository;
         this.appUserRepository = appUserRepository;
@@ -70,10 +74,16 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
         this.sequenceNoMasterRepository = sequenceNoMasterRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.whatsAppService = whatsAppService;
+        this.transactionManager = transactionManager;
     }
 
+    // Deliberately NOT @Transactional: the catches below wrap failures into the
+    // response DTO, and inside a declarative transaction a repository failure
+    // marks it rollback-only — the wrapped error is then replaced at commit by
+    // an opaque "Transaction silently rolled back" 500. The write (master +
+    // details + sequence + sale-order flags) still has to land together, so it
+    // runs in an explicit TransactionTemplate with the catches outside it.
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BillsOrderMasterResponseDto insertBillsOrderMaster(
             BillsOrderMasterInsertDto dto,
             Integer companyId) {
@@ -88,6 +98,24 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
         logger.info("─── END DTO DATA ───");
 
         try {
+            return new TransactionTemplate(transactionManager)
+                    .execute(status -> doInsertBillsOrderMaster(dto, companyId));
+        } catch (IllegalArgumentException ex) {
+            logger.error("❌ VALIDATION ERROR: {}", ex.getMessage());
+            return buildErrorResponse(ex.getMessage());
+        } catch (Exception ex) {
+            logger.error("❌ UNEXPECTED ERROR in insertBillsOrderMaster", ex);
+            logger.error("Exception Type: {}", ex.getClass().getName());
+            logger.error("Exception Message: {}", ex.getMessage());
+            logger.error("Stack Trace:", ex);
+            return buildErrorResponse("Error: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
+        }
+    }
+
+    private BillsOrderMasterResponseDto doInsertBillsOrderMaster(
+            BillsOrderMasterInsertDto dto,
+            Integer companyId) {
+        {
             logger.info("Step 1/10: Validating BillsOrderDetails...");
             validateBillsOrderDetails(dto);
             logger.info("✓ Step 1: Validation passed");
@@ -376,15 +404,6 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                     .id(newMasterId)
                     .build();
 
-        } catch (IllegalArgumentException ex) {
-            logger.error("❌ VALIDATION ERROR: {}", ex.getMessage());
-            return buildErrorResponse(ex.getMessage());
-        } catch (Exception ex) {
-            logger.error("❌ UNEXPECTED ERROR in insertBillsOrderMaster", ex);
-            logger.error("Exception Type: {}", ex.getClass().getName());
-            logger.error("Exception Message: {}", ex.getMessage());
-            logger.error("Stack Trace:", ex);
-            return buildErrorResponse("Error: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
         }
     }
 

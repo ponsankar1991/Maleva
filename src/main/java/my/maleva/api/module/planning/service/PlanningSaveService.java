@@ -12,7 +12,8 @@ import my.maleva.api.module.master.entity.SequenceNoMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,7 +41,8 @@ import java.util.List;
  * - deliveryQuantitylist, delivertimelist
  *
  * Features:
- * - Transactional (all or nothing)
+ * - One transaction per record (master + details + sequence land together),
+ *   matching the SP's per-iteration WHILE-loop semantics
  * - Validates EmployeeRefId if provided
  * - Exact sequence number generation matching .NET SP
  * - Comprehensive error handling
@@ -60,16 +62,19 @@ public class PlanningSaveService {
     private final PlanningDetailsRepository detailsRepository;
     private final EmployeeMasterRepository employeeRepository;
     private final SequenceNoMasterRepository sequenceRepository;
+    private final PlatformTransactionManager transactionManager;
 
     public PlanningSaveService(
             PlanningMasterRepository masterRepository,
             PlanningDetailsRepository detailsRepository,
             EmployeeMasterRepository employeeRepository,
-            SequenceNoMasterRepository sequenceRepository) {
+            SequenceNoMasterRepository sequenceRepository,
+            PlatformTransactionManager transactionManager) {
         this.masterRepository = masterRepository;
         this.detailsRepository = detailsRepository;
         this.employeeRepository = employeeRepository;
         this.sequenceRepository = sequenceRepository;
+        this.transactionManager = transactionManager;
     }
 
     /**
@@ -80,7 +85,13 @@ public class PlanningSaveService {
      * @param comid Company ID from header
      * @return List of results matching SP output format
      */
-    @Transactional
+    // Deliberately NOT @Transactional across the loop: each record catches and
+    // wraps its own failure into the results list, and inside a shared
+    // transaction a repository failure marks it rollback-only — the partial
+    // results are then replaced at commit by an opaque "Transaction silently
+    // rolled back" 500. Each record instead gets its own TransactionTemplate
+    // (master + details + sequence land together, the catch sits outside), so
+    // one bad record cannot poison the others.
     public List<PlanningSaveResponseDto> saveAll(List<PlanningRequest> requests, Integer comid) {
         logger.info("SP_PLANINGMaster: Processing {} record(s), comid={}", requests.size(), comid);
 
@@ -88,7 +99,8 @@ public class PlanningSaveService {
 
         for (PlanningRequest request : requests) {
             try {
-                PlanningSaveResponseDto result = processSinglePlanning(request, comid);
+                PlanningSaveResponseDto result = new TransactionTemplate(transactionManager)
+                        .execute(status -> processSinglePlanning(request, comid));
                 results.add(result);
             } catch (Exception ex) {
                 logger.error("SP_PLANINGMaster: Unexpected error processing record", ex);
@@ -355,8 +367,12 @@ public class PlanningSaveService {
     /**
      * Delete (soft delete) a Planning record.
      * Sets Active = 2 (soft delete like .NET SP)
+     *
+     * <p>Not {@code @Transactional}: the catch below wraps the error, which a
+     * declarative transaction would replace at commit with an opaque
+     * "Transaction silently rolled back" 500. The single save rides the
+     * repository's own transaction.
      */
-    @Transactional
     public PlanningSaveResponseDto delete(Integer id, Integer companyId) {
         logger.info("SP_PLANINGMaster: Delete requested for id={}, companyId={}", id, companyId);
 
