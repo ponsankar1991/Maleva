@@ -490,7 +490,11 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 int rowsUpdated = jdbcTemplate.update(updateQuery);
                 logger.info("Query Execution Result: {} rows affected", rowsUpdated);
 
-                if (rowsUpdated > 0) {
+                // -1 is not a failure: the pool sets `SET NOCOUNT ON` as its
+                // connection-init SQL (application.yaml), so SQL Server sends no row
+                // count and JDBC reports -1 for every UPDATE on this datasource. Only
+                // a real 0 means the WHERE clause matched nothing.
+                if (rowsUpdated != 0) {
                     logger.info("✅ SUCCESS: Updated SaleOrderMaster ID={} for description '{}': {} rows affected",
                         saleMasterRefId, descriptionUpper, rowsUpdated);
                 } else {

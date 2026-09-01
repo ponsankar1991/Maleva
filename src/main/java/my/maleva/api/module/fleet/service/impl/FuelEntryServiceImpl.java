@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,9 @@ public class FuelEntryServiceImpl implements FuelEntryService {
     private static final Logger logger = LoggerFactory.getLogger(FuelEntryServiceImpl.class);
 
     private static final Integer ACTIVE = 1;
+    private static final Integer DELETED = 2;
+    /** FStatus of a row raised by the driver app, which only that path may delete. */
+    private static final Integer DRIVER_APP_STATUS = 1;
     private static final String FUEL_NUMBER_PREFIX = "FE";
     private static final int FUEL_NUMBER_DIGITS = 9;
     private static final String SEQUENCE_NAME = "FuelEntry";
@@ -341,17 +345,38 @@ public class FuelEntryServiceImpl implements FuelEntryService {
 
     // ---------------------------------------------------------------- delete
 
+    /**
+     * Soft delete.
+     *
+     * <p>Deliberately loads the entry first rather than firing a bulk UPDATE and
+     * testing its affected-row count. The pool sets {@code SET NOCOUNT ON} as its
+     * connection-init SQL (application.yaml), so SQL Server never sends a row
+     * count and JDBC reports -1 for every UPDATE on this datasource. An
+     * {@code updated == 0} test therefore never fires, and deleting an id that
+     * does not exist - or belongs to another company - reported success while
+     * changing nothing.
+     */
     @Override
     @Transactional
     public void delete(Integer id, Integer companyRefId, boolean mobile, String username) {
         requireCompany(companyRefId);
+
+        String notFound = "Fuel entry " + id + " was not found, or is not deletable from here";
+
+        FuelEntry entry = fuelEntryRepository
+                .findByIdAndCompanyRefIdAndActive(id, companyRefId, ACTIVE)
+                .orElseThrow(() -> new EntityNotFoundException(notFound));
+
         // mobile=true reproduces the legacy guard: a driver-app row may only be
         // removed through the driver-app path.
-        int updated = fuelEntryRepository.softDelete(id, companyRefId, mobile ? 1 : null, username);
-        if (updated == 0) {
-            throw new EntityNotFoundException(
-                    "Fuel entry " + id + " was not found, or is not deletable from here");
+        if (mobile && !DRIVER_APP_STATUS.equals(entry.getFStatus())) {
+            throw new EntityNotFoundException(notFound);
         }
+
+        entry.setActive(DELETED);
+        entry.setModifiedDate(LocalDateTime.now());
+        entry.setModifiedBy(stamp(username));
+        fuelEntryRepository.save(entry);
     }
 
     // --------------------------------------------------------------- helpers
@@ -407,6 +432,15 @@ public class FuelEntryServiceImpl implements FuelEntryService {
         if (companyRefId == null || companyRefId == 0) {
             throw new InvalidRequestException("companyRefId is required");
         }
+    }
+
+    /** Modified_By is NOT NULL and 50 characters wide, so trim it to fit. */
+    private String stamp(String username) {
+        if (username == null || username.isBlank()) {
+            return "system";
+        }
+        String trimmed = username.trim();
+        return trimmed.length() > 50 ? trimmed.substring(0, 50) : trimmed;
     }
 
     private Integer asInteger(Object value) {

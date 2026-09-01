@@ -249,15 +249,26 @@ public class BillsOrderMasterService {
         try {
             logger.info("Attempting to delete bills order ID: {} for company: {}", id, companyRefId);
 
-            // Perform soft delete (set Active=2 where PStatus=0)
-            int rowsUpdated = repository.softDeleteById(id);
+            // Loaded and saved rather than soft-deleted by a bulk UPDATE whose
+            // affected-row count decides the answer. The pool sets
+            // `SET NOCOUNT ON` as its connection-init SQL (application.yaml), so
+            // SQL Server sends no row count and JDBC reports -1 for every UPDATE
+            // on this datasource - `rowsUpdated > 0` was therefore false even
+            // after a delete that worked, and the screen was told the order did
+            // not exist while the row went away underneath it.
+            BillsOrderMaster order = repository.findById(id).orElse(null);
 
-            if (rowsUpdated > 0) {
+            // The order is deletable only while it is unposted (PStatus=0), the
+            // same guard the bulk UPDATE carried in its WHERE clause.
+            if (order != null && order.getPStatus() != null && order.getPStatus() == 0) {
+                order.setActive(2);
+                repository.save(order);
+
                 ro = ResponseViewModel.builder()
                         .isSuccess(true)
                         .statusCode(200)
                         .message("Bills order deleted successfully")
-                        .data1(rowsUpdated)
+                        .data1(1)
                         .build();
 
                 logger.info("Successfully deleted bills order ID: {} for company: {}", id, companyRefId);

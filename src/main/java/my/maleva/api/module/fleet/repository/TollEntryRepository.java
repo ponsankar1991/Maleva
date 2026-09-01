@@ -4,7 +4,6 @@ import my.maleva.api.module.fleet.entity.TollEntry;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -34,12 +33,9 @@ public interface TollEntryRepository extends JpaRepository<TollEntry, Integer>,
     List<Integer> findIdsByCNumber(@Param("companyRefId") Integer companyRefId,
                                    @Param("cNumber") Integer cNumber);
 
-    /** Soft delete, matching the legacy {@code update TollEntry set Active=2}. */
-    @Modifying
-    @Query("update TollEntry t set t.active = 2, t.modifiedDate = current_timestamp, "
-            + "t.modifiedBy = :modifiedBy "
-            + "where t.id = :id and t.companyRefId = :companyRefId and t.active = 1")
-    int softDelete(@Param("id") Integer id,
-                   @Param("companyRefId") Integer companyRefId,
-                   @Param("modifiedBy") String modifiedBy);
+    // No bulk soft-delete query here on purpose. This screen used to have one and
+    // test its affected-row count against 0, but the pool runs `SET NOCOUNT ON` as
+    // its connection-init SQL, so SQL Server sends no row count and JDBC reports -1
+    // for every UPDATE - the count can never be 0 and the check never fired.
+    // TollEntryServiceImpl.delete loads the entry and updates it as a managed entity instead.
 }

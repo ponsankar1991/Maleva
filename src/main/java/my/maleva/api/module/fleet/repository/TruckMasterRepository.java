@@ -110,4 +110,21 @@ public interface TruckMasterRepository extends JpaRepository<TruckMaster, Intege
         @Param("truckType") String truckType);
 
     boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
+
+    /**
+     * Active trucks the Truck Order Calendar will book, ordered by plate.
+     *
+     * <p>{@code OrderableTruck = 1} is the whole rule. It replaces the array of
+     * 14 plates the legacy screen hardcoded in JavaScript; no other column
+     * reproduces that list, since those trucks span nine TruckType values and
+     * most of the fleet has no type recorded at all.
+     *
+     * <p>Active only. The legacy screen asked for {@code Active != 2} and matched
+     * plates in the browser, so a deleted truck sharing a plate with a live one
+     * showed up twice.
+     */
+    @Query("select t from TruckMaster t "
+            + "where t.companyRefId = :companyRefId and t.active = 1 and t.orderableTruck = 1 "
+            + "order by t.truckName asc")
+    List<TruckMaster> findOrderableTrucks(@Param("companyRefId") Integer companyRefId);
 }

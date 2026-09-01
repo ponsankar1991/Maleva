@@ -163,5 +163,21 @@ public class TruckMaster {
      */
     @Column(name = "MalevaTruck")
     private Integer malevaTruck;
+
+    /**
+     * Whether this truck can be booked on the Truck Order Calendar.
+     * 1 = orderable, anything else is not.
+     *
+     * <p>Added 2026-09-01. The calendar works on a subset of the fleet, which the
+     * legacy screen carried as a literal array of 14 plates inside
+     * truckordermaster.js - so changing the fleet meant editing JavaScript, and
+     * nothing on the server knew the rule existed.
+     *
+     * <p>Nullable: {@code ALTER TABLE ... ADD OrderableTruck int NULL DEFAULT 1}
+     * applies the default to new rows only, so rows that predate the column are
+     * NULL and read as not orderable until they are set. New trucks default to 1.
+     */
+    @Column(name = "OrderableTruck")
+    private Integer orderableTruck;
 }
 

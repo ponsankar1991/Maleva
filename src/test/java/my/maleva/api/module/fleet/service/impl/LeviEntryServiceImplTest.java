@@ -339,18 +339,41 @@ class LeviEntryServiceImplTest {
 
     @Test
     void reportsADeleteThatMatchedNothing() {
-        when(leviEntryRepository.softDelete(anyInt(), anyInt(), anyString())).thenReturn(0);
+        when(leviEntryRepository.findByIdAndCompanyRefIdAndActive(anyInt(), anyInt(), anyInt()))
+                .thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.delete(1234, COMPANY, "tester"));
+        verify(leviEntryRepository, never()).save(any());
     }
 
+    /**
+     * The delete must load the row and save it back rather than fire a bulk
+     * UPDATE, because `SET NOCOUNT ON` on the pool makes every UPDATE report -1
+     * affected rows - a row count this screen cannot tell "nothing matched" from.
+     */
     @Test
     void softDeletesAnExistingEntry() {
-        when(leviEntryRepository.softDelete(1234, COMPANY, "tester")).thenReturn(1);
+        LeviEntry stored = entry(1234, 45d);
+        when(leviEntryRepository.findByIdAndCompanyRefIdAndActive(1234, COMPANY, 1))
+                .thenReturn(Optional.of(stored));
 
         service.delete(1234, COMPANY, "tester");
 
-        verify(leviEntryRepository).softDelete(1234, COMPANY, "tester");
+        ArgumentCaptor<LeviEntry> saved = ArgumentCaptor.forClass(LeviEntry.class);
+        verify(leviEntryRepository).save(saved.capture());
+        assertEquals(2, saved.getValue().getActive());
+        assertEquals("tester", saved.getValue().getModifiedBy());
+    }
+
+    /** A row belonging to another company must not be reachable from here. */
+    @Test
+    void refusesToDeleteAnotherCompanysEntry() {
+        when(leviEntryRepository.findByIdAndCompanyRefIdAndActive(1234, COMPANY + 1, 1))
+                .thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class,
+                () -> service.delete(1234, COMPANY + 1, "tester"));
+        verify(leviEntryRepository, never()).save(any());
     }
 
     // --------------------------------------------------------------- lookups

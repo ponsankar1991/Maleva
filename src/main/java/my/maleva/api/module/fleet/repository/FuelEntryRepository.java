@@ -4,7 +4,6 @@ import my.maleva.api.module.fleet.entity.FuelEntry;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -33,19 +32,9 @@ public interface FuelEntryRepository extends JpaRepository<FuelEntry, Integer>,
     List<Integer> findIdsByCNumber(@Param("companyRefId") Integer companyRefId,
                                    @Param("cNumber") Integer cNumber);
 
-    /**
-     * Soft delete, matching the legacy {@code update FuelEntry set Active=2}.
-     *
-     * @param fStatus when non-null the row must also carry this FStatus, which is
-     *                how the legacy call guarded deletes coming from the driver app
-     */
-    @Modifying
-    @Query("update FuelEntry e set e.active = 2, e.modifiedDate = current_timestamp, "
-            + "e.modifiedBy = :modifiedBy "
-            + "where e.id = :id and e.companyRefId = :companyRefId and e.active = 1 "
-            + "and (:fStatus is null or e.fStatus = :fStatus)")
-    int softDelete(@Param("id") Integer id,
-                   @Param("companyRefId") Integer companyRefId,
-                   @Param("fStatus") Integer fStatus,
-                   @Param("modifiedBy") String modifiedBy);
+    // No bulk soft-delete query here on purpose. This screen used to have one and
+    // test its affected-row count against 0, but the pool runs `SET NOCOUNT ON` as
+    // its connection-init SQL, so SQL Server sends no row count and JDBC reports -1
+    // for every UPDATE - the count can never be 0 and the check never fired.
+    // FuelEntryServiceImpl.delete loads the entry and updates it as a managed entity instead.
 }

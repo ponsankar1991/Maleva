@@ -49,4 +49,14 @@ public interface PassEntry {
     LocalDateTime getCreatedDate();
 
     LocalDateTime getModifiedDate();
+
+    // Setters for the soft delete, which loads the entry and updates it as a
+    // managed entity rather than firing a bulk UPDATE. See
+    // AbstractPassEntryService.delete for why the bulk form cannot work here.
+
+    void setActive(Integer active);
+
+    void setModifiedDate(LocalDateTime modifiedDate);
+
+    void setModifiedBy(String modifiedBy);
 }

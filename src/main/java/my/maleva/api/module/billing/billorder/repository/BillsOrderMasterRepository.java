@@ -4,10 +4,8 @@ import my.maleva.api.module.billing.billorder.entity.BillsOrderMaster;
 import my.maleva.api.module.billing.billorder.dto.PaymentVoucherComboDto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -61,17 +59,10 @@ public interface BillsOrderMasterRepository extends JpaRepository<BillsOrderMast
            "ORDER BY TRIM(bom.payTo)")
     List<String> findDistinctPayToByCompany(@Param("companyRefId") Integer companyRefId);
 
-    /**
-     * Soft delete a bills order by setting Active=2 (soft delete flag)
-     * Only deletes if PStatus=0 (not locked/posted)
-     * Equivalent to .NET DeleteBillsOrderMaster method
-     *
-     * @param id the bills order master ID
-     * @return number of rows updated
-     */
-    @Modifying
-    @Transactional
-    @Query("UPDATE BillsOrderMaster bom SET bom.active = 2 " +
-           "WHERE bom.id = :id AND bom.pStatus = 0")
-    int softDeleteById(@Param("id") Integer id);
+    // No bulk soft-delete query here on purpose. There used to be one, and
+    // deleteBillsOrderMaster answered the caller from its affected-row count. The
+    // pool runs `SET NOCOUNT ON` as its connection-init SQL, so SQL Server sends
+    // no row count and JDBC reports -1 for every UPDATE - `rowsUpdated > 0` was
+    // false even after a delete that worked. BillsOrderMasterService
+    // .deleteBillsOrderMaster loads the order and updates it as a managed entity.
 }
