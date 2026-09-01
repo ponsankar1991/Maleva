@@ -2,6 +2,10 @@ package my.maleva.api.module.rti.controller;
 
 import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.rti.dto.RTIMasterDto;
+import my.maleva.api.module.rti.dto.RtiSummaryResponseDto;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDateTime;
+import java.time.LocalDate;
 import my.maleva.api.module.rti.service.RTIMasterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,6 +16,7 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -289,6 +294,14 @@ public class RTIMasterController {
                     .body(ApiResponse.error("Failed to fetch RTI View Details: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
         }
     }
+    @GetMapping("/company/{companyRefId}/summary")
+    public ResponseEntity<ApiResponse<List<RtiSummaryResponseDto>>> getRtiSummary(
+            @PathVariable Integer companyRefId,
+            @RequestParam("fromDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam("toDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(value = "driverRefId", required = false) Integer driverRefId) {
+        
+        List<RtiSummaryResponseDto> data = rtiMasterService.getRtiSummaryByDateRange(companyRefId, fromDate.atStartOfDay(), toDate.atTime(23, 59, 59), driverRefId);
+        return ResponseEntity.ok(ApiResponse.success(data, "RTI summary retrieved successfully"));
+    }
 }
-
-

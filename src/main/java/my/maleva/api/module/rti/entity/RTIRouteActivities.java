@@ -38,6 +38,11 @@ public class RTIRouteActivities {
     @Column(name = "EmployeeRefId")
     private Integer employeeRefId;
 
+    // Free-text contact for non-employee agents (port runners, external agents);
+    // used when EmployeeRefId is null.
+    @Column(name = "AgentName", length = 200)
+    private String agentName;
+
     @Column(name = "AgentMobileNo", length = 50)
     private String agentMobileNo;
 

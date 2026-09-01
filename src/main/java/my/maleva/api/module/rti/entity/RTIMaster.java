@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
+import my.maleva.api.module.fleet.entity.TruckMaster;
+import my.maleva.api.module.fleet.entity.DriverMaster;
 
 /**
  * RTIMaster Entity
@@ -82,9 +84,17 @@ public class RTIMaster {
 
     @Column(name = "TruckRefid")
     private Integer truckRefId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "TruckRefid", insertable = false, updatable = false)
+    private TruckMaster truckMaster;
 
     @Column(name = "DriverRefid")
     private Integer driverRefId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "DriverRefid", insertable = false, updatable = false)
+    private DriverMaster driverMaster;
 
     @Column(name = "Pickup", nullable = false)
     private Integer pickup;

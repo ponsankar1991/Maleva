@@ -1,6 +1,7 @@
 package my.maleva.api.module.rti.repository;
 
 import my.maleva.api.module.rti.entity.RTIMaster;
+import my.maleva.api.module.rti.dto.RtiSummaryResponseDto;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -155,5 +156,18 @@ public interface RTIMasterRepository extends JpaRepository<RTIMaster, Integer> {
      */
     @Query("SELECT MAX(r.CNumber) FROM RTIMaster r WHERE r.companyRefId = :companyRefId")
     Integer findMaxCNumberByCompanyRefId(@Param("companyRefId") Integer companyRefId);
+    @Query("SELECT new my.maleva.api.module.rti.dto.RtiSummaryResponseDto(" +
+           "r.id, r.CNumberDisplay, r.comments, r.truckRefId, t.truckName, r.driverRefId, d.driverName, r.pckHandling, r.punctuality, r.documentSub) " +
+           "FROM RTIMaster r " +
+           "LEFT JOIN r.truckMaster t " +
+           "LEFT JOIN r.driverMaster d " +
+           "WHERE r.companyRefId = :companyRefId " +
+           "AND r.active = 1 " +
+           "AND r.saleDate >= :fromDate " +
+           "AND r.saleDate <= :toDate " +
+           "AND (:driverRefId IS NULL OR r.driverRefId = :driverRefId)")
+    List<RtiSummaryResponseDto> getRtiSummaryByDateRange(@Param("companyRefId") Integer companyRefId,
+                                                         @Param("fromDate") LocalDateTime fromDate,
+                                                         @Param("toDate") LocalDateTime toDate,
+                                                         @Param("driverRefId") Integer driverRefId);
 }
-

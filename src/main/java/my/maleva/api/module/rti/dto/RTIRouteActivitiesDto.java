@@ -18,6 +18,7 @@ public class RTIRouteActivitiesDto {
     private String locationName;
     private String activityType;
     private Integer employeeRefId;
+    private String agentName;
     private String agentMobileNo;
     private Byte status;
     private LocalDateTime plannedDateTime;

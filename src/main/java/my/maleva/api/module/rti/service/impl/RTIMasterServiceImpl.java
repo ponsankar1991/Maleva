@@ -2,6 +2,8 @@ package my.maleva.api.module.rti.service.impl;
 
 import my.maleva.api.module.rti.dto.RTIJobLookupDto;
 import my.maleva.api.module.rti.dto.RTIMasterDto;
+import my.maleva.api.module.rti.dto.RtiSummaryResponseDto;
+import java.time.LocalDateTime;
 import my.maleva.api.module.rti.entity.RTIMaster;
 import my.maleva.api.module.rti.mapper.RTIMasterMapper;
 import my.maleva.api.module.rti.repository.RTIMasterRepository;
@@ -683,5 +685,9 @@ public class RTIMasterServiceImpl implements RTIMasterService {
                     employeeId, fromDate, toDate);
                     
         return rtiMasterRepository.findRtiViewDetails(fromDate, toDate, employeeId);
+    }
+    @Override
+    public List<RtiSummaryResponseDto> getRtiSummaryByDateRange(Integer companyRefId, LocalDateTime fromDate, LocalDateTime toDate, Integer driverRefId) {
+        return rtiMasterRepository.getRtiSummaryByDateRange(companyRefId, fromDate, toDate, driverRefId);
     }
 }
