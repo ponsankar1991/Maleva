@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import my.maleva.api.common.exception.InvalidDateRangeException;
+import my.maleva.api.integration.llm.LlmException;
 import my.maleva.api.common.exception.DateRangeTooLargeException;
 import my.maleva.api.common.exception.RtiJobWiseQueryException;
 
@@ -33,6 +34,26 @@ public class GlobalExceptionHandler {
         ApiError err = new ApiError(Instant.now(), HttpStatus.NOT_FOUND.value(), "Not Found", ex.getMessage(),
                 ((ServletWebRequest) request).getRequest().getRequestURI(), null);
         return new ResponseEntity<>(err, HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * AI provider failures. The status tells the screen what to do: 503 means
+     * "configure a key or pick another provider", 400 means "this provider
+     * cannot read that file", 429/502/504 mean "try again or switch provider".
+     */
+    @ExceptionHandler(LlmException.class)
+    public ResponseEntity<ApiError> handleLlm(LlmException ex, WebRequest request) {
+        HttpStatus status = switch (ex.getKind()) {
+            case DISABLED, NOT_CONFIGURED -> HttpStatus.SERVICE_UNAVAILABLE;
+            case UNSUPPORTED_INPUT -> HttpStatus.BAD_REQUEST;
+            case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
+            case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
+            default -> HttpStatus.BAD_GATEWAY;
+        };
+        logger.warn("LLM call failed (provider={}, kind={}): {}", ex.getProviderKey(), ex.getKind(), ex.getMessage());
+        ApiError err = new ApiError(Instant.now(), status.value(), "AI provider error", ex.getMessage(),
+                ((ServletWebRequest) request).getRequest().getRequestURI(), null);
+        return new ResponseEntity<>(err, status);
     }
 
     @ExceptionHandler(InvalidRequestException.class)

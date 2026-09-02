@@ -3,6 +3,8 @@ rem Wialon GPS integration (token taken from the legacy Common/gpsapilist.cs acc
 set WIALON_ENABLED=true
 set WIALON_TOKEN=bcf761fd35a8ddcb42c042d48c8bcb95702666AF9C6669DBEA5935A50FD26A59D7E9C8CE
 set WIALON_SYNC_ENABLED=true
+set GEMINI_API_KEY=AIzaSyBmV6duPpyLlL-HywZZeA7dBrZ5Z9l8db4
+set LLM_DEFAULT_PROVIDER=gemini
 
 .\mvnw.cmd spring-boot:run
 rem java -jar target\api-0.0.1-SNAPSHOT.war

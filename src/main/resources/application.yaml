@@ -203,3 +203,95 @@ wialon:
   sync:
     enabled: ${WIALON_SYNC_ENABLED:false}
     cron: ${WIALON_SYNC_CRON:0 0 */6 * * *}
+
+
+# ---------------------------------------------------------------------------
+# AI / LLM providers (integration/llm). The AI Settings screen lets an admin
+# pick the active provider per company from this list; keys come from env.
+# type: claude (official SDK) | openai-compatible (DeepSeek, Ollama, Groq,
+# Gemini, OpenRouter, OpenAI...) | stub (sample data, no model called).
+# ---------------------------------------------------------------------------
+llm:
+  enabled: ${LLM_ENABLED:true}
+  default-provider: ${LLM_DEFAULT_PROVIDER:claude}
+  # comma-separated provider keys tried in order when the chosen one fails; blank = none
+  fallback-providers: ${LLM_FALLBACK_PROVIDERS:}
+  log-prompts: false
+  call-log-size: 200
+  # per-task overrides from config, e.g. { bill-extraction: ollama }; the screen setting wins
+  tasks: {}
+  providers:
+    claude:
+      type: claude
+      label: Claude (Anthropic)
+      api-key: ${ANTHROPIC_API_KEY:}
+      model: ${LLM_CLAUDE_MODEL:claude-opus-5}
+      effort: ${LLM_CLAUDE_EFFORT:medium}
+      max-tokens: 8192
+      timeout-seconds: 300
+      supports-vision: true
+      supports-pdf: true
+      note: Best accuracy on scanned and handwritten bills. Pay per use (about 2 US cents per one-page bill), no free tier.
+    ollama:
+      type: openai-compatible
+      label: Ollama (local, free)
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
+      require-api-key: false
+      model: ${OLLAMA_MODEL:qwen3-vl:4b}
+      supports-vision: true
+      json-mode: json_object
+      max-tokens: 4096
+      timeout-seconds: 600
+      free: true
+      note: Runs on this machine, nothing leaves the network. Install Ollama and run "ollama pull qwen3-vl:4b". Slow without a GPU, lower accuracy than Claude.
+    deepseek:
+      type: openai-compatible
+      label: DeepSeek
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model: ${DEEPSEEK_MODEL:deepseek-v4-flash}
+      vision-model: ${DEEPSEEK_VISION_MODEL:deepseek-v4-flash-vision-exp}
+      supports-vision: true
+      json-mode: json_object
+      note: Very cheap but not free (prepaid balance). Data is stored in China and may be used for training - avoid for sensitive documents.
+    groq:
+      type: openai-compatible
+      label: Groq (free tier)
+      base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+      api-key: ${GROQ_API_KEY:}
+      model: ${GROQ_MODEL:openai/gpt-oss-20b}
+      vision-model: ${GROQ_VISION_MODEL:qwen/qwen3.6-27b}
+      supports-vision: true
+      json-mode: json_object
+      free: true
+      note: Free tier of 30 requests/min and 1000/day. Groq does not train on your data.
+    gemini:
+      type: openai-compatible
+      label: Google Gemini (free tier)
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+      supports-vision: true
+      json-mode: json_object
+      free: true
+      note: Free tier exists, but Google may use free-tier prompts to improve its products and humans may review them. Use a paid key for real bills.
+    openrouter:
+      type: openai-compatible
+      label: OpenRouter (free models)
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      api-key: ${OPENROUTER_API_KEY:}
+      model: ${OPENROUTER_MODEL:z-ai/glm-5.2:free}
+      vision-model: ${OPENROUTER_VISION_MODEL:google/gemma-4-31b-it:free}
+      supports-vision: true
+      supports-pdf: true
+      json-mode: json_object
+      free: true
+      headers:
+        "[HTTP-Referer]": https://maleva.mydriverszone.com
+        "[X-OpenRouter-Title]": Maleva ERP
+      note: Many free models behind one key (20 requests/min, 50/day). Free models may be logged by the upstream provider.
+    stub:
+      type: stub
+      label: Stub (sample data, no AI)
+      free: true
+      note: Returns built-in sample data so screens can be tested without any API key. Never use for real bills.

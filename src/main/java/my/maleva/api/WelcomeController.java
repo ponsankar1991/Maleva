@@ -10,7 +10,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 public class WelcomeController {
-
     @GetMapping("/welcome")
     public ResponseEntity<?> welcome() {
         return ResponseEntity.ok(Map.of("message", "Welcome to Maleva API"));
