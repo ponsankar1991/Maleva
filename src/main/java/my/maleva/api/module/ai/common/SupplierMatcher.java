@@ -1,6 +1,5 @@
-package my.maleva.api.module.ai.billextraction.service.impl;
+package my.maleva.api.module.ai.common;
 
-import my.maleva.api.module.ai.billextraction.dto.ExtractedBill;
 import my.maleva.api.module.supplier.entity.Supplier;
 
 import java.util.ArrayList;
@@ -13,17 +12,17 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Matches the supplier name printed on a bill to the supplier master.
+ * Matches the supplier name printed on a document to the supplier master.
  * Registration / GST / SST / TIN numbers win outright; otherwise names are
  * compared after stripping legal suffixes (SDN BHD, BERHAD, PLT...).
  */
-final class SupplierMatcher {
+public final class SupplierMatcher {
 
-    record Match(Supplier supplier, double score) {
+    public record Match(Supplier supplier, double score) {
     }
 
-    static final double ACCEPT_SCORE = 0.8;
-    static final double AMBIGUITY_GAP = 0.05;
+    public static final double ACCEPT_SCORE = 0.8;
+    public static final double AMBIGUITY_GAP = 0.05;
 
     private static final Set<String> LEGAL_SUFFIXES = Set.of(
             "SDN", "BHD", "BERHAD", "PLT", "LLP", "LTD", "LIMITED", "PTE", "INC", "CO", "M", "THE");
@@ -31,7 +30,7 @@ final class SupplierMatcher {
     private SupplierMatcher() {
     }
 
-    static String normalize(String name) {
+    public static String normalize(String name) {
         if (name == null) {
             return "";
         }
@@ -50,11 +49,11 @@ final class SupplierMatcher {
         return sb.toString();
     }
 
-    static String normalizeId(String id) {
+    public static String normalizeId(String id) {
         return id == null ? "" : id.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
     }
 
-    static double nameScore(String a, String b) {
+    public static double nameScore(String a, String b) {
         if (a.isEmpty() || b.isEmpty()) {
             return 0;
         }
@@ -75,12 +74,11 @@ final class SupplierMatcher {
         return 0.8 * ta.size() / union.size();
     }
 
-    static List<Match> rank(ExtractedBill.ExtractedSupplier extracted, List<Supplier> suppliers) {
-        String name = normalize(extracted == null ? null : extracted.getName());
+    public static List<Match> rank(SupplierHint hint, List<Supplier> suppliers) {
+        String name = normalize(hint == null ? null : hint.name());
         Set<String> ids = new LinkedHashSet<>();
-        if (extracted != null) {
-            for (String id : new String[]{extracted.getRegistrationNo(), extracted.getGstNo(),
-                    extracted.getSstNo(), extracted.getTinNo()}) {
+        if (hint != null) {
+            for (String id : new String[]{hint.registrationNo(), hint.gstNo(), hint.sstNo(), hint.tinNo()}) {
                 String normalized = normalizeId(id);
                 if (normalized.length() >= 5) {
                     ids.add(normalized);
@@ -113,7 +111,7 @@ final class SupplierMatcher {
     }
 
     /** The top match when it is confident and not tied with the runner-up. */
-    static Optional<Match> best(List<Match> ranked) {
+    public static Optional<Match> best(List<Match> ranked) {
         if (ranked.isEmpty()) {
             return Optional.empty();
         }

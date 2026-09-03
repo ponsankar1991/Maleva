@@ -6,6 +6,7 @@ import my.maleva.api.integration.llm.LlmGateway;
 import my.maleva.api.integration.llm.LlmRequest;
 import my.maleva.api.integration.llm.LlmResponse;
 import my.maleva.api.module.accounting.entity.GLAccounts;
+import my.maleva.api.module.ai.common.ExtractionSupport;
 import my.maleva.api.module.accounting.repository.GLAccountsRepository;
 import my.maleva.api.module.ai.billextraction.dto.BillExtractionResponse;
 import my.maleva.api.module.master.entity.PaymentTermsMaster;
@@ -234,20 +235,20 @@ class BillExtractionServiceImplTest {
 
     @Test
     void paymentTermsFallBackToTheDocumentText() {
-        assertThat(BillExtractionServiceImpl.termsFromText("Net 30", terms())).isEqualTo(3);
-        assertThat(BillExtractionServiceImpl.termsFromText("30 DAYS FROM INVOICE", terms())).isEqualTo(3);
-        assertThat(BillExtractionServiceImpl.termsFromText("Cash on delivery", terms())).isEqualTo(4);
-        assertThat(BillExtractionServiceImpl.termsFromText("45 days", terms())).isNull();
-        assertThat(BillExtractionServiceImpl.termsFromText(null, terms())).isNull();
+        assertThat(ExtractionSupport.termsFromText("Net 30", terms())).isEqualTo(3);
+        assertThat(ExtractionSupport.termsFromText("30 DAYS FROM INVOICE", terms())).isEqualTo(3);
+        assertThat(ExtractionSupport.termsFromText("Cash on delivery", terms())).isEqualTo(4);
+        assertThat(ExtractionSupport.termsFromText("45 days", terms())).isNull();
+        assertThat(ExtractionSupport.termsFromText(null, terms())).isNull();
     }
 
     @Test
     void datesInCommonMalaysianLayoutsParse() {
         List<String> warnings = new java.util.ArrayList<>();
-        assertThat(BillExtractionServiceImpl.parseDate("03/04/2026", "d", warnings)).hasToString("2026-04-03");
-        assertThat(BillExtractionServiceImpl.parseDate("2026-04-03T00:00:00", "d", warnings)).hasToString("2026-04-03");
-        assertThat(BillExtractionServiceImpl.parseDate("3 Apr 2026", "d", warnings)).hasToString("2026-04-03");
-        assertThat(BillExtractionServiceImpl.parseDate("not a date", "d", warnings)).isNull();
+        assertThat(ExtractionSupport.parseDate("03/04/2026", "d", warnings)).hasToString("2026-04-03");
+        assertThat(ExtractionSupport.parseDate("2026-04-03T00:00:00", "d", warnings)).hasToString("2026-04-03");
+        assertThat(ExtractionSupport.parseDate("3 Apr 2026", "d", warnings)).hasToString("2026-04-03");
+        assertThat(ExtractionSupport.parseDate("not a date", "d", warnings)).isNull();
         assertThat(warnings).hasSize(1);
     }
 
@@ -265,10 +266,10 @@ class BillExtractionServiceImplTest {
 
     @Test
     void lenientNumbersHandleCurrencyAndSeparators() {
-        assertThat(my.maleva.api.module.ai.billextraction.dto.LenientDecimalDeserializer.parse("RM 1,234.50"))
+        assertThat(my.maleva.api.module.ai.common.LenientDecimalDeserializer.parse("RM 1,234.50"))
                 .isEqualByComparingTo(new BigDecimal("1234.50"));
-        assertThat(my.maleva.api.module.ai.billextraction.dto.LenientDecimalDeserializer.parse("(12.00)"))
+        assertThat(my.maleva.api.module.ai.common.LenientDecimalDeserializer.parse("(12.00)"))
                 .isEqualByComparingTo(new BigDecimal("-12.00"));
-        assertThat(my.maleva.api.module.ai.billextraction.dto.LenientDecimalDeserializer.parse("-")).isNull();
+        assertThat(my.maleva.api.module.ai.common.LenientDecimalDeserializer.parse("-")).isNull();
     }
 }

@@ -1,4 +1,4 @@
-package my.maleva.api.module.ai.billextraction.dto;
+package my.maleva.api.module.ai.common;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;

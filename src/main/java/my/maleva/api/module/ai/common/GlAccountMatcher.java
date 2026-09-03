@@ -1,4 +1,4 @@
-package my.maleva.api.module.ai.billextraction.service.impl;
+package my.maleva.api.module.ai.common;
 
 import my.maleva.api.module.accounting.entity.GLAccounts;
 
@@ -9,13 +9,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /** Resolves the account code (or name) a model suggests to a GLAccounts row. */
-final class GlAccountMatcher {
+public final class GlAccountMatcher {
 
     private final Map<String, GLAccounts> byCode = new HashMap<>();
     private final Map<String, GLAccounts> byCompactCode = new HashMap<>();
     private final Map<String, GLAccounts> byName = new HashMap<>();
 
-    GlAccountMatcher(List<GLAccounts> accounts) {
+    public GlAccountMatcher(List<GLAccounts> accounts) {
         for (GLAccounts account : accounts) {
             if (account == null || account.getRowIndex() == null) {
                 continue;
@@ -32,7 +32,7 @@ final class GlAccountMatcher {
         }
     }
 
-    Optional<GLAccounts> match(String codeOrName) {
+    public Optional<GLAccounts> match(String codeOrName) {
         String value = norm(codeOrName);
         if (value.isEmpty()) {
             return Optional.empty();

@@ -15,6 +15,9 @@ import my.maleva.api.module.accounting.repository.GLAccountsRepository;
 import my.maleva.api.module.ai.billextraction.dto.BillExtractionResponse;
 import my.maleva.api.module.ai.billextraction.dto.ExtractedBill;
 import my.maleva.api.module.ai.billextraction.service.BillExtractionService;
+import my.maleva.api.module.ai.common.ExtractionSupport;
+import my.maleva.api.module.ai.common.GlAccountMatcher;
+import my.maleva.api.module.ai.common.SupplierMatcher;
 import my.maleva.api.module.master.entity.PaymentTermsMaster;
 import my.maleva.api.module.payment.repository.PaymentTermsMasterRepository;
 import my.maleva.api.module.supplier.entity.Supplier;
@@ -22,19 +25,21 @@ import my.maleva.api.module.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import static my.maleva.api.module.ai.common.ExtractionSupport.currency;
+import static my.maleva.api.module.ai.common.ExtractionSupport.daysFor;
+import static my.maleva.api.module.ai.common.ExtractionSupport.format;
+import static my.maleva.api.module.ai.common.ExtractionSupport.parseDate;
+import static my.maleva.api.module.ai.common.ExtractionSupport.scale;
+import static my.maleva.api.module.ai.common.ExtractionSupport.termsFromText;
+import static my.maleva.api.module.ai.common.ExtractionSupport.trimToNull;
 
 /**
  * Reads a bill with the configured AI provider, then resolves what it read
@@ -46,38 +51,11 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class BillExtractionServiceImpl implements BillExtractionService {
 
-    static final long MAX_BYTES = 10L * 1024 * 1024;
-
     /** Mirrors the Bills form's fixed description list. */
     static final List<String> DESCRIPTION_CATEGORIES = List.of(
             "HIRE PURCHASE", "SALARY", "OTHER EXPENSES", "DIRECTOR EXPENSES", "TENANCY", "MAINTENANCE",
             "UTILITY", "VENDOR", "BACKLOG", "FUEL", "TOLL", "CLAIM", "KASTAM DUTY", "BOAT PAYMENT",
             "ADVANCE", "WAGES");
-
-    private static final Map<String, String> MEDIA_BY_EXTENSION = Map.of(
-            "pdf", LlmAttachment.APPLICATION_PDF,
-            "png", "image/png",
-            "jpg", "image/jpeg",
-            "jpeg", "image/jpeg",
-            "webp", "image/webp",
-            "gif", "image/gif");
-
-    private static final List<DateTimeFormatter> DATE_FORMATS = List.of(
-            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
-            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
-            DateTimeFormatter.ofPattern("d/M/yyyy"),
-            DateTimeFormatter.ofPattern("dd-MM-yyyy"),
-            DateTimeFormatter.ofPattern("d-M-yyyy"),
-            DateTimeFormatter.ofPattern("dd.MM.yyyy"),
-            DateTimeFormatter.ofPattern("yyyy/MM/dd"),
-            DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH),
-            DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH),
-            DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH),
-            DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH),
-            DateTimeFormatter.ofPattern("dd/MM/yy"));
-
-    private static final Pattern DAYS = Pattern.compile("(\\d{1,3})\\s*(?:DAYS?|D\\b)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern NET = Pattern.compile("NET\\s*(\\d{1,3})", Pattern.CASE_INSENSITIVE);
 
     private final LlmGateway gateway;
     private final ObjectMapper objectMapper;
@@ -90,7 +68,7 @@ public class BillExtractionServiceImpl implements BillExtractionService {
         if (companyRefId == null) {
             throw new InvalidRequestException("companyId is required");
         }
-        LlmAttachment attachment = toAttachment(file);
+        LlmAttachment attachment = ExtractionSupport.toAttachment(file);
 
         List<GLAccounts> accounts = glAccountsRepository.findByCompanyAndExpense(companyRefId, 0);
         List<Supplier> suppliers = supplierRepository.findByCompanyRefIdAndActive(companyRefId, 1);
@@ -121,35 +99,6 @@ public class BillExtractionServiceImpl implements BillExtractionService {
         return result;
     }
 
-    static LlmAttachment toAttachment(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new InvalidRequestException("Upload a PDF or image of the bill");
-        }
-        if (file.getSize() > MAX_BYTES) {
-            throw new InvalidRequestException("The file is larger than 10 MB");
-        }
-        String name = file.getOriginalFilename() == null || file.getOriginalFilename().isBlank()
-                ? "bill" : file.getOriginalFilename();
-        String extension = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
-        String mediaType = MEDIA_BY_EXTENSION.get(extension);
-        if (mediaType == null && file.getContentType() != null) {
-            String declared = file.getContentType().toLowerCase(Locale.ROOT);
-            if (MEDIA_BY_EXTENSION.containsValue(declared)) {
-                mediaType = declared;
-            } else if (declared.equals("image/jpg")) {
-                mediaType = "image/jpeg";
-            }
-        }
-        if (mediaType == null) {
-            throw new InvalidRequestException("Upload a PDF, PNG, JPG, WEBP or GIF file (got '" + name + "')");
-        }
-        try {
-            return new LlmAttachment(name, mediaType, file.getBytes());
-        } catch (IOException ex) {
-            throw new InvalidRequestException("Could not read the uploaded file: " + ex.getMessage(), ex);
-        }
-    }
-
     BillExtractionResponse assemble(ExtractedBill extracted, LlmResponse response, List<Supplier> suppliers,
                                     List<GLAccounts> accounts, List<PaymentTermsMaster> terms) {
         List<String> warnings = new ArrayList<>();
@@ -161,7 +110,7 @@ public class BillExtractionServiceImpl implements BillExtractionService {
         ExtractedBill.ExtractedSupplier extractedSupplier = extracted.getSupplier() == null
                 ? new ExtractedBill.ExtractedSupplier() : extracted.getSupplier();
         String extractedName = trimToNull(extractedSupplier.getName());
-        List<SupplierMatcher.Match> ranked = SupplierMatcher.rank(extractedSupplier, suppliers);
+        List<SupplierMatcher.Match> ranked = SupplierMatcher.rank(extractedSupplier.toHint(), suppliers);
         Optional<SupplierMatcher.Match> best = SupplierMatcher.best(ranked);
         Integer supplierId = best.map(m -> m.supplier().getId()).orElse(null);
         double confidence = best.map(SupplierMatcher.Match::score)
@@ -316,64 +265,6 @@ public class BillExtractionServiceImpl implements BillExtractionService {
                 .build();
     }
 
-    static Integer termsFromText(String text, List<PaymentTermsMaster> terms) {
-        String value = trimToNull(text);
-        if (value == null || terms.isEmpty()) {
-            return null;
-        }
-        Integer days = null;
-        Matcher net = NET.matcher(value);
-        Matcher plain = DAYS.matcher(value);
-        if (net.find()) {
-            days = Integer.parseInt(net.group(1));
-        } else if (plain.find()) {
-            days = Integer.parseInt(plain.group(1));
-        } else if (value.toUpperCase(Locale.ROOT).contains("CASH") || value.toUpperCase(Locale.ROOT).contains("COD")) {
-            days = 0;
-        }
-        if (days == null) {
-            String upper = value.toUpperCase(Locale.ROOT);
-            for (PaymentTermsMaster term : terms) {
-                if (term.getTermsName() != null && upper.equals(term.getTermsName().trim().toUpperCase(Locale.ROOT))) {
-                    return term.getId();
-                }
-            }
-            return null;
-        }
-        for (PaymentTermsMaster term : terms) {
-            if (term.getTDays() != null && term.getTDays().equals(days)) {
-                return term.getId();
-            }
-        }
-        return null;
-    }
-
-    static Integer daysFor(Integer paymentTermsId, List<PaymentTermsMaster> terms) {
-        for (PaymentTermsMaster term : terms) {
-            if (paymentTermsId.equals(term.getId())) {
-                return term.getTDays();
-            }
-        }
-        return null;
-    }
-
-    static LocalDate parseDate(String raw, String label, List<String> warnings) {
-        String value = trimToNull(raw);
-        if (value == null) {
-            return null;
-        }
-        String candidate = value.length() > 10 && value.charAt(10) == 'T' ? value.substring(0, 10) : value;
-        for (DateTimeFormatter format : DATE_FORMATS) {
-            try {
-                return LocalDate.parse(candidate, format);
-            } catch (DateTimeParseException ignored) {
-                // try the next layout
-            }
-        }
-        warnings.add("Could not read the " + label + " '" + value + "'");
-        return null;
-    }
-
     static String category(String raw) {
         String value = trimToNull(raw);
         if (value == null) {
@@ -386,33 +277,5 @@ public class BillExtractionServiceImpl implements BillExtractionService {
             }
         }
         return null;
-    }
-
-    static String currency(String raw) {
-        String value = trimToNull(raw);
-        if (value == null) {
-            return "MYR";
-        }
-        String upper = value.toUpperCase(Locale.ROOT).replaceAll("[^A-Z]", "");
-        if (upper.equals("RM") || upper.isEmpty()) {
-            return "MYR";
-        }
-        return upper.length() > 3 ? upper.substring(0, 3) : upper;
-    }
-
-    static BigDecimal scale(BigDecimal value) {
-        return value == null ? null : value.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    static String format(LocalDate date) {
-        return date == null ? null : date.toString();
-    }
-
-    static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() || trimmed.equalsIgnoreCase("null") ? null : trimmed;
     }
 }

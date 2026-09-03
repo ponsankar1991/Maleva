@@ -1,4 +1,4 @@
-package my.maleva.api.module.ai.billextraction.dto;
+package my.maleva.api.module.ai.purchaseorder.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -14,41 +14,49 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The JSON the model is asked to return. Deliberately loose: every field is
- * optional and numbers tolerate currency symbols, because the service
- * validates and resolves the values afterwards.
+ * The JSON the model returns for a supplier document that becomes a purchase
+ * order: a quotation, proforma, invoice or delivery order. Every field is
+ * optional; the service validates and resolves afterwards.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class ExtractedBill {
+public class ExtractedPurchaseOrder {
 
+    private String documentType;
     private ExtractedSupplier supplier;
-    private String invoiceNo;
-    private String invoiceDate;
+    private String documentNo;
+    private String documentDate;
+    private String orderDate;
     private String dueDate;
+    private String deliveryDate;
+    private String purchaseOrderNo;
     private String currencyCode;
     private String paymentTermsText;
-    private String purchaseOrderNo;
+    private String jobNo;
+    private String vehiclePlateNo;
+    private String driverName;
+    private String loadingVessel;
+    private String offVessel;
+    private String descriptionCategory;
 
     @JsonDeserialize(using = LenientDecimalDeserializer.class)
     private BigDecimal subtotal;
     @JsonDeserialize(using = LenientDecimalDeserializer.class)
-    private BigDecimal taxAmount;
-    @JsonDeserialize(using = LenientDecimalDeserializer.class)
     private BigDecimal discountAmount;
+    @JsonDeserialize(using = LenientDecimalDeserializer.class)
+    private BigDecimal taxAmount;
     @JsonDeserialize(using = LenientDecimalDeserializer.class)
     private BigDecimal roundingAdjustment;
     @JsonDeserialize(using = LenientDecimalDeserializer.class)
     private BigDecimal totalAmount;
 
-    private String descriptionCategory;
-
     @Builder.Default
     private List<ExtractedLine> lines = new ArrayList<>();
 
+    private String remarks;
     private String notes;
 
     @Data
@@ -78,10 +86,18 @@ public class ExtractedBill {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ExtractedLine {
         private String description;
+        private String itemCode;
+        private String itemName;
+        private String serialNo;
         @JsonDeserialize(using = LenientDecimalDeserializer.class)
         private BigDecimal quantity;
+        private String uom;
         @JsonDeserialize(using = LenientDecimalDeserializer.class)
         private BigDecimal unitPrice;
+        @JsonDeserialize(using = LenientDecimalDeserializer.class)
+        private BigDecimal discountPercent;
+        @JsonDeserialize(using = LenientDecimalDeserializer.class)
+        private BigDecimal discountAmount;
         @JsonDeserialize(using = LenientDecimalDeserializer.class)
         private BigDecimal taxPercent;
         @JsonDeserialize(using = LenientDecimalDeserializer.class)
@@ -89,5 +105,6 @@ public class ExtractedBill {
         @JsonDeserialize(using = LenientDecimalDeserializer.class)
         private BigDecimal amount;
         private String accountCode;
+        private String remarks;
     }
 }

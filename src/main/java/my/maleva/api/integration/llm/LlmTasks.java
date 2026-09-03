@@ -6,6 +6,7 @@ import java.util.List;
 public final class LlmTasks {
 
     public static final String BILL_EXTRACTION = "bill-extraction";
+    public static final String PURCHASE_ORDER_EXTRACTION = "purchase-order-extraction";
     public static final String CONNECTION_TEST = "connection-test";
 
     public record TaskDef(String key, String label) {
@@ -13,7 +14,8 @@ public final class LlmTasks {
 
     /** Tasks the settings screen lets an admin override per company. */
     public static final List<TaskDef> CONFIGURABLE = List.of(
-            new TaskDef(BILL_EXTRACTION, "Bill / receipt reading"));
+            new TaskDef(BILL_EXTRACTION, "Bill / receipt reading"),
+            new TaskDef(PURCHASE_ORDER_EXTRACTION, "Purchase order document reading"));
 
     private LlmTasks() {
     }
