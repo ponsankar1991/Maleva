@@ -76,7 +76,7 @@ public interface DashboardService {
     /**
      * Get employee rules/subordinates
      */
-    List<Object> getEmployeeRules(Integer comId, Integer employeeId);
+    List<EmployeeRuleDto> getEmployeeRules(Integer comId, Integer employeeId);
 
     /**
      * Get employee performance (pivot)

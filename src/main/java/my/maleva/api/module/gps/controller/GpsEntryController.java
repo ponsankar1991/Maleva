@@ -5,6 +5,7 @@ import my.maleva.api.common.dto.ApiResponse;
 import my.maleva.api.module.gps.dto.GpsEngineHoursDto;
 import my.maleva.api.module.gps.dto.GpsFuelFillingDto;
 import my.maleva.api.module.gps.dto.GpsFuelMatchDto;
+import my.maleva.api.module.gps.dto.GpsReportSyncResult;
 import my.maleva.api.module.gps.dto.GpsSpeedReportDto;
 import my.maleva.api.module.gps.dto.GpsSyncResultDto;
 import my.maleva.api.module.gps.service.FuelGpsMatchService;
@@ -13,6 +14,7 @@ import my.maleva.api.module.gps.service.GpsSyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * GPS data captured from Wialon.
@@ -156,6 +159,23 @@ public class GpsEntryController {
         GpsSyncResultDto result = (from == null || to == null)
                 ? syncService.sync()
                 : syncService.sync(from, to);
+
+        // Nothing executed at all - integration switched off, another sync holding
+        // the lock, or the login itself failed. That is not a 200: the caller must
+        // see why, instead of the "GPS data fetched" the screen used to show.
+        boolean nothingRan = result.getReports().stream()
+                .noneMatch(r -> "OK".equals(r.getStatus()));
+        if (nothingRan) {
+            String reason = result.getReports().stream()
+                    .map(GpsReportSyncResult::getMessage)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse("no report ran");
+            logger.warn("Manual GPS sync did not run: {}", reason);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(ApiResponse.error("GPS sync did not run: " + reason,
+                            HttpStatus.SERVICE_UNAVAILABLE.value()));
+        }
 
         return ResponseEntity.ok(result.isSuccess()
                 ? ApiResponse.success(result, "GPS sync completed")

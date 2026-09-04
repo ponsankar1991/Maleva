@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -408,16 +407,22 @@ public class GpsSyncServiceImpl implements GpsSyncService {
     /**
      * Converts the window bounds to the epoch seconds Wialon expects.
      *
-     * With legacyEpoch enabled this reproduces the .NET {@code DateTime.Now -
-     * 1970-01-01}, which treated local time as if it were UTC and therefore
-     * shifted the interval by the server's offset. It is kept as the default so
-     * the new sync selects exactly the same data as the old job; set
-     * {@code wialon.legacy-epoch=false} to send a true UTC instant instead.
+     * Wialon treats {@code interval.from/to} as true UTC instants, so a bound
+     * given in Malaysian wall-clock time must be shifted by the configured
+     * offset ({@code wialon.locale.tz-base-seconds}). The configured offset is
+     * used rather than the JVM default zone so the result does not depend on
+     * where the server happens to run.
+     *
+     * With legacyEpoch enabled this instead reproduces the .NET
+     * {@code DateTime.Now - 1970-01-01}, which sent local time as if it were
+     * UTC: an interval eight hours late, which is why the old job never saw
+     * fillings between midnight and 08:00.
      */
     private long toEpochSeconds(LocalDateTime value) {
-        return properties.isLegacyEpoch()
-                ? value.toEpochSecond(ZoneOffset.UTC)
-                : value.atZone(ZoneId.systemDefault()).toEpochSecond();
+        if (properties.isLegacyEpoch()) {
+            return value.toEpochSecond(ZoneOffset.UTC);
+        }
+        return value.toEpochSecond(ZoneOffset.ofTotalSeconds(properties.getLocale().getTzBaseSeconds()));
     }
 
     /** Mirrors the legacy pause after set_locale before the first report runs. */
@@ -438,7 +443,13 @@ public class GpsSyncServiceImpl implements GpsSyncService {
                                     LocalDateTime from,
                                     LocalDateTime to,
                                     List<GpsReportSyncResult> results) {
-        boolean success = results.stream().noneMatch(r -> STATUS_FAILED.equals(r.getStatus()));
+        // A run in which nothing executed - integration disabled, another sync
+        // holding the lock, every report switched off - is not a success. It used
+        // to be, and the fuel entry screen told the user "GPS data fetched" while
+        // the backend had done nothing.
+        boolean failed = results.stream().anyMatch(r -> STATUS_FAILED.equals(r.getStatus()));
+        boolean ran = results.stream().anyMatch(r -> STATUS_OK.equals(r.getStatus()));
+        boolean success = ran && !failed;
         return GpsSyncResultDto.builder()
                 .startedAt(startedAt)
                 .finishedAt(LocalDateTime.now())

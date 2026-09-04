@@ -184,12 +184,12 @@ public class DashboardController {
      */
     @GetMapping("/employee-rules/{comId}")
     @PermitAll
-    public ResponseEntity<ApiResponse<List<Object>>> getEmployeeRules(
+    public ResponseEntity<ApiResponse<List<EmployeeRuleDto>>> getEmployeeRules(
             @PathVariable Integer comId,
             @RequestParam(required = false) Integer employeeId) {
 
         log.info("GET /api/dashboard/employee-rules/{}", comId);
-        List<Object> data = dashboardService.getEmployeeRules(comId, employeeId);
+        List<EmployeeRuleDto> data = dashboardService.getEmployeeRules(comId, employeeId);
         return ResponseEntity.ok(ApiResponse.success("Employee rules fetched successfully", data));
     }
 

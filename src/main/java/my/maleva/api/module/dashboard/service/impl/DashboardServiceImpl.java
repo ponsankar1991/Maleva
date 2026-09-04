@@ -283,6 +283,12 @@ public class DashboardServiceImpl implements DashboardService {
             row = new DashboardRepository.ForwardingSummaryRow();
         }
 
+        // Legacy read two result sets from one GetFWData call. The period block comes from
+        // RT_ForwardingReport and takes no date range - the screen's pickers move only the
+        // K1/K2/K3/K8 block below.
+        DashboardRepository.ForwardingPeriodRow period =
+                dashboardRepository.getForwardingPeriodSummary(comId);
+
         log.info("Forwarding data - K1: {}/{}/{}, K2: {}/{}/{}, K3: {}/{}/{}, K8: {}/{}/{}",
             row.K1Count, row.K1Release, row.K1WithRelease,
             row.K2Count, row.K2Release, row.K2WithRelease,
@@ -290,6 +296,18 @@ public class DashboardServiceImpl implements DashboardService {
             row.K8Count, row.K8Release, row.K8WithRelease);
 
         return ForwardingDataDto.builder()
+                .todayCount(period.TodayCount)
+                .todayRelease(period.TodayRelease)
+                .todayWithRelease(period.TodayWithRelease)
+                .yesterdayCount(period.YesterdayCount)
+                .yesterdayRelease(period.YesterdayRelease)
+                .yesterdayWithRelease(period.YesterdayWithRelease)
+                .weekCount(period.WeekCount)
+                .weekRelease(period.WeekRelease)
+                .weekWithRelease(period.WeekWithRelease)
+                .monthCount(period.MonthCount)
+                .monthRelease(period.MonthRelease)
+                .monthWithRelease(period.MonthWithRelease)
                 .k1Count(row.K1Count)
                 .k1Release(row.K1Release)
                 .k1WithRelease(row.K1WithRelease)
@@ -320,9 +338,14 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public List<Object> getEmployeeRules(Integer comId, Integer employeeId) {
-        // This needs RulesTypeMaster query
-        return Collections.emptyList();
+    public List<EmployeeRuleDto> getEmployeeRules(Integer comId, Integer employeeId) {
+        log.info("Fetching employee rules for comId={}, employeeId={}", comId, employeeId);
+        try {
+            return dashboardRepository.getEmployeeRules(comId, employeeId);
+        } catch (Exception e) {
+            log.error("Error fetching employee rules: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     @Override
@@ -406,8 +429,13 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public List<PendingPaymentDto.UnreleasedNumberDto> getK8UnreleasedNumbers(Integer comId) {
-        // This needs separate query
-        return Collections.emptyList();
+        log.info("Fetching K8 unreleased numbers for comId={}", comId);
+        try {
+            return dashboardRepository.getK8UnreleasedNumbers(comId);
+        } catch (Exception e) {
+            log.error("Error fetching K8 unreleased numbers: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     // ========== INVOICE CHECK ==========

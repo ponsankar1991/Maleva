@@ -40,13 +40,20 @@ public class WialonProperties {
 
     /**
      * Legacy epoch behaviour. The .NET job computed {@code DateTime.Now - 1970-01-01},
-     * i.e. it sent LOCAL time as if it were UTC. When true this is reproduced exactly so
-     * the new sync selects the same interval as the old job. Set false to send true UTC.
+     * i.e. it sent LOCAL time as if it were UTC. Wialon treats the interval bounds as
+     * true UTC instants (verified 2026-09-03: a 00:00-08:00 window sent this way returned
+     * fillings stamped 14:13-15:15 local), so the legacy job actually asked for a window
+     * shifted eight hours late and missed everything between midnight and 08:00. Off by
+     * default; set true only to reproduce the old job's interval exactly.
      */
-    private boolean legacyEpoch = true;
+    private boolean legacyEpoch = false;
 
-    /** Pause after setting the locale, mirroring the legacy Thread.Sleep(60s). */
-    private int localeSettleSeconds = 60;
+    /**
+     * Pause after setting the locale, mirroring the legacy Thread.Sleep(60s). Wialon
+     * applies set_locale synchronously - a report executed immediately afterwards comes
+     * back with correctly localised timestamps - so the default is no pause.
+     */
+    private int localeSettleSeconds = 0;
 
     private Locale locale = new Locale();
     private Reports reports = new Reports();

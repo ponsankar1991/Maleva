@@ -33,7 +33,7 @@ spring:
   datasource:
     # Default JDBC URL includes encrypt=true and trustServerCertificate=true to MalevanewDemo ,LiveMaleva2, avoid SSL certificate path errors
     # For production, prefer to set trustServerCertificate=false and import the DemoMaleva server certificate into the JVM truststore
-    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=MalevanewDemo;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=30000}
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=LiveMaleva2;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=30000}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
     password: ${SPRING_DATASOURCE_PASSWORD:Kassamy@123}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
@@ -162,16 +162,18 @@ rti:
 # The token MUST come from the WIALON_TOKEN environment variable - never commit it.
 # ---------------------------------------------------------------------------
 wialon:
-  enabled: ${WIALON_ENABLED:false}
+  # on by default: the token is the real credential, and a missing token fails
+  # the sync with a clear message instead of silently doing nothing
+  enabled: ${WIALON_ENABLED:true}
   base-url: ${WIALON_BASE_URL:https://hst-api.wialon.com/wialon/ajax.html}
   token: ${WIALON_TOKEN:}
   company-ref-id: ${WIALON_COMPANY_REF_ID:6}
   window-hours: 12
   timeout-seconds: 300
-  # true reproduces the legacy DateTime.Now-as-UTC epoch, so the same interval
-  # is selected as the old job. Set false to send a true UTC instant.
-  legacy-epoch: true
-  locale-settle-seconds: 60
+  # Wialon reads the interval bounds as true UTC instants. The legacy job sent local
+  # time as if it were UTC, i.e. a window eight hours late that missed 00:00-08:00.
+  legacy-epoch: false
+  locale-settle-seconds: 0
 
   locale:
     tz-base-seconds: 28800   # +08:00 Malaysia
@@ -201,7 +203,7 @@ wialon:
       table: unit_engine_hours
 
   sync:
-    enabled: ${WIALON_SYNC_ENABLED:false}
+    enabled: ${WIALON_SYNC_ENABLED:true}
     cron: ${WIALON_SYNC_CRON:0 0 */6 * * *}
 
 

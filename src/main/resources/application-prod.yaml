@@ -159,16 +159,16 @@ rti:
 # ---------------------------------------------------------------------------
 
 wialon:
-  enabled: ${WIALON_ENABLED:false}
+  enabled: ${WIALON_ENABLED:True}
   base-url: ${WIALON_BASE_URL:https://hst-api.wialon.com/wialon/ajax.html}
   token: ${WIALON_TOKEN:}
   company-ref-id: ${WIALON_COMPANY_REF_ID:6}
   window-hours: 12
   timeout-seconds: 300
-  # true reproduces the legacy DateTime.Now-as-UTC epoch, so the same interval
-  # is selected as the old job. Set false to send a true UTC instant.
-  legacy-epoch: true
-  locale-settle-seconds: 60
+  # Wialon reads the interval bounds as true UTC instants. The legacy job sent local
+  # time as if it were UTC, i.e. a window eight hours late that missed 00:00-08:00.
+  legacy-epoch: false
+  locale-settle-seconds: 0
 
   locale:
     tz-base-seconds: 28800   # +08:00 Malaysia
@@ -198,7 +198,8 @@ wialon:
       table: unit_engine_hours
 
   sync:
-    enabled: ${WIALON_SYNC_ENABLED:false}
+    # the legacy Quartz GPSJob always ran; a false default left FuelFillings empty
+    enabled: ${WIALON_SYNC_ENABLED:true}
     cron: ${WIALON_SYNC_CRON:0 0 */6 * * *}
 
 

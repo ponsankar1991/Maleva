@@ -1943,6 +1943,192 @@ public class DashboardRepository {
 
         MapSqlParameterSource params = new MapSqlParameterSource("comId", comId);
 
-        return namedJdbcTemplate.query(sql, params, new BeanPropertyRowMapper<>(my.maleva.api.module.dashboard.dto.PendingPaymentDto.UnreleasedNumberDto.class));
+        return namedJdbcTemplate.query(sql, params, UNRELEASED_NUMBER_MAPPER);
+    }
+
+    /**
+     * K8 unreleased SMK numbers - the right-hand grid of the Forwarding dashboard.
+     *
+     * <p>Legacy: {@code DashBoardServices.LoadK8UnReleaseNo}. Same shape as
+     * {@link #getUnreleasedNumbers} but {@code Forwarding = 'K8'}, and it additionally
+     * carries the per-leg S1 remark ({@code Forwarding1S1} / {@code Forwarding2S1} /
+     * {@code Forwarding3S1}), which the grid shows in its "S1" column.
+     *
+     * <p>The {@code >= '2026-03-11'} floor is the legacy cut-over date, hardcoded in the
+     * original query. Unlike {@link #getUnreleasedNumbers}, each leg here filters on its
+     * own date column, which is what legacy does.
+     */
+    public List<my.maleva.api.module.dashboard.dto.PendingPaymentDto.UnreleasedNumberDto> getK8UnreleasedNumbers(Integer comId) {
+        String sql = """
+                SELECT * FROM (
+                    SELECT Id, ForwardingSMKNo AS BillNoDisplay,
+                           DATEDIFF(day, ForwardingDate, GETDATE()) AS DayCount,
+                           Forwarding1S1 AS Remarks
+                    FROM SaleOrderMaster WITH(NOLOCK)
+                    WHERE ISNULL(ForwardingSMKNo, '') != ''
+                      AND ISNULL(ForwardingExitRef, '') = ''
+                      AND Active = 1
+                      AND CompanyRefId = :comId
+                      AND Forwarding = 'K8'
+                      AND ForwardingDate >= '2026-03-11'
+                    UNION ALL
+                    SELECT Id, ForwardingSMKNo2 AS BillNoDisplay,
+                           DATEDIFF(day, Forwarding2Date, GETDATE()) AS DayCount,
+                           Forwarding2S1 AS Remarks
+                    FROM SaleOrderMaster WITH(NOLOCK)
+                    WHERE ISNULL(ForwardingSMKNo2, '') != ''
+                      AND ISNULL(ForwardingExitRef2, '') = ''
+                      AND Active = 1
+                      AND CompanyRefId = :comId
+                      AND Forwarding2 = 'K8'
+                      AND Forwarding2Date >= '2026-03-11'
+                    UNION ALL
+                    SELECT Id, ForwardingSMKNo3 AS BillNoDisplay,
+                           DATEDIFF(day, Forwarding3Date, GETDATE()) AS DayCount,
+                           Forwarding3S1 AS Remarks
+                    FROM SaleOrderMaster WITH(NOLOCK)
+                    WHERE ISNULL(ForwardingSMKNo3, '') != ''
+                      AND ISNULL(ForwardingExitRef3, '') = ''
+                      AND Active = 1
+                      AND CompanyRefId = :comId
+                      AND Forwarding3 = 'K8'
+                      AND Forwarding3Date >= '2026-03-11'
+                ) AS Result
+                ORDER BY DayCount DESC
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource("comId", comId);
+
+        return namedJdbcTemplate.query(sql, params, UNRELEASED_NUMBER_MAPPER);
+    }
+
+    /**
+     * Reads columns by name rather than by bean introspection.
+     *
+     * <p>{@code getUnreleasedNumbers} projects no {@code Remarks} column, so the mapper
+     * tolerates its absence instead of failing the whole query.
+     */
+    private static final RowMapper<my.maleva.api.module.dashboard.dto.PendingPaymentDto.UnreleasedNumberDto>
+            UNRELEASED_NUMBER_MAPPER = (rs, rowNum) -> {
+        my.maleva.api.module.dashboard.dto.PendingPaymentDto.UnreleasedNumberDto dto =
+                new my.maleva.api.module.dashboard.dto.PendingPaymentDto.UnreleasedNumberDto();
+        dto.setId(rs.getInt("Id"));
+        dto.setBillNoDisplay(rs.getString("BillNoDisplay"));
+        int dayCount = rs.getInt("DayCount");
+        dto.setDayCount(rs.wasNull() ? null : dayCount);
+        if (hasColumn(rs, "Remarks")) {
+            dto.setRemarks(rs.getString("Remarks"));
+        }
+        return dto;
+    };
+
+    private static boolean hasColumn(java.sql.ResultSet rs, String label) {
+        try {
+            rs.findColumn(label);
+            return true;
+        } catch (java.sql.SQLException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The Today / Yesterday / Week / Month block of the Forwarding dashboard.
+     *
+     * <p>Legacy called {@code EXEC [RT_ForwardingReport] <comId>} and read row 0 of the
+     * result. The SP is still the source of truth here rather than a rewritten query: it
+     * owns the week and month window definitions (week = Monday-anchored via
+     * {@code DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), -1)}, month = calendar month) and
+     * unions the three forwarding legs. It takes only a company id - the screen's date
+     * range does not reach it.
+     *
+     * <p>Returns a zeroed row rather than null when the SP yields nothing, so a caller
+     * never has to null-check the twelve counters.
+     */
+    public ForwardingPeriodRow getForwardingPeriodSummary(Integer comId) {
+        try {
+            List<ForwardingPeriodRow> rows = jdbcTemplate.query(
+                    "EXEC [RT_ForwardingReport] ?",
+                    (rs, rowNum) -> {
+                        ForwardingPeriodRow row = new ForwardingPeriodRow();
+                        row.TodayCount = rs.getInt("TodayCount");
+                        row.TodayRelease = rs.getInt("TodayRelease");
+                        row.TodayWithRelease = rs.getInt("TodayWithRelease");
+                        row.YesterdayCount = rs.getInt("YesterdayCount");
+                        row.YesterdayRelease = rs.getInt("YesterdayRelease");
+                        row.YesterdayWithRelease = rs.getInt("YesterdayWithRelease");
+                        row.WeekCount = rs.getInt("WeekCount");
+                        row.WeekRelease = rs.getInt("WeekRelease");
+                        row.WeekWithRelease = rs.getInt("WeekWithRelease");
+                        row.MonthCount = rs.getInt("MonthCount");
+                        row.MonthRelease = rs.getInt("MonthRelease");
+                        row.MonthWithRelease = rs.getInt("MonthWithRelease");
+                        return row;
+                    },
+                    comId);
+            if (rows.isEmpty()) {
+                log.warn("RT_ForwardingReport returned no rows for comId={}", comId);
+                return new ForwardingPeriodRow();
+            }
+            return rows.get(0);
+        } catch (Exception e) {
+            log.error("Error fetching forwarding period summary for comId={}: {}", comId, e.getMessage(), e);
+            return new ForwardingPeriodRow();
+        }
+    }
+
+    /** Row 0 of {@code RT_ForwardingReport}. Zero-initialised, never null-valued. */
+    public static class ForwardingPeriodRow {
+        public Integer TodayCount = 0;
+        public Integer TodayRelease = 0;
+        public Integer TodayWithRelease = 0;
+        public Integer YesterdayCount = 0;
+        public Integer YesterdayRelease = 0;
+        public Integer YesterdayWithRelease = 0;
+        public Integer WeekCount = 0;
+        public Integer WeekRelease = 0;
+        public Integer WeekWithRelease = 0;
+        public Integer MonthCount = 0;
+        public Integer MonthRelease = 0;
+        public Integer MonthWithRelease = 0;
+    }
+
+    /**
+     * Employees an employee may switch to: their {@code RulesTypeMaster} subordinates plus
+     * themselves. Legacy: {@code DashBoardServices.LoadRulesType}, which built no SQL at all
+     * when {@code Employeeid} was 0 and then ran the empty string - Dapper returned nothing,
+     * so an unset employee meant an empty list. That is reproduced here as an early return
+     * instead of an empty query.
+     */
+    public List<my.maleva.api.module.dashboard.dto.EmployeeRuleDto> getEmployeeRules(Integer comId, Integer employeeId) {
+        if (employeeId == null || employeeId == 0) {
+            return Collections.emptyList();
+        }
+
+        String sql = """
+                SELECT E.Id, E.EmployeeName AS AccountName
+                FROM EmployeeMaster E WITH(NOLOCK)
+                WHERE E.Id IN (
+                        SELECT SubEmployeeId AS Id
+                        FROM RulesTypeMaster WITH(NOLOCK)
+                        WHERE MasterEmployeeId = :employeeId
+                          AND Active = 1
+                          AND CompanyRefId = :comId
+                        UNION ALL
+                        SELECT :employeeId
+                    )
+                  AND E.Active = 1
+                  AND E.CompanyRefId = :comId
+                ORDER BY E.Id
+                """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("comId", comId)
+                .addValue("employeeId", employeeId);
+
+        return namedJdbcTemplate.query(sql, params, (rs, rowNum) ->
+                my.maleva.api.module.dashboard.dto.EmployeeRuleDto.builder()
+                        .id(rs.getInt("Id"))
+                        .accountName(rs.getString("AccountName"))
+                        .build());
     }
 }
