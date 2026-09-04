@@ -28,6 +28,21 @@ public interface BillsOrderMasterRepository extends JpaRepository<BillsOrderMast
     List<PaymentVoucherComboDto> findInvoiceNumbersByCompany(@Param("companyRefId") Integer companyRefId);
 
     /**
+     * Is this supplier invoice number already on a live purchase order of the company?
+     *
+     * The same rule the screen applies before it saves a new order (compare
+     * against {@link #findInvoiceNumbersByCompany}, trimmed), enforced here as
+     * well so a second click on Save, a retried request, or a second tab cannot
+     * file the same invoice twice. Active 2 is a deleted order and does not count.
+     */
+    @Query("SELECT COUNT(bom) > 0 FROM BillsOrderMaster bom " +
+           "WHERE bom.companyRefId = :companyRefId " +
+           "AND bom.active != 2 " +
+           "AND TRIM(bom.invoiceNo) = :invoiceNo")
+    boolean existsLiveInvoiceNo(@Param("companyRefId") Integer companyRefId,
+                                @Param("invoiceNo") String invoiceNo);
+
+    /**
      * Get all distinct descriptions for a company
      * Filters: Active != 2, description not empty/null
      * Used for description dropdown/combo list

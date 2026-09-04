@@ -199,6 +199,17 @@ public class BillsOrderMasterInsertServiceImpl implements IBillsOrderMasterInser
                 logger.info("✓ Step 5: Record prepared for update");
             } else {
                 logger.info("Step 5/10: INSERT MODE - Creating new record");
+                // The screen refuses a new order whose invoice number is already
+                // filed, but only from what it had loaded before the click. Two
+                // clicks on Save both pass that check and both arrive here, so
+                // the same rule is applied against the table itself, inside the
+                // transaction, before a second order can be written.
+                String invoiceNo = dto.getInvoiceNo() != null ? dto.getInvoiceNo().trim() : "";
+                if (!invoiceNo.isEmpty()
+                        && billsOrderMasterRepository.existsLiveInvoiceNo(companyId, invoiceNo)) {
+                    logger.warn("  • Invoice No '{}' already filed for company {} - refusing duplicate", invoiceNo, companyId);
+                    return buildErrorResponse("Invoice No already exists");
+                }
                 // INSERT Process
                 masterEntity = new BillsOrderMaster();
                 masterEntity.setActive(1);
