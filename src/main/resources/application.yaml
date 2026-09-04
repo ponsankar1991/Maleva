@@ -297,3 +297,12 @@ llm:
       label: Stub (sample data, no AI)
       free: true
       note: Returns built-in sample data so screens can be tested without any API key. Never use for real bills.
+
+# Planning truck/driver suggestion (module/ai/planning). Defaults live in
+# PlanningSuggestProperties; override here when tuning the ranking.
+ai:
+  planning:
+    history-days: 365
+    continuity-days: 3
+    exclude-outside-trucks: true
+    exclude-expired-trucks: true

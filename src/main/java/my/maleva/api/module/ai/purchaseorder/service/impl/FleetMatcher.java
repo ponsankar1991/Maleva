@@ -1,12 +1,12 @@
 package my.maleva.api.module.ai.purchaseorder.service.impl;
 
 import my.maleva.api.module.ai.common.ExtractionSupport;
+import my.maleva.api.module.ai.common.NameKeys;
 import my.maleva.api.module.fleet.entity.DriverMaster;
 import my.maleva.api.module.fleet.entity.TruckMaster;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -76,23 +76,7 @@ final class FleetMatcher {
     }
 
     static String normalizeName(String value) {
-        if (value == null) {
-            return "";
-        }
-        String upper = value.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9 ]", " ");
-        StringBuilder sb = new StringBuilder();
-        for (String token : upper.trim().split("\\s+")) {
-            // "BIN" / "BINTI" / "A/L" / "A/P" are Malaysian patronymic connectors, not names.
-            if (token.isEmpty() || token.equals("BIN") || token.equals("BINTI") || token.equals("AL")
-                    || token.equals("AP") || token.equals("B") || token.equals("BT")) {
-                continue;
-            }
-            if (sb.length() > 0) {
-                sb.append(' ');
-            }
-            sb.append(token);
-        }
-        return sb.toString();
+        return NameKeys.driver(value);
     }
 
     static double nameScore(String a, String b) {
