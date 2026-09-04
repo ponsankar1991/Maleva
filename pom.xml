@@ -210,6 +210,16 @@
 			<artifactId>google-auth-library-oauth2-http</artifactId>
 			<version>1.19.0</version>
 		</dependency>
+		<!--
+			Apache POI reads the .xlsx the forwarding report imports. The legacy
+			.NET screen used EPPlus for the same file; POI is the equivalent on
+			this side. poi-ooxml pulls poi itself, so both are on the classpath.
+		-->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.5</version>
+		</dependency>
 	</dependencies>
 
 	<build>
