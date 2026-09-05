@@ -2,7 +2,10 @@ package my.maleva.api.module.invoice.controller;
 
 import my.maleva.api.module.invoice.dto.SaleMasterDto;
 import my.maleva.api.module.invoice.dto.SaleDetailsDto;
+import my.maleva.api.module.invoice.dto.SaleInvoiceRequestDTO;
+import my.maleva.api.module.invoice.dto.SaleInvoiceSaveResult;
 import my.maleva.api.module.invoice.service.SaleInvoiceQneService;
+import my.maleva.api.module.invoice.service.SaleInvoiceTransactionService;
 import my.maleva.api.module.invoice.service.SaleMasterService;
 import my.maleva.api.module.invoice.service.SaleDetailsService;
 import my.maleva.api.module.saleorder.service.SaleOrderMasterService;
@@ -60,6 +63,9 @@ public class SaleInvoiceController {
     @Autowired
     private SaleInvoiceQneService saleInvoiceQneService;
 
+    @Autowired
+    private SaleInvoiceTransactionService saleInvoiceTransactionService;
+
     /**
      * Get next invoice number
      * GET /api/v1/sale-invoices/next-number?companyId=1
@@ -94,6 +100,44 @@ public class SaleInvoiceController {
      *
      * @param dto Invoice master data with line items
      * @return Created invoice with ID and invoice number
+     */
+    /**
+     * Save a sale invoice - creates when {@code id} is absent or 0, otherwise
+     * re-writes that invoice in place.
+     * POST /api/v1/sale-invoices/save
+     *
+     * <p>This is the replacement for the legacy
+     * {@code /SaleInvoice/InsertSaleInvoice}. It writes the whole document:
+     * header, lines, the SaleMasterReference rows linking the jobs, the
+     * {@code SaleOrderMaster.InvoiceNo} stamps, and the invoice number - one
+     * transaction, through {@code SP_SaleMaster}, which the .NET screens still
+     * in production share.
+     *
+     * <p>Prefer this over {@code POST /api/v1/sale-invoices}, which persists the
+     * header only.
+     *
+     * @param request the full invoice, lines included
+     * @return the saved id and invoice number
+     */
+    @PostMapping("/save")
+    public ResponseEntity<ApiResponse<SaleInvoiceSaveResult>> saveInvoice(
+            @Valid @RequestBody SaleInvoiceRequestDTO request) {
+        logger.info("Saving invoice {} for company {}",
+                request.getId() == null || request.getId() == 0 ? "(new)" : request.getId(),
+                request.getCompanyRefId());
+
+        SaleInvoiceSaveResult result = saleInvoiceTransactionService.save(request);
+
+        return ResponseEntity
+                .status(result.isCreated() ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(ApiResponse.success(result,
+                        result.isCreated() ? "Invoice created successfully" : "Invoice updated successfully"));
+    }
+
+    /**
+     * Persists the invoice header only - no lines, no job links, no invoice
+     * number. Kept for callers that already use it; new callers want
+     * {@code POST /save}.
      */
     @PostMapping
     public ResponseEntity<ApiResponse<?>> createInvoice(@Valid @RequestBody SaleMasterDto dto) {
