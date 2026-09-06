@@ -95,5 +95,46 @@ public interface ReceiptService {
      * Change receipt status
      */
     ReceiptDto changeStatus(Integer id, Integer pvStatus);
+
+    /**
+     * Get maximum receipt number
+     */
+    String getMaxReceiptNo(Integer companyRefId, String billType);
+
+    /**
+     * Get customer balance (from CustomerBalance or CustomerBalance_Single)
+     */
+    List<my.maleva.api.module.paymentrecept.dto.ReceiptBillDto> selectCustomerBalance(my.maleva.api.module.paymentrecept.dto.ReceiptViewBillRequest request);
+
+    /**
+     * Select customer bills for receipt entry (from RT_CustomerBills)
+     */
+    List<my.maleva.api.module.paymentrecept.dto.ReceiptBillDto> selectCustomerBills(my.maleva.api.module.paymentrecept.dto.ReceiptViewBillRequest request);
+
+    /**
+     * Insert or update receipt with line items (migrated from SP_Receipt)
+     */
+    my.maleva.api.module.paymentrecept.dto.ReceiptSaveResponseDto insertReceipt(
+            List<my.maleva.api.module.paymentrecept.dto.ReceiptSaveRequest> requestList,
+            Integer companyId);
+
+    /** The RECEIPT ENTRY VIEW grid (legacy SelectReceipt). */
+    my.maleva.api.module.paymentrecept.dto.ReceiptViewDto search(
+            my.maleva.api.module.paymentrecept.dto.ReceiptSearchRequest request);
+
+    /**
+     * A saved receipt loaded back into the entry screen (legacy EditReceipt),
+     * by id or by receipt number; empty when it does not exist for the company.
+     */
+    Optional<my.maleva.api.module.paymentrecept.dto.ReceiptEditDto> edit(
+            Integer companyId, Integer id, Integer receiptNumber);
+
+    /**
+     * Removes a receipt and its lines (legacy DeleteReceipt), refusing one that
+     * is already in QNE. Returns the message for the screen; throws
+     * InvalidRequestException with the reason when it cannot be deleted.
+     */
+    String deleteReceipt(Integer id, Integer companyId);
+
 }
 

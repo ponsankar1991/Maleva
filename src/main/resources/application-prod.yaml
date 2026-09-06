@@ -119,6 +119,84 @@ springdoc:
 
 
 
+# SMTP comes from MAIL_SMTP_* env vars (see application.yaml for why there is
+# no smtp block here).
+mail:
+  from:
+    email: ${MAIL_FROM_EMAIL:admin@maleva.my}
+    name: ${MAIL_FROM_NAME:MALEVA}
+  invoice-recipients:
+    - eswaranmaleva@gmail.com
+    - systransportservice@gmail.com
+    - shalinisivabalan1806@gmail.com
+    - saravanakumart05@gmail.com
+    - manimala7151@gmail.com
+
+invoice-print:
+  heading: INVOICE
+  header-lines:
+    - "MALEVA (M) SDN BHD(943786-K)"
+    - "Tax Reg. No: W10-1809-32001584"
+    - "No 20-1 Jalan MPMU 2,Medan Perniagaan Utama Mambau,"
+    - "70300 Seremban, Negeri Sembilan, Malaysia."
+    - "Tel: 012-290 7151 & 012-241 7151"
+    - "URL : www.maleva.com.my Email : operation@maleva.com.my"
+  notes:
+    - "1.All Cheque Should be crossed and made payable to MALEVA(M) SDN BHD A/C No. (MYR/USD/SGD): 80-0458 325-1 Bank: CIMB Bank - Swift code: CIBBMYKL"
+    - "2.Any Discrepency should be notified within 7 days,otherwise all charges will be deemed correct."
+    - "3.We reserved the right to charge an interest rate of 1.5% p.a on overdue accounts."
+  generated-note: "This is an computer generated invoice. No signatory is required"
+
+# LHDN MyInvois e-invoicing. Production defaults to the LIVE environment;
+# credentials are environment variables. Supplier profiles as in application.yaml.
+myinvois:
+  enabled: ${MYINVOIS_ENABLED:true}
+  environment: ${MYINVOIS_ENVIRONMENT:live}
+  client-id: ${MYINVOIS_CLIENT_ID:}
+  client-secret: ${MYINVOIS_CLIENT_SECRET:}
+  timeout: 120s
+  token-refresh-margin: 60s
+  line-amount-policy: ${MYINVOIS_LINE_AMOUNT_POLICY:EXCLUSIVE}
+  allow-resubmit-invalid: true
+  allow-foreign-currency: true
+  supplier-profiles:
+    live:
+      name: MALEVA (M) SDN BHD
+      tin: C22173439020
+      tin-scheme: TIN
+      registration-no: "201101015652"
+      registration-scheme: BRN
+      sst-no: W10-1809-32001584
+      sst-scheme: SST
+      msic-code: "52299"
+      msic-description: Other transportation support activities n.e.c.
+      address-line1: "B50 JALAN FZ4 - P3, PORT KLANG, FREE ZONE /KS 12,"
+      address-line2: "42920 PULAU INDAH, SELANGOR, MALAYSIA."
+      city: PULAU INDAH
+      postal-zone: "42920"
+      state-code: "10"
+      country-code: MYS
+      phone: "+60331023251"
+      email: operation@maleva.com.my
+    preprod:
+      name: MALEVA (M) SDN BHD
+      tin: IG23161360010
+      tin-scheme: TIN
+      registration-no: "840927055966"
+      registration-scheme: NRIC
+      sst-no: W10-1809-32001584
+      sst-scheme: SST
+      msic-code: "52299"
+      msic-description: Other transportation support activities n.e.c.
+      address-line1: "NO.3, JALAN RK 3/22, TAMAN RASAH KEMAYAN,"
+      address-line2: "70300, SEREMBAN, NEGERI SEMBILAN, MALAYSIA"
+      city: SEREMBAN
+      postal-zone: "70300"
+      state-code: "05"
+      country-code: MYS
+      phone: "+60122907151"
+      email: manimala@maleva.com.my
+
 qne:
   enabled: true
   demo: false

@@ -104,13 +104,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, wrappedResponse);
 
-            // Write captured response body back to original response
-            String responseBody = wrappedResponse.getCapturedOutput();
-            response.getWriter().write(responseBody);
+            // Write the captured body back exactly as the controller produced
+            // it. This must go through the byte stream: a PDF or image pushed
+            // through getWriter() is re-encoded as text and arrives corrupt.
+            byte[] responseBytes = wrappedResponse.getCapturedBytes();
+            if (responseBytes.length > 0) {
+                response.setContentLength(responseBytes.length);
+                response.getOutputStream().write(responseBytes);
+            }
             response.flushBuffer();
 
-            // Log response details with body
-            logResponseDetails(request, wrappedResponse, requestId, responseBody);
+            // Log response details; text bodies in full (truncated), binary by size
+            logResponseDetails(request, wrappedResponse, requestId, responseBytes);
 
         } finally {
             // Clean up MDC to prevent memory leaks and thread pool contamination
@@ -157,23 +162,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
      * Log response details including response body
      */
-    private void logResponseDetails(HttpServletRequest request, HttpServletResponse response, String requestId, String responseBody) {
+    private void logResponseDetails(HttpServletRequest request, HttpServletResponse response, String requestId, byte[] responseBytes) {
         String endpoint = buildEndpointString(request);
         int statusCode = response.getStatus();
         String statusCategory = getStatusCategory(statusCode);
-
-        // Limit response body to 2000 characters to prevent excessively large logs
-        String truncatedBody = responseBody;
-        if (responseBody.length() > 2000) {
-            truncatedBody = responseBody.substring(0, 2000) + "... [TRUNCATED - " + (responseBody.length() - 2000) + " more characters]";
-        }
 
         log.info("Response sent - Endpoint: {}, Status: {} ({}), Body: {}, Request-ID: {}",
                 endpoint,
                 statusCode,
                 statusCategory,
-                truncatedBody,
+                describeBody(response.getContentType(), responseBytes),
                 requestId);
+    }
+
+    /**
+     * The body as it should appear in the log: text (JSON, XML, plain) up to
+     * 2000 characters; anything binary — a PDF, an image, a spreadsheet — only
+     * by type and size, since its bytes are noise in a log and megabytes of it.
+     */
+    static String describeBody(String contentType, byte[] body) {
+        if (body == null || body.length == 0) {
+            return "";
+        }
+        if (!isTextual(contentType)) {
+            return "[binary " + (contentType == null ? "unknown type" : contentType) + ", " + body.length + " bytes]";
+        }
+        String text = new String(body, StandardCharsets.UTF_8);
+        if (text.length() > 2000) {
+            return text.substring(0, 2000) + "... [TRUNCATED - " + (text.length() - 2000) + " more characters]";
+        }
+        return text;
+    }
+
+    private static boolean isTextual(String contentType) {
+        if (contentType == null) {
+            return true; // no type declared: assume the JSON most endpoints write
+        }
+        String type = contentType.toLowerCase();
+        return type.startsWith("text/")
+                || type.contains("json")
+                || type.contains("xml")
+                || type.contains("javascript")
+                || type.contains("x-www-form-urlencoded");
     }
 
     /**
@@ -235,11 +265,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         };
 
-        private PrintWriter printWriter;
+        private final PrintWriter printWriter;
 
         public ResponseWrapper(HttpServletResponse response) {
             super(response);
-            this.printWriter = new PrintWriter(output);
+            // UTF-8 explicitly: the JSON the controllers write is UTF-8, and the
+            // platform default on this Windows host is not.
+            this.printWriter = new PrintWriter(new java.io.OutputStreamWriter(output, StandardCharsets.UTF_8));
         }
 
         @Override
@@ -252,17 +284,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return printWriter;
         }
 
-        /**
-         * Get the captured response output as a string
-         */
-        public String getCapturedOutput() {
-            try {
-                printWriter.flush();
-                return output.toString(StandardCharsets.UTF_8);
-            } catch (Exception e) {
-                log.warn("Error getting captured response output: {}", e.getMessage());
-                return "[Unable to capture response body]";
-            }
+        /** The captured body, byte for byte, whichever of the two streams the controller used. */
+        public byte[] getCapturedBytes() {
+            printWriter.flush();
+            return output.toByteArray();
         }
     }
 }

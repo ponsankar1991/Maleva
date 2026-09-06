@@ -103,6 +103,100 @@ public class EmailService {
         }
     }
 
+    /** Whether a mail server is configured; nothing is sent when it is not. */
+    public boolean isConfigured() {
+        return emailConfigured;
+    }
+
+    /** A file to attach, already in memory. */
+    public record EmailAttachment(String fileName, byte[] content, String contentType) {
+    }
+
+    /**
+     * Sends the "Invoice Created" mail with in-memory attachments to every
+     * recipient in one message — the port of {@code OrderMail2 + TESTMail3}.
+     * Unlike the URL-based sender above this one reports failure: the Share
+     * button needs to tell the operator when nothing went out.
+     *
+     * @throws IllegalStateException when the mail server is not configured or refuses the message
+     */
+    public void sendInvoiceMail(List<String> recipients, String invoiceNo, String customerName,
+                                String employeeName, List<EmailAttachment> attachments) {
+        if (!emailConfigured) {
+            throw new IllegalStateException("Mail server is not configured (mail.smtp.host)");
+        }
+        if (recipients == null || recipients.isEmpty()) {
+            throw new IllegalStateException("No recipients");
+        }
+        try {
+            MimeMessage message = mailSender.get().createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(recipients.toArray(new String[0]));
+            helper.setSubject("Invoice Created - " + invoiceNo);
+            helper.setText(buildInvoiceEmailBody(invoiceNo, customerName, employeeName), true);
+            for (EmailAttachment attachment : attachments == null ? List.<EmailAttachment>of() : attachments) {
+                if (attachment == null || attachment.content() == null || attachment.content().length == 0) {
+                    continue;
+                }
+                String type = attachment.contentType() == null || attachment.contentType().isBlank()
+                        ? "application/octet-stream" : attachment.contentType();
+                helper.addAttachment(attachment.fileName(),
+                        () -> new java.io.ByteArrayInputStream(attachment.content()), type);
+            }
+            mailSender.get().send(message);
+            logger.info("Invoice mail sent - Invoice: {} to {} recipient(s)", invoiceNo, recipients.size());
+        } catch (MessagingException | IOException ex) {
+            throw new IllegalStateException(ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Sends one HTML mail with explicit To and CC lists and in-memory
+     * attachments, and hands back the message that went out so a caller can
+     * file a copy of exactly that message (see {@code ImapSentFolderService}).
+     *
+     * <p>Unlike the fire-and-forget senders above this reports failure: the
+     * Receipt screen shows the operator whether the customer got the mail.
+     *
+     * @throws IllegalStateException when the mail server is not configured, no
+     *                               To address was given, or the server refuses the message
+     */
+    public MimeMessage sendHtmlMail(List<String> to, List<String> cc, String subject, String htmlBody,
+                                    List<EmailAttachment> attachments) {
+        if (!emailConfigured) {
+            throw new IllegalStateException("Mail server is not configured (mail.smtp.host)");
+        }
+        if (to == null || to.isEmpty()) {
+            throw new IllegalStateException("No recipients");
+        }
+        try {
+            MimeMessage message = mailSender.get().createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(to.toArray(new String[0]));
+            if (cc != null && !cc.isEmpty()) {
+                helper.setCc(cc.toArray(new String[0]));
+            }
+            helper.setSubject(subject == null ? "" : subject);
+            helper.setText(htmlBody == null ? "" : htmlBody, true);
+            for (EmailAttachment attachment : attachments == null ? List.<EmailAttachment>of() : attachments) {
+                if (attachment == null || attachment.content() == null || attachment.content().length == 0) {
+                    continue;
+                }
+                String type = attachment.contentType() == null || attachment.contentType().isBlank()
+                        ? "application/octet-stream" : attachment.contentType();
+                helper.addAttachment(attachment.fileName(),
+                        () -> new java.io.ByteArrayInputStream(attachment.content()), type);
+            }
+            mailSender.get().send(message);
+            logger.info("Mail '{}' sent to {} recipient(s), {} cc", subject, to.size(), cc == null ? 0 : cc.size());
+            return message;
+        } catch (MessagingException | IOException ex) {
+            throw new IllegalStateException(ex.getMessage(), ex);
+        }
+    }
+
     /**
      * Send customer statement email
      * Equivalent to GenerateAndSendCustomerStatement + CustomerStamentMail methods

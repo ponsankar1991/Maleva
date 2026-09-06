@@ -4,6 +4,11 @@ import my.maleva.api.module.invoice.dto.SaleMasterDto;
 import my.maleva.api.module.invoice.dto.SaleDetailsDto;
 import my.maleva.api.module.invoice.dto.SaleInvoiceRequestDTO;
 import my.maleva.api.module.invoice.dto.SaleInvoiceSaveResult;
+import my.maleva.api.module.invoice.einvoice.EInvoicePushResponses;
+import my.maleva.api.module.invoice.einvoice.SaleInvoiceEInvoiceService;
+import my.maleva.api.module.invoice.print.SaleInvoicePdfService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import my.maleva.api.module.invoice.service.SaleInvoiceQneService;
 import my.maleva.api.module.invoice.service.SaleInvoiceTransactionService;
 import my.maleva.api.module.invoice.service.SaleMasterService;
@@ -65,6 +70,166 @@ public class SaleInvoiceController {
 
     @Autowired
     private SaleInvoiceTransactionService saleInvoiceTransactionService;
+
+    @Autowired
+    private SaleInvoiceEInvoiceService saleInvoiceEInvoiceService;
+
+    @Autowired
+    private SaleInvoicePdfService saleInvoicePdfService;
+
+    @Autowired
+    private my.maleva.api.module.invoice.view.SaleInvoiceViewService saleInvoiceViewService;
+
+    @Autowired
+    private my.maleva.api.module.invoice.mail.SaleInvoiceMailService saleInvoiceMailService;
+
+    /**
+     * The Sale Invoice view grid.
+     * POST /api/v1/sale-invoices/view  (body: SaleInvoiceViewFilter)
+     *
+     * <p>Replaces the legacy {@code /SaleInvoiceApp/SelectSaleInvoice}. Same
+     * two result sets (invoice headers, every line of those invoices), same
+     * column names; the filter body uses spelled-out names instead of the
+     * legacy Id/JId/Statusid abbreviations.
+     */
+    @PostMapping("/view")
+    public ResponseEntity<ApiResponse<my.maleva.api.module.invoice.view.SaleInvoiceViewResult>> view(
+            @RequestBody my.maleva.api.module.invoice.view.SaleInvoiceViewFilter filter) {
+        try {
+            return ResponseEntity.ok(ApiResponse.success(saleInvoiceViewService.view(filter), "Success"));
+        } catch (IllegalArgumentException bad) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(bad.getMessage(), 400));
+        } catch (Exception e) {
+            logger.error("Error loading sale invoice view", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error loading sale invoice view: " + e.getMessage(), 500));
+        }
+    }
+
+    /**
+     * Mail the printed invoice and its attachments to the configured recipients.
+     * POST /api/v1/sale-invoices/{id}/mail?companyId=1&employeeName=...
+     *
+     * <p>Replaces the legacy {@code /SaleInvoiceApp/MailInvoice}. A mail that
+     * did not go out answers 200 with {@code IsSuccess=false} and the reason.
+     */
+    @PostMapping("/{id}/mail")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> mail(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId,
+            @RequestParam(required = false) String employeeName) {
+        try {
+            var outcome = saleInvoiceMailService.send(id, companyId, employeeName);
+            Map<String, Object> data = new java.util.LinkedHashMap<>();
+            data.put("recipients", outcome.recipients());
+            data.put("attachmentCount", outcome.attachmentCount());
+            if (!outcome.ok()) {
+                ApiResponse<Map<String, Object>> body = ApiResponse.error(outcome.message(), 200);
+                body.setData1(data);
+                return ResponseEntity.ok(body);
+            }
+            return ResponseEntity.ok(ApiResponse.success(data, outcome.message()));
+        } catch (Exception e) {
+            logger.error("Error mailing invoice {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error mailing invoice: " + e.getMessage(), 500));
+        }
+    }
+
+    /**
+     * Submit the invoice to LHDN MyInvois as an e-invoice.
+     * POST /api/v1/sale-invoices/{id}/push-einvoice?companyId=1
+     *
+     * <p>Replaces the legacy {@code /SaleInvoice/EInvoiceConvert}. Same response
+     * contract as {@code push-qne}: a local problem is an HTTP error; anything
+     * the validator or LHDN said comes back as 200 with {@code IsSuccess=false},
+     * the message, and {@code Data1.problems} listing every reason.
+     */
+    @PostMapping("/{id}/push-einvoice")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> pushToEInvoice(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        logger.info("Pushing invoice ID: {} to LHDN MyInvois for company: {}", id, companyId);
+        if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid ID or company ID", 400));
+        }
+        try {
+            return EInvoicePushResponses.toResponse(saleInvoiceEInvoiceService.push(id, companyId));
+        } catch (Exception e) {
+            logger.error("Error pushing invoice {} to LHDN MyInvois", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error pushing to LHDN MyInvois: " + e.getMessage(), 500));
+        }
+    }
+
+    /**
+     * The printed invoice as a PDF.
+     * GET /api/v1/sale-invoices/{id}/print?companyId=1
+     *
+     * <p>Replaces the Crystal {@code ReportViewer.aspx?ReportName=InvoiceReport}
+     * popup. Rendered on demand from the database; carries the LHDN UUID,
+     * status and validation QR once the invoice has been e-invoiced.
+     */
+    @GetMapping(value = "/{id}/print", produces = {MediaType.APPLICATION_PDF_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<?> printInvoice(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+            return printProblem(HttpStatus.BAD_REQUEST, "Invoice id and company are required");
+        }
+        try {
+            return saleInvoicePdfService.render(id, companyId)
+                    .<ResponseEntity<?>>map(rendered -> ResponseEntity.ok()
+                            .contentType(MediaType.APPLICATION_PDF)
+                            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + rendered.fileName() + "\"")
+                            .body(rendered.pdf()))
+                    .orElseGet(() -> printProblem(HttpStatus.NOT_FOUND,
+                            "Invoice " + id + " was not found for company " + companyId));
+        } catch (Exception e) {
+            // The failure and its cause go to the log in full; the screen gets
+            // the innermost message, which is the one that names the problem
+            // (a missing template on the classpath, a font, a column).
+            logger.error("Invoice {} (company {}) could not be printed", id, companyId, e);
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) {
+                root = root.getCause();
+            }
+            String reason = root.getMessage() == null ? root.getClass().getSimpleName() : root.getMessage();
+            return printProblem(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Invoice " + id + " could not be printed: " + reason);
+        }
+    }
+
+    /** A print failure as the standard JSON envelope, so the screen can show the message. */
+    private static ResponseEntity<ApiResponse<Object>> printProblem(HttpStatus status, String message) {
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiResponse.error(message, status.value()));
+    }
+
+    /**
+     * Re-read the LHDN validation status of a submitted invoice.
+     * GET /api/v1/sale-invoices/{id}/einvoice-status?companyId=1
+     *
+     * <p>LHDN validates asynchronously, so a push usually answers "Submitted";
+     * this call fetches the long id, status and validated time once they exist,
+     * saves them, and returns the share link and QR for the printed invoice.
+     */
+    @GetMapping("/{id}/einvoice-status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> eInvoiceStatus(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid ID or company ID", 400));
+        }
+        try {
+            return EInvoicePushResponses.toResponse(saleInvoiceEInvoiceService.refreshStatus(id, companyId));
+        } catch (Exception e) {
+            logger.error("Error reading LHDN status for invoice {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error reading LHDN status: " + e.getMessage(), 500));
+        }
+    }
 
     /**
      * Get next invoice number

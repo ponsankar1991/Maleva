@@ -272,6 +272,19 @@ public class AttachmentStorageServiceImpl implements AttachmentStorageService {
         }
     }
 
+    @Override
+    public java.util.Optional<byte[]> read(String publicPath) {
+        Path file = resolvePublicPath(publicPath);
+        if (file == null || !Files.isRegularFile(file)) {
+            return java.util.Optional.empty();
+        }
+        try {
+            return java.util.Optional.of(Files.readAllBytes(file));
+        } catch (IOException ex) {
+            throw new UncheckedIOException("Failed to read attachment " + publicPath, ex);
+        }
+    }
+
     /**
      * Maps a public path such as {@code /uploads/6/SalesOrder/12056/a.jpg} back
      * to its file, or null when it does not address the storage root.

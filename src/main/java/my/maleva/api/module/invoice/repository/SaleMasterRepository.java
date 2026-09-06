@@ -71,5 +71,57 @@ public interface SaleMasterRepository extends JpaRepository<SaleMaster, Integer>
     int claimQneIdentity(@Param("id") Integer id,
                          @Param("qneId") String qneId,
                          @Param("qneCode") String qneCode);
+
+    /**
+     * Records that LHDN accepted the invoice for validation. Runs in its own
+     * transaction and is called the moment the 202 arrives, BEFORE the status
+     * is read back — legacy wrote the UUID only after that read, and a failure
+     * in between left the UUID unsaved so the next click submitted the same
+     * invoice to the government a second time.
+     *
+     * <p>Writes the identity of the new submission and clears the outcome of
+     * any previous one (long id and validated time), so a resubmitted Invalid
+     * invoice does not keep the old rejection's timestamp. Unconditional: the
+     * service decides beforehand whether a submission is allowed, and the row
+     * count is not meaningful here (the pool runs {@code SET NOCOUNT ON}).
+     */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleMaster sm SET sm.eInvoiceUid = :uuid, sm.eInvoiceSUid = :submissionUid, "
+            + "sm.eInvoiceLongId = '', sm.eInvoiceStatus = :status, sm.eInvoicePushDT = :pushedAt, "
+            + "sm.eInvoicePushVDT = NULL "
+            + "WHERE sm.id = :id AND sm.companyRefId = :companyId")
+    int claimEInvoiceSubmission(@Param("id") Integer id,
+                                @Param("companyId") Integer companyId,
+                                @Param("uuid") String uuid,
+                                @Param("submissionUid") String submissionUid,
+                                @Param("status") String status,
+                                @Param("pushedAt") LocalDateTime pushedAt);
+
+    /** LHDN reported a status but has not validated yet (no long id, no validated time). */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleMaster sm SET sm.eInvoiceStatus = :status "
+            + "WHERE sm.id = :id AND sm.companyRefId = :companyId")
+    int recordEInvoiceStatus(@Param("id") Integer id,
+                             @Param("companyId") Integer companyId,
+                             @Param("status") String status);
+
+    /**
+     * LHDN reported the document's outcome. The long id (Valid documents) and
+     * the validated time are whatever LHDN sent — either may be absent (an
+     * Invalid document has a validated time but no long id); never "now" as a
+     * placeholder, which is what legacy stored when the status read failed.
+     */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleMaster sm SET sm.eInvoiceLongId = :longId, sm.eInvoiceStatus = :status, "
+            + "sm.eInvoicePushVDT = :validatedAt "
+            + "WHERE sm.id = :id AND sm.companyRefId = :companyId")
+    int recordEInvoiceValidation(@Param("id") Integer id,
+                                 @Param("companyId") Integer companyId,
+                                 @Param("longId") String longId,
+                                 @Param("status") String status,
+                                 @Param("validatedAt") LocalDateTime validatedAt);
 }
 

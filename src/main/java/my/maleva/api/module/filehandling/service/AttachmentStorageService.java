@@ -34,4 +34,11 @@ public interface AttachmentStorageService {
      * @param filePathTable optional table whose {@code FilePath} column is resynced; may be null
      */
     AttachmentUploadResultDto delete(AttachmentScope scope, List<String> paths, String filePathTable);
+
+    /**
+     * The bytes of one stored file addressed by its public path (the
+     * {@code path} of an {@link AttachmentDto}), or empty when no such file
+     * exists under the storage root.
+     */
+    java.util.Optional<byte[]> read(String publicPath);
 }

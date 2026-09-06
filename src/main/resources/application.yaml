@@ -123,6 +123,147 @@ springdoc:
 
 
 
+# Outgoing mail. The sender is only created when mail.smtp.host is set (see
+# EmailConfiguration). Do NOT put an smtp block here, not even with empty
+# defaults: an empty host still satisfies the condition and then fails the
+# bean, and the whole context with it. Set MAIL_SMTP_HOST, MAIL_SMTP_PORT,
+# MAIL_SMTP_USERNAME and MAIL_SMTP_PASSWORD as user-scope env vars; Spring's
+# relaxed binding maps them onto mail.smtp.* by itself.
+mail:
+  # The accounts mailbox the legacy site sent every customer receipt from —
+  # commonfunctions.cs compiled these in (MailHost / MailUserId / MailPassword,
+  # SMTP 587 STARTTLS, IMAP 993), so the .NET screen never needed any setup.
+  # Same here: these defaults make the sender exist in every process; a
+  # MAIL_SMTP_* / MAIL_IMAP_* env var overrides any one of them. Every default
+  # is non-empty on purpose — an EMPTY host still satisfies
+  # @ConditionalOnProperty and then fails the bean and the whole context.
+  smtp:
+    host: ${MAIL_SMTP_HOST:s13727.securessl.net}
+    port: ${MAIL_SMTP_PORT:587}
+    username: ${MAIL_SMTP_USERNAME:account@maleva.com.my}
+    password: ${MAIL_SMTP_PASSWORD:ukm@8384}
+    auth: true
+    starttls:
+      enabled: true
+      required: true
+  # Files a copy of each sent receipt mail in the mailbox's Sent folder
+  # (legacy MailKit AppendToSentFolder). Username/password fall back to the
+  # SMTP ones when unset.
+  imap:
+    host: ${MAIL_IMAP_HOST:s13727.securessl.net}
+    port: ${MAIL_IMAP_PORT:993}
+    sent-folder: ${MAIL_IMAP_SENT_FOLDER:}
+  from:
+    email: ${MAIL_FROM_EMAIL:account@maleva.com.my}
+    name: ${MAIL_FROM_NAME:Maleva Accounts}
+  # Who gets the "Invoice Created" mail from the Sale Invoice view's Share
+  # button — the list legacy hard-coded in commonfunctions.TESTMail3.
+  invoice-recipients:
+    - eswaranmaleva@gmail.com
+    - systransportservice@gmail.com
+    - shalinisivabalan1806@gmail.com
+    - saravanakumart05@gmail.com
+    - manimala7151@gmail.com
+  # CC'd on every customer receipt mail from the Receipt screen (legacy
+  # Web.config config:AccountsMailCc, defaulting to the accounts pair). The
+  # operator can still edit the CC box before sending.
+  receipt-cc:
+    - receivable@maleva.com.my
+    - mala@maleva.com.my
+  receipt-subject: "Payment Received - Thank You"
+
+# Fixed text on the printed receipt voucher (legacy ReportViewer.aspx.cs
+# ReceiptReport LINE1-6 / Heading parameters and the static text in CRReceipt2.rpt).
+receipt-print:
+  heading: RECEIPT VOUCHER
+  header-lines:
+    - "MALEVA (M) SDN BHD(943786-K)"
+    - "Tax Reg. No: W10-1809-32001584"
+    - "No 20-1 Jalan MPMU 2,Medan Perniagaan Utama Mambau,"
+    - "70300 Seremban, Negeri Sembilan, Malaysia."
+    - "Tel: 012-290 7151 & 012-241 7151"
+    - "URL : www.maleva.com.my Email : operation@maleva.com.my"
+  nb-note: "Validity of this receipt subject to clearing of cheque"
+  generated-note: "This is an computer generated receipt."
+
+# Fixed text on the printed sale invoice (legacy ReportViewer.aspx.cs LINE1-6
+# parameters and the static notes inside CRInvoice.rpt).
+invoice-print:
+  heading: INVOICE
+  header-lines:
+    - "MALEVA (M) SDN BHD(943786-K)"
+    - "Tax Reg. No: W10-1809-32001584"
+    - "No 20-1 Jalan MPMU 2,Medan Perniagaan Utama Mambau,"
+    - "70300 Seremban, Negeri Sembilan, Malaysia."
+    - "Tel: 012-290 7151 & 012-241 7151"
+    - "URL : www.maleva.com.my Email : operation@maleva.com.my"
+  notes:
+    - "1.All Cheque Should be crossed and made payable to MALEVA(M) SDN BHD A/C No. (MYR/USD/SGD): 80-0458 325-1 Bank: CIMB Bank - Swift code: CIBBMYKL"
+    - "2.Any Discrepency should be notified within 7 days,otherwise all charges will be deemed correct."
+    - "3.We reserved the right to charge an interest rate of 1.5% p.a on overdue accounts."
+  generated-note: "This is an computer generated invoice. No signatory is required"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LHDN MyInvois e-invoicing (legacy EInvoiceapilist.cs). Credentials are user-
+# scope environment variables (setx), never YAML defaults. The environment
+# selects the API host, the portal host in the QR link, AND the supplier
+# profile below — preprod credentials belong to a different taxpayer.
+# ─────────────────────────────────────────────────────────────────────────────
+myinvois:
+  enabled: ${MYINVOIS_ENABLED:true}
+  environment: ${MYINVOIS_ENVIRONMENT:preprod}
+  client-id: ${MYINVOIS_CLIENT_ID:}
+  client-secret: ${MYINVOIS_CLIENT_SECRET:}
+  timeout: 120s
+  token-refresh-margin: 60s
+  # EXCLUSIVE sends stored Amount − stored TaxAmount as the line amount (≈ Qty×Rate;
+  # reconciles with the header); LEGACY_INCLUSIVE sends the stored tax-inclusive
+  # figure in the old document shape. See MyInvoisProperties.lineAmountPolicy.
+  line-amount-policy: ${MYINVOIS_LINE_AMOUNT_POLICY:EXCLUSIVE}
+  allow-resubmit-invalid: true
+  # SGD/USD invoices are 40% of what has been e-invoiced; LHDN accepts them as sent.
+  allow-foreign-currency: true
+  supplier-profiles:
+    live:
+      name: MALEVA (M) SDN BHD
+      tin: C22173439020
+      tin-scheme: TIN
+      registration-no: "201101015652"
+      registration-scheme: BRN
+      sst-no: W10-1809-32001584
+      sst-scheme: SST
+      msic-code: "52299"
+      msic-description: Other transportation support activities n.e.c.
+      address-line1: "B50 JALAN FZ4 - P3, PORT KLANG, FREE ZONE /KS 12,"
+      address-line2: "42920 PULAU INDAH, SELANGOR, MALAYSIA."
+      city: PULAU INDAH
+      postal-zone: "42920"
+      state-code: "10"
+      country-code: MYS
+      phone: "+60331023251"
+      email: operation@maleva.com.my
+    preprod:
+      # LHDN's sandbox taxpayer for this account is an individual (NRIC), not
+      # the company — these values came from the legacy demo constants.
+      name: MALEVA (M) SDN BHD
+      tin: IG23161360010
+      tin-scheme: TIN
+      registration-no: "840927055966"
+      registration-scheme: NRIC
+      sst-no: W10-1809-32001584
+      sst-scheme: SST
+      msic-code: "52299"
+      msic-description: Other transportation support activities n.e.c.
+      address-line1: "NO.3, JALAN RK 3/22, TAMAN RASAH KEMAYAN,"
+      address-line2: "70300, SEREMBAN, NEGERI SEMBILAN, MALAYSIA"
+      city: SEREMBAN
+      postal-zone: "70300"
+      # Negeri Sembilan. Legacy hard-coded "10" (Selangor) here by mistake.
+      state-code: "05"
+      country-code: MYS
+      phone: "+60122907151"
+      email: manimala@maleva.com.my
+
 qne:
   enabled: true
   demo: false
