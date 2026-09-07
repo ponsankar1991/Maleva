@@ -2,31 +2,33 @@
 <!--
   Printed sale invoice: the Jasper port of the legacy Crystal CRInvoice.rpt.
 
-  Layout follows the Crystal design band for band: logo + six header lines,
-  centred heading, customer / attention box beside the NO-Date-JOB NO-TERMS-
-  Page box, the two-column shipment box, the eleven-column line table, then
-  amount in words, notes and the e-Invoice bar on the left with the totals,
-  QR and signature lines on the right.
+  Every font, size and position here was measured off a Crystal PDF the
+  business actually issued (INV000044235), not estimated: Verdana 14 bold for
+  the company name, 8 for the address block, 11 bold for the heading, 7 for
+  the body with bold labels beside regular values, 8 bold for the totals, 6
+  for the small print. The coordinates are the same page points Crystal used,
+  so the two pages line up when held against each other.
 
-  Everything printed comes from the SNAPSHOT parameter (InvoicePrintSnapshot)
-  and the line data source (InvoicePrintLine beans). The Crystal formulas
-  (CN, BLAWB, Land, off, PName, subTotalAmount, Amountinwords) are computed
-  in InvoicePrintSnapshotLoader, so nothing here does arithmetic: a change
-  to how a value is derived is a Java change with a test, not a template edit.
+  Nothing here computes anything. The Crystal formula fields (CN, BLAWB,
+  Land, off, PName, subTotalAmount, Amountinwords) are evaluated in
+  InvoicePrintSnapshotLoader and AmountInWords, each with tests, and this
+  template only prints what it is handed.
 -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
-              name="sale-invoice" pageWidth="595" pageHeight="842" columnWidth="535"
-              leftMargin="30" rightMargin="30" topMargin="24" bottomMargin="24"
+              name="sale-invoice" pageWidth="595" pageHeight="842" columnWidth="547"
+              leftMargin="24" rightMargin="24" topMargin="24" bottomMargin="12"
               whenNoDataType="AllSectionsNoDetail">
 
     <import value="java.time.format.DateTimeFormatter"/>
 
-    <style name="Base" isDefault="true" fontName="SansSerif" fontSize="8" pdfFontName="Helvetica" pdfEncoding="Cp1252" isBlankWhenNull="true"/>
-    <style name="Label" style="Base" isBold="true" pdfFontName="Helvetica-Bold"/>
-    <style name="Cell" style="Base" fontSize="7.5"/>
-    <style name="ColHead" style="Base" fontSize="7" isBold="true" pdfFontName="Helvetica-Bold"/>
+    <!-- Crystal's fonts. Base = Verdana 7 regular, the body size of the page. -->
+    <style name="Base" isDefault="true" fontName="Verdana" fontSize="7" isBlankWhenNull="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+    <style name="Label" style="Base" isBold="true"/>
+    <style name="Body8" style="Base" fontSize="8"/>
+    <style name="Total" style="Base" fontSize="8" isBold="true"/>
+    <style name="Fine" style="Base" fontSize="6"/>
 
     <parameter name="SNAPSHOT" class="my.maleva.api.module.invoice.print.InvoicePrintSnapshot"/>
     <parameter name="QR_IMAGE" class="java.io.InputStream"/>
@@ -49,155 +51,174 @@
         <initialValueExpression><![CDATA[DateTimeFormatter.ofPattern("dd/MM/yyyy")]]></initialValueExpression>
     </variable>
     <variable name="DATETIME_FMT" class="java.time.format.DateTimeFormatter" calculation="System">
-        <initialValueExpression><![CDATA[DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")]]></initialValueExpression>
+        <initialValueExpression><![CDATA[DateTimeFormatter.ofPattern("d/M/yyyy h:mm:ss a", java.util.Locale.ENGLISH)]]></initialValueExpression>
     </variable>
     <variable name="H" class="java.util.List" calculation="System">
         <initialValueExpression><![CDATA[$P{SNAPSHOT}.getHeaderLines() == null ? java.util.List.of() : $P{SNAPSHOT}.getHeaderLines()]]></initialValueExpression>
     </variable>
 
-    <!-- ====================== first-page heading ====================== -->
+    <!-- ====================== first-page heading (page y 24-405) ====================== -->
     <title>
-        <band height="392">
-            <!-- logo + company lines -->
+        <band height="381">
             <image scaleImage="RetainShape" hAlign="Left" vAlign="Top" isUsingCache="false" onErrorType="Blank">
-                <reportElement x="0" y="0" width="100" height="96"/>
+                <reportElement x="0" y="2" width="118" height="86"/>
                 <imageExpression><![CDATA[$P{LOGO}]]></imageExpression>
             </image>
+
+            <!-- company block: LINE1 bold 14, LINE2-6 regular 8 on a 12pt rhythm -->
             <textField>
-                <reportElement style="Label" x="112" y="2" width="423" height="22"/>
-                <textElement><font size="15"/></textElement>
+                <reportElement style="Label" x="132" y="4" width="415" height="20"/>
+                <textElement><font size="14"/></textElement>
                 <textFieldExpression><![CDATA[$V{H}.size() > 0 ? $V{H}.get(0) : ""]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Base" x="112" y="28" width="423" height="12"/>
+                <reportElement style="Body8" x="132" y="32" width="415" height="12"/>
                 <textFieldExpression><![CDATA[$V{H}.size() > 1 ? $V{H}.get(1) : ""]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Base" x="112" y="40" width="423" height="12"/>
+                <reportElement style="Body8" x="132" y="44" width="415" height="12"/>
                 <textFieldExpression><![CDATA[$V{H}.size() > 2 ? $V{H}.get(2) : ""]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Base" x="112" y="52" width="423" height="12"/>
+                <reportElement style="Body8" x="132" y="56" width="415" height="12"/>
                 <textFieldExpression><![CDATA[$V{H}.size() > 3 ? $V{H}.get(3) : ""]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Base" x="112" y="64" width="423" height="12"/>
+                <reportElement style="Body8" x="132" y="68" width="415" height="12"/>
                 <textFieldExpression><![CDATA[$V{H}.size() > 4 ? $V{H}.get(4) : ""]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Base" x="112" y="76" width="423" height="12"/>
+                <reportElement style="Body8" x="132" y="80" width="415" height="12"/>
                 <textFieldExpression><![CDATA[$V{H}.size() > 5 ? $V{H}.get(5) : ""]]></textFieldExpression>
             </textField>
 
-            <!-- heading -->
             <textField>
-                <reportElement style="Label" x="0" y="102" width="535" height="18"/>
-                <textElement textAlignment="Center"><font size="13"/></textElement>
+                <reportElement style="Label" x="0" y="96" width="547" height="16"/>
+                <textElement textAlignment="Center"><font size="11"/></textElement>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getHeading()]]></textFieldExpression>
             </textField>
 
-            <!-- customer box -->
-            <rectangle><reportElement x="0" y="124" width="335" height="108"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
-            <staticText><reportElement style="Label" x="4" y="128" width="60" height="12"/><text><![CDATA[Customer :]]></text></staticText>
-            <textField isStretchWithOverflow="false">
-                <reportElement style="Label" x="66" y="128" width="265" height="14"/>
+            <!-- customer box (page y 141-253) -->
+            <rectangle><reportElement x="0" y="117" width="315" height="112"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
+            <staticText><reportElement style="Label" x="6" y="122" width="90" height="11"/><text><![CDATA[Customer :]]></text></staticText>
+            <textField>
+                <reportElement x="102" y="122" width="210" height="11"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getCustomerLine()]]></textFieldExpression>
             </textField>
             <textField isStretchWithOverflow="false">
-                <reportElement style="Base" x="66" y="142" width="265" height="64"/>
+                <reportElement x="102" y="146" width="210" height="60"/>
+                <textElement><paragraph lineSpacing="Proportional" lineSpacingSize="1.28"/></textElement>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getCustomerAddress()]]></textFieldExpression>
             </textField>
-            <staticText><reportElement style="Label" x="4" y="212" width="60" height="12"/><text><![CDATA[Attn :]]></text></staticText>
+            <staticText><reportElement style="Label" x="6" y="212" width="90" height="11"/><text><![CDATA[Attn :]]></text></staticText>
             <textField>
-                <reportElement style="Base" x="66" y="212" width="265" height="12"/>
-                <textFieldExpression><![CDATA[$P{SNAPSHOT}.getAttentionName() + (($P{SNAPSHOT}.getAttentionPhone() == null || $P{SNAPSHOT}.getAttentionPhone().isBlank()) ? "" : " / " + $P{SNAPSHOT}.getAttentionPhone())]]></textFieldExpression>
+                <reportElement x="102" y="212" width="126" height="11"/>
+                <textFieldExpression><![CDATA[$P{SNAPSHOT}.getAttentionName()]]></textFieldExpression>
+            </textField>
+            <staticText><reportElement x="234" y="212" width="6" height="11"/><text><![CDATA[/]]></text></staticText>
+            <textField>
+                <reportElement style="Body8" x="240" y="211" width="72" height="12"/>
+                <textFieldExpression><![CDATA[$P{SNAPSHOT}.getAttentionPhone()]]></textFieldExpression>
             </textField>
 
-            <!-- NO / Date / JOB NO / TERMS / Page box -->
-            <rectangle><reportElement x="335" y="124" width="200" height="108"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
-            <line><reportElement x="335" y="145" width="200" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
-            <line><reportElement x="335" y="166" width="200" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
-            <line><reportElement x="335" y="187" width="200" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
-            <line><reportElement x="335" y="208" width="200" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
-            <line><reportElement x="400" y="124" width="1" height="108"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
+            <!-- NO / Date / JOB NO / TERMS / Page box (page x 339-570) -->
+            <rectangle><reportElement x="315" y="117" width="231" height="112"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
+            <line><reportElement x="315" y="142" width="231" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
+            <line><reportElement x="315" y="165" width="231" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
+            <line><reportElement x="315" y="189" width="231" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
+            <line><reportElement x="315" y="212" width="231" height="1"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
+            <line><reportElement x="402" y="117" width="1" height="112"/><graphicElement><pen lineWidth="0.5"/></graphicElement></line>
 
-            <staticText><reportElement style="Label" x="340" y="129" width="58" height="12"/><textElement textAlignment="Right"/><text><![CDATA[NO :]]></text></staticText>
+            <staticText><reportElement style="Label" x="320" y="125" width="76" height="11"/><textElement textAlignment="Right"/><text><![CDATA[NO :]]></text></staticText>
             <textField>
-                <reportElement style="Label" x="405" y="129" width="128" height="12"/>
+                <reportElement style="Label" x="408" y="125" width="136" height="11"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getInvoiceNo()]]></textFieldExpression>
             </textField>
-            <staticText><reportElement style="Label" x="340" y="150" width="58" height="12"/><textElement textAlignment="Right"/><text><![CDATA[Date :]]></text></staticText>
+            <staticText><reportElement style="Label" x="320" y="146" width="76" height="11"/><textElement textAlignment="Right"/><text><![CDATA[Date :]]></text></staticText>
             <textField>
-                <reportElement style="Label" x="405" y="150" width="128" height="12"/>
+                <reportElement style="Label" x="408" y="146" width="136" height="11"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getInvoiceDate() == null ? "" : $P{SNAPSHOT}.getInvoiceDate().format($V{DATE_FMT})]]></textFieldExpression>
             </textField>
-            <staticText><reportElement style="Label" x="340" y="171" width="58" height="12"/><textElement textAlignment="Right"/><text><![CDATA[JOB NO :]]></text></staticText>
+            <staticText><reportElement style="Label" x="320" y="170" width="76" height="11"/><textElement textAlignment="Right"/><text><![CDATA[JOB NO :]]></text></staticText>
             <textField>
-                <reportElement style="Label" x="405" y="171" width="128" height="12"/>
+                <reportElement style="Label" x="408" y="170" width="136" height="11"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getJobNo()]]></textFieldExpression>
             </textField>
-            <staticText><reportElement style="Label" x="340" y="192" width="58" height="12"/><textElement textAlignment="Right"/><text><![CDATA[TERMS :]]></text></staticText>
+            <staticText><reportElement style="Label" x="320" y="194" width="76" height="11"/><textElement textAlignment="Right"/><text><![CDATA[TERMS :]]></text></staticText>
             <textField>
-                <reportElement style="Label" x="405" y="192" width="128" height="12"/>
+                <reportElement style="Label" x="408" y="194" width="136" height="11"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getPaymentTerms()]]></textFieldExpression>
             </textField>
-            <staticText><reportElement style="Label" x="340" y="213" width="58" height="12"/><textElement textAlignment="Right"/><text><![CDATA[Page :]]></text></staticText>
+            <staticText><reportElement style="Label" x="320" y="216" width="76" height="11"/><textElement textAlignment="Right"/><text><![CDATA[Page :]]></text></staticText>
             <textField>
-                <reportElement style="Label" x="405" y="213" width="46" height="12"/>
+                <reportElement style="Label" x="408" y="216" width="38" height="11"/>
+                <textElement textAlignment="Right"/>
                 <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER} + " of"]]></textFieldExpression>
             </textField>
             <textField evaluationTime="Report">
-                <reportElement style="Label" x="451" y="213" width="40" height="12"/>
+                <reportElement style="Label" x="448" y="216" width="96" height="11"/>
                 <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
             </textField>
 
-            <!-- shipment box: left column -->
-            <rectangle><reportElement x="0" y="232" width="300" height="150"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
-            <staticText><reportElement style="Label" x="4" y="238" width="88" height="12"/><text><![CDATA[Origin]]></text></staticText>
-            <staticText><reportElement style="Base" x="92" y="238" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="102" y="238" width="194" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getOrigin()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="4" y="258" width="88" height="12"/><text><![CDATA[Destination]]></text></staticText>
-            <staticText><reportElement style="Base" x="92" y="258" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="102" y="258" width="194" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getDestination()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="4" y="278" width="88" height="12"/><text><![CDATA[Packages]]></text></staticText>
-            <staticText><reportElement style="Base" x="92" y="278" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="102" y="278" width="194" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getPackages()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="4" y="298" width="88" height="12"/><text><![CDATA[Vessel offland]]></text></staticText>
-            <staticText><reportElement style="Base" x="92" y="298" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="102" y="298" width="194" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getVesselOffland()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="4" y="318" width="88" height="12"/><text><![CDATA[Vessel onboard]]></text></staticText>
-            <staticText><reportElement style="Base" x="92" y="318" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="102" y="318" width="194" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getVesselOnboard()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="4" y="338" width="88" height="12"/><text><![CDATA[Reference]]></text></staticText>
-            <staticText><reportElement style="Base" x="92" y="338" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="102" y="338" width="194" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getReference()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="4" y="358" width="88" height="12"/><text><![CDATA[Truck Name]]></text></staticText>
-            <staticText><reportElement style="Base" x="92" y="358" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="102" y="358" width="194" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getTruckName()]]></textFieldExpression></textField>
+            <!-- shipment box (page y 253-405), divider at page x 288 -->
+            <rectangle><reportElement x="0" y="229" width="546" height="152"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
+            <line><reportElement x="264" y="229" width="1" height="152"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
 
-            <!-- shipment box: right column -->
-            <rectangle><reportElement x="300" y="232" width="235" height="150"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
-            <staticText><reportElement style="Label" x="305" y="238" width="80" height="12"/><text><![CDATA[Weight]]></text></staticText>
-            <staticText><reportElement style="Base" x="385" y="238" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="395" y="238" width="137" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getWeight()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="305" y="258" width="80" height="12"/><text><![CDATA[Do . No]]></text></staticText>
-            <staticText><reportElement style="Base" x="385" y="258" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="395" y="258" width="137" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getDoNo()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="305" y="278" width="80" height="12"/><text><![CDATA[Commodity]]></text></staticText>
-            <staticText><reportElement style="Base" x="385" y="278" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="395" y="278" width="137" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getCommodity()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="305" y="298" width="80" height="12"/><text><![CDATA[Collection Date]]></text></staticText>
-            <staticText><reportElement style="Base" x="385" y="298" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="395" y="298" width="137" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getCollectionDate() == null ? "" : $P{SNAPSHOT}.getCollectionDate().format($V{DATE_FMT})]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="305" y="318" width="80" height="12"/><text><![CDATA[Delivery Date]]></text></staticText>
-            <staticText><reportElement style="Base" x="385" y="318" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="395" y="318" width="137" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getDeliveryDate() == null ? "" : $P{SNAPSHOT}.getDeliveryDate().format($V{DATE_FMT})]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="305" y="338" width="80" height="12"/><text><![CDATA[Truck Size]]></text></staticText>
-            <staticText><reportElement style="Base" x="385" y="338" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="395" y="338" width="137" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getTruckSize()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="305" y="358" width="80" height="12"/><text><![CDATA[BL/AWB]]></text></staticText>
-            <staticText><reportElement style="Base" x="385" y="358" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="395" y="358" width="137" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getBlAwb()]]></textFieldExpression></textField>
+            <staticText><reportElement style="Label" x="6" y="236" width="90" height="11"/><text><![CDATA[Origin]]></text></staticText>
+            <staticText><reportElement x="102" y="236" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="114" y="236" width="144" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getOrigin()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="6" y="254" width="90" height="11"/><text><![CDATA[Destination]]></text></staticText>
+            <staticText><reportElement x="102" y="254" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="114" y="254" width="144" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getDestination()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="6" y="272" width="90" height="11"/><text><![CDATA[Packages]]></text></staticText>
+            <staticText><reportElement x="102" y="272" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="114" y="272" width="144" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getPackages()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="6" y="302" width="90" height="11"/><text><![CDATA[Vessel offland]]></text></staticText>
+            <staticText><reportElement x="102" y="302" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="114" y="302" width="144" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getVesselOffland()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="6" y="326" width="90" height="11"/><text><![CDATA[Vessel onboard]]></text></staticText>
+            <staticText><reportElement x="102" y="326" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="114" y="326" width="144" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getVesselOnboard()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="6" y="338" width="90" height="11"/><text><![CDATA[Reference]]></text></staticText>
+            <staticText><reportElement x="102" y="338" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="114" y="338" width="144" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getReference()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="6" y="356" width="90" height="11"/><text><![CDATA[Truck Name]]></text></staticText>
+            <staticText><reportElement x="102" y="356" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="114" y="356" width="144" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getTruckName()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="270" y="236" width="78" height="11"/><text><![CDATA[Weight]]></text></staticText>
+            <staticText><reportElement x="348" y="236" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="360" y="236" width="180" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getWeight()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="270" y="266" width="78" height="11"/><text><![CDATA[Do . No]]></text></staticText>
+            <staticText><reportElement x="348" y="266" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="360" y="266" width="180" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getDoNo()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="270" y="284" width="78" height="11"/><text><![CDATA[Commodity]]></text></staticText>
+            <staticText><reportElement x="348" y="284" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="360" y="284" width="180" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getCommodity()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="270" y="302" width="78" height="11"/><text><![CDATA[Collection Date]]></text></staticText>
+            <staticText><reportElement x="348" y="302" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="360" y="302" width="180" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getCollectionDate() == null ? "" : $P{SNAPSHOT}.getCollectionDate().format($V{DATE_FMT})]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="270" y="320" width="78" height="11"/><text><![CDATA[Delivery Date]]></text></staticText>
+            <staticText><reportElement x="348" y="320" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="360" y="320" width="180" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getDeliveryDate() == null ? "" : $P{SNAPSHOT}.getDeliveryDate().format($V{DATE_FMT})]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="270" y="338" width="78" height="11"/><text><![CDATA[Truck Size]]></text></staticText>
+            <staticText><reportElement x="348" y="338" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="360" y="338" width="180" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getTruckSize()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Label" x="270" y="356" width="78" height="11"/><text><![CDATA[BL/AWB]]></text></staticText>
+            <staticText><reportElement x="348" y="356" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="360" y="356" width="180" height="11"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getBlAwb()]]></textFieldExpression></textField>
         </band>
     </title>
 
@@ -206,141 +227,144 @@
         <band height="18">
             <printWhenExpression><![CDATA[$V{PAGE_NUMBER} > 1]]></printWhenExpression>
             <textField>
-                <reportElement style="Label" x="0" y="2" width="400" height="12"/>
+                <reportElement style="Label" x="0" y="3" width="400" height="12"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getHeading() + " " + $P{SNAPSHOT}.getInvoiceNo() + " (continued)"]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement style="Base" x="400" y="2" width="100" height="12"/>
+                <reportElement style="Label" x="440" y="3" width="42" height="12"/>
                 <textElement textAlignment="Right"/>
                 <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER} + " of"]]></textFieldExpression>
             </textField>
             <textField evaluationTime="Report">
-                <reportElement style="Base" x="503" y="2" width="32" height="12"/>
+                <reportElement style="Label" x="484" y="3" width="63" height="12"/>
                 <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
             </textField>
         </band>
     </pageHeader>
 
-    <!-- ====================== line table ====================== -->
+    <!-- ====================== line table (rules at page y 434 and 452) ====================== -->
     <columnHeader>
-        <band height="18">
-            <line><reportElement x="0" y="2" width="535" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
-            <line><reportElement x="0" y="16" width="535" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
-            <staticText><reportElement style="ColHead" x="0" y="4" width="14" height="11"/><text><![CDATA[#]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="16" y="4" width="40" height="11"/><text><![CDATA[CODE]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="58" y="4" width="148" height="11"/><text><![CDATA[DESCRIPTION]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="206" y="4" width="40" height="11"/><textElement textAlignment="Right"/><text><![CDATA[QTY]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="250" y="4" width="40" height="11"/><text><![CDATA[UOM]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="290" y="4" width="56" height="11"/><textElement textAlignment="Right"/><text><![CDATA[U.PRICE]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="346" y="4" width="34" height="11"/><textElement textAlignment="Right"/><text><![CDATA[DISC]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="384" y="4" width="32" height="11"/><text><![CDATA[TCode]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="416" y="4" width="28" height="11"/><textElement textAlignment="Right"/><text><![CDATA[ST]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="444" y="4" width="40" height="11"/><textElement textAlignment="Right"/><text><![CDATA[AMT]]></text></staticText>
-            <staticText><reportElement style="ColHead" x="484" y="4" width="51" height="11"/><textElement textAlignment="Right"/><text><![CDATA[NET AMOUNT]]></text></staticText>
+        <band height="52">
+            <line><reportElement x="0" y="29" width="547" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+            <line><reportElement x="0" y="47" width="547" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+            <staticText><reportElement x="0" y="34" width="26" height="11"/><text><![CDATA[#]]></text></staticText>
+            <staticText><reportElement x="30" y="34" width="46" height="11"/><text><![CDATA[CODE]]></text></staticText>
+            <staticText><reportElement x="78" y="34" width="140" height="11"/><text><![CDATA[DESCRIPTION]]></text></staticText>
+            <staticText><reportElement x="206" y="34" width="32" height="11"/><textElement textAlignment="Right"/><text><![CDATA[QTY]]></text></staticText>
+            <staticText><reportElement x="252" y="34" width="44" height="11"/><text><![CDATA[UOM]]></text></staticText>
+            <staticText><reportElement x="298" y="34" width="52" height="11"/><textElement textAlignment="Right"/><text><![CDATA[U.PRICE]]></text></staticText>
+            <staticText><reportElement x="352" y="34" width="26" height="11"/><textElement textAlignment="Right"/><text><![CDATA[DISC]]></text></staticText>
+            <staticText><reportElement x="390" y="34" width="30" height="11"/><text><![CDATA[TCode]]></text></staticText>
+            <staticText><reportElement x="420" y="34" width="24" height="11"/><textElement textAlignment="Right"/><text><![CDATA[ST]]></text></staticText>
+            <staticText><reportElement x="446" y="34" width="46" height="11"/><textElement textAlignment="Right"/><text><![CDATA[AMT]]></text></staticText>
+            <staticText><reportElement x="494" y="34" width="53" height="11"/><textElement textAlignment="Right"/><text><![CDATA[NET AMOUNT]]></text></staticText>
         </band>
     </columnHeader>
 
     <detail>
-        <band height="14" splitType="Prevent">
-            <textField><reportElement style="Cell" x="0" y="1" width="14" height="12"/><textFieldExpression><![CDATA[$F{rowNumber}]]></textFieldExpression></textField>
-            <textField><reportElement style="Cell" x="16" y="1" width="40" height="12"/><textFieldExpression><![CDATA[$F{productCode}]]></textFieldExpression></textField>
-            <textField isStretchWithOverflow="true"><reportElement style="Cell" x="58" y="1" width="148" height="12"/><textFieldExpression><![CDATA[$F{description}]]></textFieldExpression></textField>
-            <textField pattern="#,##0.00"><reportElement style="Cell" x="206" y="1" width="40" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{quantity}]]></textFieldExpression></textField>
-            <textField><reportElement style="Cell" x="250" y="1" width="40" height="12"/><textFieldExpression><![CDATA[$F{uom}]]></textFieldExpression></textField>
-            <textField pattern="#,##0.00"><reportElement style="Cell" x="290" y="1" width="56" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{unitPrice}]]></textFieldExpression></textField>
-            <textField pattern="#,##0.00"><reportElement style="Cell" x="346" y="1" width="34" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{discountPercent}]]></textFieldExpression></textField>
-            <textField><reportElement style="Cell" x="384" y="1" width="32" height="12"/><textFieldExpression><![CDATA[$F{taxCode}]]></textFieldExpression></textField>
-            <textField pattern="#,##0.00"><reportElement style="Cell" x="416" y="1" width="28" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{taxPercent}]]></textFieldExpression></textField>
-            <textField pattern="#,##0.00"><reportElement style="Cell" x="444" y="1" width="40" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{taxAmount}]]></textFieldExpression></textField>
-            <textField pattern="#,##0.00"><reportElement style="Cell" x="484" y="1" width="51" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{amount}]]></textFieldExpression></textField>
+        <band height="17" splitType="Prevent">
+            <textField><reportElement x="0" y="3" width="26" height="11"/><textFieldExpression><![CDATA[$F{rowNumber}]]></textFieldExpression></textField>
+            <textField><reportElement x="30" y="3" width="46" height="11"/><textFieldExpression><![CDATA[$F{productCode}]]></textFieldExpression></textField>
+            <textField isStretchWithOverflow="true"><reportElement x="78" y="3" width="140" height="11"/><textFieldExpression><![CDATA[$F{description}]]></textFieldExpression></textField>
+            <textField pattern="#,##0.00"><reportElement x="206" y="3" width="32" height="11"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{quantity}]]></textFieldExpression></textField>
+            <textField><reportElement x="252" y="3" width="44" height="11"/><textFieldExpression><![CDATA[$F{uom}]]></textFieldExpression></textField>
+            <textField pattern="#,##0.00"><reportElement x="298" y="3" width="52" height="11"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{unitPrice}]]></textFieldExpression></textField>
+            <textField pattern="#,##0.00"><reportElement x="352" y="3" width="26" height="11"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{discountPercent}]]></textFieldExpression></textField>
+            <textField><reportElement x="390" y="3" width="30" height="11"/><textFieldExpression><![CDATA[$F{taxCode}]]></textFieldExpression></textField>
+            <textField pattern="#,##0.00"><reportElement x="420" y="3" width="24" height="11"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{taxPercent}]]></textFieldExpression></textField>
+            <textField pattern="#,##0.00"><reportElement x="446" y="3" width="46" height="11"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{taxAmount}]]></textFieldExpression></textField>
+            <textField pattern="#,##0.00"><reportElement x="494" y="3" width="53" height="11"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{amount}]]></textFieldExpression></textField>
         </band>
     </detail>
 
-    <!-- ====================== continued pages ====================== -->
     <pageFooter>
         <band height="14">
             <staticText>
-                <reportElement style="Base" x="0" y="2" width="535" height="12"/>
-                <textElement textAlignment="Center"><font size="7" isItalic="true"/></textElement>
+                <reportElement style="Fine" x="0" y="2" width="547" height="10"/>
+                <textElement textAlignment="Center"><font isItalic="true"/></textElement>
                 <text><![CDATA[Continued on next page]]></text>
             </staticText>
         </band>
     </pageFooter>
 
-    <!-- ====================== totals, notes, e-invoice, signatures (page bottom, like Crystal) ====================== -->
+    <!-- ====================== totals, notes, e-invoice, signatures (page y 620-830) ====================== -->
     <lastPageFooter>
-        <band height="262">
-            <line><reportElement x="0" y="2" width="535" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
-
-            <!-- left: amount in words, notes, e-invoice -->
-            <textField isStretchWithOverflow="false">
-                <reportElement style="Base" x="4" y="8" width="336" height="24"/>
+        <band height="210">
+            <textField>
+                <reportElement style="Body8" x="0" y="3" width="350" height="12"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getAmountInWords()]]></textFieldExpression>
-            </textField>
-            <staticText><reportElement style="Label" x="4" y="34" width="60" height="12"/><textElement><font isUnderline="true"/></textElement><text><![CDATA[Notes :]]></text></staticText>
-            <textField isStretchWithOverflow="false">
-                <reportElement style="Base" x="4" y="46" width="336" height="96"/>
-                <textElement><font size="7"/></textElement>
-                <textFieldExpression><![CDATA[$P{SNAPSHOT}.getNotes() == null ? "" : String.join("\n\n", $P{SNAPSHOT}.getNotes())]]></textFieldExpression>
             </textField>
 
             <staticText>
-                <reportElement style="Label" mode="Opaque" backcolor="#FFC000" x="4" y="146" width="336" height="13"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement>
-                <textElement verticalAlignment="Middle"/>
-                <text><![CDATA[    e-Invoice Information]]></text>
+                <reportElement style="Label" x="0" y="27" width="60" height="11"/>
+                <textElement><font isUnderline="true"/></textElement>
+                <text><![CDATA[Notes :]]></text>
             </staticText>
-            <staticText><reportElement style="Base" x="4" y="162" width="104" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[e-Invoice Status]]></text></staticText>
-            <staticText><reportElement style="Base" x="110" y="162" width="8" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="120" y="162" width="220" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><textFieldExpression><![CDATA[$P{SNAPSHOT}.getEInvoiceStatus()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Base" x="4" y="175" width="104" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[Unique Identified No]]></text></staticText>
-            <staticText><reportElement style="Base" x="110" y="175" width="8" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="120" y="175" width="220" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><textFieldExpression><![CDATA[$P{SNAPSHOT}.getEInvoiceUid()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Base" x="4" y="188" width="104" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[Validated Date]]></text></staticText>
-            <staticText><reportElement style="Base" x="110" y="188" width="8" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[:]]></text></staticText>
-            <textField><reportElement style="Base" x="120" y="188" width="220" height="12"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><textFieldExpression><![CDATA[$P{SNAPSHOT}.getEInvoiceValidatedAt() == null ? "" : $P{SNAPSHOT}.getEInvoiceValidatedAt().format($V{DATETIME_FMT})]]></textFieldExpression></textField>
-
-            <!-- right: totals box -->
-            <rectangle><reportElement x="350" y="6" width="185" height="72"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
-            <staticText><reportElement style="Label" x="354" y="10" width="82" height="12"/><text><![CDATA[SUB TOTAL]]></text></staticText>
-            <staticText><reportElement style="Base" x="436" y="10" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField pattern="#,##0.00"><reportElement style="Label" x="444" y="10" width="87" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getSubtotal()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="354" y="25" width="82" height="12"/><text><![CDATA[SST AMOUNT]]></text></staticText>
-            <staticText><reportElement style="Base" x="436" y="25" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField pattern="#,##0.00"><reportElement style="Label" x="444" y="25" width="87" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getTaxTotal()]]></textFieldExpression></textField>
-            <staticText><reportElement style="Label" x="354" y="40" width="82" height="12"/><text><![CDATA[ROUNDING ADJ]]></text></staticText>
-            <staticText><reportElement style="Base" x="436" y="40" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField pattern="#,##0.00"><reportElement style="Label" x="444" y="40" width="87" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getRoundingAdjustment()]]></textFieldExpression></textField>
-            <line><reportElement x="350" y="56" width="185" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
-            <textField>
-                <reportElement style="Label" x="354" y="61" width="82" height="12"/>
-                <textElement><font size="9"/></textElement>
-                <textFieldExpression><![CDATA["NET TOTAL   " + $P{SNAPSHOT}.getCurrencySymbol()]]></textFieldExpression>
-            </textField>
-            <staticText><reportElement style="Base" x="436" y="61" width="8" height="12"/><text><![CDATA[:]]></text></staticText>
-            <textField pattern="#,##0.00">
-                <reportElement style="Label" x="444" y="61" width="87" height="12"/>
-                <textElement textAlignment="Right"><font size="9"/></textElement>
-                <textFieldExpression><![CDATA[$P{SNAPSHOT}.getNetTotal()]]></textFieldExpression>
+            <textField isStretchWithOverflow="false">
+                <reportElement x="0" y="44" width="270" height="86"/>
+                <textElement><paragraph lineSpacing="Proportional" lineSpacingSize="1.05"/></textElement>
+                <textFieldExpression><![CDATA[$P{SNAPSHOT}.getNotes() == null ? "" : String.join("\n\n", $P{SNAPSHOT}.getNotes())]]></textFieldExpression>
             </textField>
 
-            <!-- right: LHDN validation QR -->
-            <image scaleImage="RetainShape" hAlign="Center" isUsingCache="false" onErrorType="Blank">
-                <reportElement x="395" y="84" width="95" height="95">
+            <!-- e-Invoice block: Crystal suppressed it when EInvoiceUid = '' -->
+            <staticText>
+                <reportElement style="Label" mode="Opaque" backcolor="#FFC000" x="0" y="134" width="292" height="12">
+                    <printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle"/>
+                <text><![CDATA[     e-Invoice Information]]></text>
+            </staticText>
+            <staticText><reportElement x="0" y="147" width="110" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[e-Invoice Status]]></text></staticText>
+            <staticText><reportElement x="114" y="147" width="6" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="126" y="147" width="214" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><textFieldExpression><![CDATA[$P{SNAPSHOT}.getEInvoiceStatus()]]></textFieldExpression></textField>
+
+            <staticText><reportElement x="0" y="162" width="110" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[Unique Identified No]]></text></staticText>
+            <staticText><reportElement x="114" y="162" width="6" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="126" y="162" width="214" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><textFieldExpression><![CDATA[$P{SNAPSHOT}.getEInvoiceUid()]]></textFieldExpression></textField>
+
+            <staticText><reportElement x="0" y="177" width="110" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[Validated Date]]></text></staticText>
+            <staticText><reportElement x="114" y="177" width="6" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><text><![CDATA[:]]></text></staticText>
+            <textField><reportElement x="126" y="177" width="214" height="11"><printWhenExpression><![CDATA[$P{SNAPSHOT}.isEInvoiced()]]></printWhenExpression></reportElement><textFieldExpression><![CDATA[$P{SNAPSHOT}.getEInvoiceValidatedAt() == null ? "" : $P{SNAPSHOT}.getEInvoiceValidatedAt().format($V{DATETIME_FMT})]]></textFieldExpression></textField>
+
+            <!-- totals box (page x 376-570, y 625-787) -->
+            <rectangle><reportElement x="352" y="5" width="194" height="162"/><graphicElement><pen lineWidth="0.75"/></graphicElement></rectangle>
+            <line><reportElement x="352" y="74" width="194" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+            <line><reportElement x="352" y="101" width="194" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+
+            <staticText><reportElement style="Total" x="360" y="9" width="92" height="12"/><text><![CDATA[SUB TOTAL]]></text></staticText>
+            <staticText><reportElement x="456" y="10" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField pattern="#,##0.00"><reportElement style="Total" x="466" y="9" width="81" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getSubtotal()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Total" x="360" y="33" width="92" height="12"/><text><![CDATA[SST AMOUNT]]></text></staticText>
+            <staticText><reportElement x="456" y="34" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField pattern="#,##0.00"><reportElement style="Total" x="466" y="33" width="81" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getTaxTotal()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Total" x="360" y="51" width="92" height="12"/><text><![CDATA[ROUNDING ADJ]]></text></staticText>
+            <staticText><reportElement x="456" y="52" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField pattern="#,##0.00"><reportElement style="Total" x="466" y="51" width="81" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getRoundingAdjustment()]]></textFieldExpression></textField>
+
+            <staticText><reportElement style="Total" x="360" y="75" width="66" height="12"/><text><![CDATA[NET TOTAL]]></text></staticText>
+            <textField><reportElement style="Total" x="426" y="75" width="30" height="12"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getCurrencySymbol()]]></textFieldExpression></textField>
+            <staticText><reportElement x="456" y="76" width="6" height="11"/><text><![CDATA[:]]></text></staticText>
+            <textField pattern="#,##0.00"><reportElement style="Total" x="466" y="75" width="81" height="12"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$P{SNAPSHOT}.getNetTotal()]]></textFieldExpression></textField>
+
+            <!-- LHDN validation QR, in the lower half of the totals box -->
+            <image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" isUsingCache="false" onErrorType="Blank">
+                <reportElement x="421" y="106" width="56" height="56">
                     <printWhenExpression><![CDATA[$P{QR_IMAGE} != null]]></printWhenExpression>
                 </reportElement>
                 <imageExpression><![CDATA[$P{QR_IMAGE}]]></imageExpression>
             </image>
             <textField isStretchWithOverflow="false">
-                <reportElement style="Base" x="350" y="186" width="185" height="22"/>
-                <textElement textAlignment="Center"><font size="6.5"/></textElement>
+                <reportElement style="Fine" x="392" y="170" width="122" height="20"/>
+                <textElement textAlignment="Center"/>
                 <textFieldExpression><![CDATA[$P{SNAPSHOT}.getGeneratedNote()]]></textFieldExpression>
             </textField>
 
-            <!-- signatures -->
-            <line><reportElement x="4" y="240" width="150" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
-            <staticText><reportElement style="Label" x="4" y="243" width="150" height="12"/><textElement textAlignment="Center"/><text><![CDATA[Prepared by]]></text></staticText>
-            <line><reportElement x="385" y="240" width="150" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
-            <staticText><reportElement style="Label" x="385" y="243" width="150" height="12"/><textElement textAlignment="Center"/><text><![CDATA[AUTHORISED SIGNATURE]]></text></staticText>
+            <line><reportElement x="0" y="192" width="176" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+            <staticText><reportElement style="Label" x="0" y="195" width="176" height="11"/><textElement textAlignment="Center"/><text><![CDATA[Prepared by]]></text></staticText>
+            <line><reportElement x="366" y="192" width="180" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+            <staticText><reportElement style="Label" x="366" y="195" width="180" height="11"/><textElement textAlignment="Center"/><text><![CDATA[AUTHORISED SIGNATURE]]></text></staticText>
         </band>
     </lastPageFooter>
 </jasperReport>

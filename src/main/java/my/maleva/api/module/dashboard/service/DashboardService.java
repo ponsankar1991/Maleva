@@ -106,6 +106,14 @@ public interface DashboardService {
     List<PendingPaymentDto.CompletedPaymentDto> getCompletedPayments(Integer comId, String fromDate, String toDate);
 
     /**
+     * Billed sale orders in a date window, grouped by customer — the
+     * "Completed" panel of the Accounts Receivable desk. Nothing to do with
+     * {@link #getCompletedPayments}, which is the payable side.
+     */
+    List<my.maleva.api.module.dashboard.dto.ReceivableBilledCustomerDto> getReceivableBilledByCustomer(
+            Integer comId, String fromDate, String toDate);
+
+    /**
      * Get unreleased forwarding numbers
      */
     List<PendingPaymentDto.UnreleasedNumberDto> getUnreleasedNumbers(Integer comId);

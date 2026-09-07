@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fonts the printed documents use.
+
+  Verdana, because that is the font the Crystal reports were designed in
+  (CRInvoice.rpt embeds "Verdana" and "Verdana,Bold" subsets in every PDF the
+  legacy .NET app produced). Verdana is noticeably wider and heavier than the
+  PDF built-in Helvetica, so a template that asks for a generic sans-serif
+  prints visibly thinner than the paper the customer is used to.
+
+  The two files are the ones Windows ships; the same font was already being
+  embedded in every legacy invoice, so nothing changes about what leaves the
+  building. Identity-H with embedding keeps the PDF self-contained.
+-->
+<fontFamilies>
+    <fontFamily name="Verdana">
+        <normal>fonts/verdana.ttf</normal>
+        <bold>fonts/verdanab.ttf</bold>
+        <pdfEncoding>Identity-H</pdfEncoding>
+        <pdfEmbedded>true</pdfEmbedded>
+    </fontFamily>
+</fontFamilies>

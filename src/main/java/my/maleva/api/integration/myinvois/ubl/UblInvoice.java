@@ -53,12 +53,36 @@ public final class UblInvoice {
             @JsonProperty("Description") List<Text> description) {
     }
 
-    /** Legacy sent the invoice's Remarks1 as an "additional document reference". */
+    /**
+     * What this document refers back to.
+     *
+     * <p>An invoice sends its Remarks1 as an "additional document reference",
+     * as legacy did. A credit note must also name the invoice it corrects, in
+     * an {@code InvoiceDocumentReference} carrying that invoice's number and
+     * its LHDN UUID — that link is what makes the note a correction rather
+     * than a second, negative invoice.
+     */
+    @Builder
+    @JsonPropertyOrder({"InvoiceDocumentReference", "AdditionalDocumentReference"})
     public record BillingReference(
+            @JsonProperty("InvoiceDocumentReference") List<InvoiceDocumentReference> invoiceDocumentReference,
             @JsonProperty("AdditionalDocumentReference") List<DocumentReference> additionalDocumentReference) {
+
+        /** An invoice carries only the additional reference. */
+        public static BillingReference additional(List<Id> id) {
+            return new BillingReference(null, List.of(new DocumentReference(id)));
+        }
     }
 
     public record DocumentReference(@JsonProperty("ID") List<Id> id) {
+    }
+
+    /** The corrected document: its number, its LHDN UUID, and what that UUID is. */
+    @JsonPropertyOrder({"ID", "UUID", "DocumentType"})
+    public record InvoiceDocumentReference(
+            @JsonProperty("ID") List<Id> id,
+            @JsonProperty("UUID") List<Id> uuid,
+            @JsonProperty("DocumentType") List<Text> documentType) {
     }
 
     public record SupplierParty(@JsonProperty("Party") List<Party> party) {

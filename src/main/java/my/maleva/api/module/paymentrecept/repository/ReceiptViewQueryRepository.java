@@ -49,7 +49,9 @@ public class ReceiptViewQueryRepository {
                 + " FORMAT(ISNULL(A.Created_Date, '1900-01-01'), 'dd/MM/yyyy HH:mm:ss') AS BillTime,"
                 + " A.CustomerRefId, B.CustomerName, BA.Name AS BankName,"
                 + " CAST(A.Amount AS NUMERIC(18,2)) AS Amount, ISNULL(A.Remarks, '') AS Remarks,"
-                + " ISNULL(A.RefNumber, '') AS RefNumber, ISNULL(A.PVStatus, 0) AS PVStatus, ISNULL(A.Fileupload, 0) AS Fileupload"
+                + " ISNULL(A.RefNumber, '') AS RefNumber, ISNULL(A.PVStatus, 0) AS PVStatus, ISNULL(A.Fileupload, 0) AS Fileupload,"
+                // the grid total in the same round trip, exact over numeric(18,2)
+                + " SUM(CAST(A.Amount AS NUMERIC(18,2))) OVER () AS TotalAmount"
                 + FROM_WHERE + filter.where
                 + " ORDER BY B.CustomerName, A.Id";
         return jdbc.query(sql, filter.params, (rs, i) -> ReceiptViewRowDto.builder()
@@ -69,6 +71,7 @@ public class ReceiptViewQueryRepository {
                 .qneId(rs.getString("QNEId"))
                 .pvStatus(rs.getInt("PVStatus"))
                 .fileUpload(rs.getInt("Fileupload"))
+                .totalAmount(rs.getBigDecimal("TotalAmount"))
                 .build());
     }
 

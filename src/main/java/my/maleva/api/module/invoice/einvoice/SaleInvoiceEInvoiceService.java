@@ -20,13 +20,9 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,12 +60,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SaleInvoiceEInvoiceService {
 
     /** All local timestamps in this database are Malaysian wall-clock time. */
-    static final ZoneId MALAYSIA = ZoneId.of("Asia/Kuala_Lumpur");
+    static final ZoneId MALAYSIA = EInvoiceStatus.MALAYSIA;
 
-    static final String STATUS_SUBMITTED = "Submitted";
-    static final String STATUS_VALID = "Valid";
-    static final String STATUS_INVALID = "Invalid";
-    static final String STATUS_CANCELLED = "Cancelled";
+    static final String STATUS_SUBMITTED = EInvoiceStatus.SUBMITTED;
+    static final String STATUS_INVALID = EInvoiceStatus.INVALID;
 
     private final MyInvoisProperties properties;
     private final EInvoiceSnapshotLoader loader;
@@ -393,19 +387,12 @@ public class SaleInvoiceEInvoiceService {
      * one is re-read on the next click.
      */
     static boolean isFinal(String status, String longId) {
-        if (STATUS_INVALID.equalsIgnoreCase(status) || STATUS_CANCELLED.equalsIgnoreCase(status)) {
-            return true;
-        }
-        return STATUS_VALID.equalsIgnoreCase(status) && !isBlank(longId);
+        return EInvoiceStatus.isFinal(status, longId);
     }
 
     /** LHDN's casing varies between endpoints ("Valid" vs "valid"); store one form. */
     static String normaliseStatus(String status) {
-        if (isBlank(status)) {
-            return null;
-        }
-        String s = status.trim();
-        return s.substring(0, 1).toUpperCase(Locale.ROOT) + s.substring(1).toLowerCase(Locale.ROOT);
+        return EInvoiceStatus.normalise(status);
     }
 
     /**
@@ -414,25 +401,7 @@ public class SaleInvoiceEInvoiceService {
      * no zone at all, which is taken as UTC.
      */
     static LocalDateTime parseLhdnInstant(String value) {
-        if (isBlank(value)) {
-            return null;
-        }
-        String v = value.trim();
-        try {
-            return OffsetDateTime.parse(v).atZoneSameInstant(MALAYSIA).toLocalDateTime();
-        } catch (DateTimeParseException ignored) {
-            // fall through
-        }
-        try {
-            return Instant.parse(v).atZone(MALAYSIA).toLocalDateTime();
-        } catch (DateTimeParseException ignored) {
-            // fall through
-        }
-        try {
-            return LocalDateTime.parse(v).atOffset(ZoneOffset.UTC).atZoneSameInstant(MALAYSIA).toLocalDateTime();
-        } catch (DateTimeParseException ignored) {
-            return null;
-        }
+        return EInvoiceStatus.parseInstant(value);
     }
 
     private String shareUrl(String uuid, String longId) {

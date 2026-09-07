@@ -6,6 +6,7 @@ import org.mockito.Mockito;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,7 +29,7 @@ class ReceiptPdfServiceTest {
         ReceiptPrintSnapshotLoader loader = Mockito.mock(ReceiptPrintSnapshotLoader.class);
         when(loader.load(anyInt(), anyInt())).thenReturn(Optional.of(snapshot()));
 
-        ReceiptPdfService.RenderedReceipt rendered = new ReceiptPdfService(loader).render(2284, 6).orElseThrow();
+        ReceiptPdfService.RenderedReceipt rendered = new ReceiptPdfService(loader, receipts(), new ReportFonts()).render(2284, 6).orElseThrow();
 
         assertThat(rendered.fileName()).isEqualTo("ReceiptRC000002284.pdf");
         assertThat(new String(rendered.pdf(), 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
@@ -51,7 +52,7 @@ class ReceiptPdfServiceTest {
         empty.setLines(List.of());
         when(loader.load(anyInt(), anyInt())).thenReturn(Optional.of(empty));
 
-        assertThat(new ReceiptPdfService(loader).render(1, 6)).isPresent();
+        assertThat(new ReceiptPdfService(loader, receipts(), new ReportFonts()).render(1, 6)).isPresent();
     }
 
     @Test
@@ -59,7 +60,7 @@ class ReceiptPdfServiceTest {
         ReceiptPrintSnapshotLoader loader = Mockito.mock(ReceiptPrintSnapshotLoader.class);
         when(loader.load(anyInt(), anyInt())).thenReturn(Optional.empty());
 
-        assertThat(new ReceiptPdfService(loader).render(1, 6)).isEmpty();
+        assertThat(new ReceiptPdfService(loader, receipts(), new ReportFonts()).render(1, 6)).isEmpty();
     }
 
     @Test
@@ -67,6 +68,33 @@ class ReceiptPdfServiceTest {
         assertThat(ReceiptPdfService.fileName("RC/0000-2284", 9)).isEqualTo("ReceiptRC00002284.pdf");
         assertThat(ReceiptPdfService.fileName("", 9)).isEqualTo("Receipt9.pdf");
         assertThat(ReceiptPdfService.fileName(null, 9)).isEqualTo("Receipt9.pdf");
+    }
+
+    @Test
+    void secondRenderOfAnUnchangedReceiptComesFromTheCache() {
+        ReceiptPrintSnapshotLoader loader = Mockito.mock(ReceiptPrintSnapshotLoader.class);
+        when(loader.load(anyInt(), anyInt())).thenReturn(Optional.of(snapshot()));
+        ReceiptPdfService service = new ReceiptPdfService(loader, receipts(), new ReportFonts());
+
+        byte[] first = service.render(2284, 6).orElseThrow().pdf();
+        byte[] second = service.render(2284, 6).orElseThrow().pdf();
+
+        assertThat(second).isSameAs(first);
+        Mockito.verify(loader, Mockito.times(1)).load(anyInt(), anyInt());
+    }
+
+    /** Every receipt id belongs to company 6 and was last modified at a fixed instant. */
+    static my.maleva.api.module.paymentrecept.repository.ReceiptRepository receipts() {
+        my.maleva.api.module.paymentrecept.repository.ReceiptRepository repo =
+                Mockito.mock(my.maleva.api.module.paymentrecept.repository.ReceiptRepository.class);
+        when(repo.findById(anyInt())).thenAnswer(inv -> {
+            my.maleva.api.module.paymentrecept.entity.Receipt r = new my.maleva.api.module.paymentrecept.entity.Receipt();
+            r.setId(inv.getArgument(0));
+            r.setCompanyRefId(6);
+            r.setModifiedDate(LocalDateTime.of(2026, 9, 1, 17, 13, 32));
+            return Optional.of(r);
+        });
+        return repo;
     }
 
     /** The RC000002284 voucher from the legacy Pdf folder, as a snapshot. */

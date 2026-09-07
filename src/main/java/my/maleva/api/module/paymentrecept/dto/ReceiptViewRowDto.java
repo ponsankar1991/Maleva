@@ -34,4 +34,7 @@ public class ReceiptViewRowDto {
     private Integer fileUpload;
     /** True when the receipt's attachment folder holds a file (legacy red row). */
     private boolean hasAttachments;
+    /** SUM over the whole result set, carried on every row by the query so no second round trip is needed. */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private BigDecimal totalAmount;
 }

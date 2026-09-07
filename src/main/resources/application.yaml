@@ -203,6 +203,16 @@ invoice-print:
     - "3.We reserved the right to charge an interest rate of 1.5% p.a on overdue accounts."
   generated-note: "This is an computer generated invoice. No signatory is required"
 
+# The printed credit note shares the letterhead and logo above; its title, its
+# single payment note (the invoice prints three) and the two small-print lines
+# above the signature are its own, as they were in Crystal's CRCreditNote.rpt.
+credit-note-print:
+  heading: "CREDIT NOTE"
+  notes:
+    - "1.All Cheque Should be crossed and made payable to MALEVA(M) SDN BHD "
+  generated-note-line1: "This is an computer generated invoice."
+  generated-note-line2: "No signatory is required"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LHDN MyInvois e-invoicing (legacy EInvoiceapilist.cs). Credentials are user-
 # scope environment variables (setx), never YAML defaults. The environment

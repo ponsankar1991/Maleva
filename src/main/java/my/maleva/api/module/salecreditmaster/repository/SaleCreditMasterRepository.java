@@ -47,9 +47,21 @@ public interface SaleCreditMasterRepository extends JpaRepository<SaleCreditMast
     Optional<SaleCreditMaster> findByCompanyRefIdAndRefNumber(Integer companyRefId, String refNumber);
 
     /**
-     * Find SaleCreditMaster by C Number
+     * Find SaleCreditMaster by C Number.
+     *
+     * <p>Spelled out as JPQL rather than derived from the method name. A
+     * derived {@code ...AndCNumber} resolves through the Lombok accessor
+     * {@code getCNumber()}, whose bean property name keeps both capitals
+     * ({@code CNumber}) because {@link java.beans.Introspector} does not
+     * decapitalise a name whose first two letters are upper case. Hibernate
+     * maps this entity by field and only knows {@code cNumber}, so the
+     * generated query fails at execution time with "Could not resolve
+     * attribute 'CNumber'".
      */
-    Optional<SaleCreditMaster> findByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
+    @Query("SELECT scm FROM SaleCreditMaster scm WHERE scm.companyRefId = :companyRefId "
+           + "AND scm.cNumber = :cNumber")
+    Optional<SaleCreditMaster> findByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId,
+                                                            @Param("cNumber") Integer cNumber);
 
     /**
      * Find SaleCreditMaster records by date range
@@ -90,10 +102,11 @@ public interface SaleCreditMasterRepository extends JpaRepository<SaleCreditMast
      */
     long countByCustomerRefId(Integer customerRefId);
 
-    /**
-     * Check if C Number exists
-     */
-    boolean existsByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
+    /** Check if C Number exists. Spelled out as JPQL for the reason above. */
+    @Query("SELECT CASE WHEN COUNT(scm) > 0 THEN true ELSE false END FROM SaleCreditMaster scm "
+           + "WHERE scm.companyRefId = :companyRefId AND scm.cNumber = :cNumber")
+    boolean existsByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId,
+                                           @Param("cNumber") Integer cNumber);
 
     /**
      * Check if reference number exists
@@ -128,5 +141,65 @@ public interface SaleCreditMasterRepository extends JpaRepository<SaleCreditMast
     int claimQneIdentity(@Param("id") Integer id,
                          @Param("qneId") String qneId,
                          @Param("qneCode") String qneCode);
+
+    /**
+     * The highest credit note sequence issued so far, straight off the notes
+     * themselves rather than {@code SequenceNoMaster}.
+     *
+     * <p>{@code SequenceNoMaster} is the allocator, but a company that has
+     * never had its row created there reports 0 forever, because the SP's
+     * {@code update SequenceNoMaster ...} updates no rows and silently
+     * succeeds — every note then took number 1. The service seeds the missing
+     * row from this value so the sequence continues rather than restarting.
+     */
+    @Query("SELECT COALESCE(MAX(scm.cNumber), 0) FROM SaleCreditMaster scm WHERE scm.companyRefId = :companyRefId")
+    Integer findMaxCNumber(@Param("companyRefId") Integer companyRefId);
+
+    /**
+     * Records LHDN's acceptance the moment it is known, in its own
+     * transaction. Legacy wrote the UUID only after the follow-up status call,
+     * so an error in between lost it and the next click submitted the same
+     * credit note to the government twice.
+     *
+     * <p>The affected-row count is not meaningful here: the pool runs
+     * {@code SET NOCOUNT ON}.
+     */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleCreditMaster scm SET scm.eInvoiceUid = :uuid, scm.eInvoiceSUid = :submissionUid, "
+           + "scm.eInvoiceLongId = '', scm.eInvoiceStatus = :status, scm.eInvoicePushDT = :pushedAt, "
+           + "scm.eInvoicePushVDT = NULL "
+           + "WHERE scm.id = :id AND scm.companyRefId = :companyId")
+    int claimEInvoiceSubmission(@Param("id") Integer id,
+                                @Param("companyId") Integer companyId,
+                                @Param("uuid") String uuid,
+                                @Param("submissionUid") String submissionUid,
+                                @Param("status") String status,
+                                @Param("pushedAt") LocalDateTime pushedAt);
+
+    /** LHDN reported a status but has not validated yet (no long id, no validated time). */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleCreditMaster scm SET scm.eInvoiceStatus = :status "
+           + "WHERE scm.id = :id AND scm.companyRefId = :companyId")
+    int recordEInvoiceStatus(@Param("id") Integer id,
+                             @Param("companyId") Integer companyId,
+                             @Param("status") String status);
+
+    /**
+     * LHDN reported the document's outcome. The long id and validated time are
+     * whatever LHDN sent — either may be absent; never "now" as a placeholder,
+     * which is what legacy stored whenever the status read failed.
+     */
+    @Modifying
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Query("UPDATE SaleCreditMaster scm SET scm.eInvoiceLongId = :longId, scm.eInvoiceStatus = :status, "
+           + "scm.eInvoicePushVDT = :validatedAt "
+           + "WHERE scm.id = :id AND scm.companyRefId = :companyId")
+    int recordEInvoiceValidation(@Param("id") Integer id,
+                                 @Param("companyId") Integer companyId,
+                                 @Param("longId") String longId,
+                                 @Param("status") String status,
+                                 @Param("validatedAt") LocalDateTime validatedAt);
 }
 

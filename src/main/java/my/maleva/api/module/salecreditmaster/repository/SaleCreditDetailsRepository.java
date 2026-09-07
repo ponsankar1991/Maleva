@@ -27,5 +27,12 @@ public interface SaleCreditDetailsRepository extends JpaRepository<SaleCreditDet
      * Count details by Sale Credit Master Reference ID
      */
     long countBySaleCreditMasterRefId(Integer saleCreditMasterRefId);
+
+    /**
+     * Wholesale replacement of a credit note's lines on save, and the cleanup
+     * on delete — the SP did {@code delete from SaleCreditDetails where
+     * SaleCreditMasterRefId=@Id} before re-inserting.
+     */
+    void deleteBySaleCreditMasterRefId(Integer saleCreditMasterRefId);
 }
 

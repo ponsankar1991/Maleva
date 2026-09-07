@@ -39,8 +39,7 @@ import static my.maleva.api.integration.myinvois.ubl.UblValues.typeCode;
 @Component
 public class EInvoiceDocumentBuilder {
 
-    /** LHDN document type 01 = Invoice; list version 1.0. */
-    static final String INVOICE_TYPE = "01";
+    /** LHDN's document type list version; the type itself comes from {@link EInvoiceDocumentKind}. */
     static final String INVOICE_TYPE_VERSION = "1.0";
 
     /** UN/ECE Recommendation 20 code for "unit" — what legacy sent for every InvoicedQuantity. */
@@ -66,6 +65,17 @@ public class EInvoiceDocumentBuilder {
      *                 legacy did — the push instant is used, not the sale date
      */
     public UblDocument build(EInvoiceSnapshot snapshot, Instant issuedAt) {
+        return build(snapshot, issuedAt, EInvoiceDocumentKind.invoice(snapshot.header().referenceNo()));
+    }
+
+    /**
+     * The same document for a kind other than a plain invoice.
+     *
+     * @param kind the LHDN document type and what it refers back to; a credit
+     *             note carries type 02 and the corrected invoice's number and
+     *             UUID, which is the only structural difference between the two
+     */
+    public UblDocument build(EInvoiceSnapshot snapshot, Instant issuedAt, EInvoiceDocumentKind kind) {
         EInvoiceSnapshot.Header h = snapshot.header();
         EInvoiceSnapshot.Customer c = snapshot.customer();
         String ccy = c.currencyCode();
@@ -77,11 +87,11 @@ public class EInvoiceDocumentBuilder {
                 .id(id(h.invoiceNo()))
                 .issueDate(UblValues.utcDate(issuedAt))
                 .issueTime(UblValues.utcTime(issuedAt))
-                .invoiceTypeCode(typeCode(INVOICE_TYPE, INVOICE_TYPE_VERSION))
+                .invoiceTypeCode(typeCode(kind.typeCode(), INVOICE_TYPE_VERSION))
                 .documentCurrencyCode(currency(ccy))
                 .taxCurrencyCode(currency(ccy))
                 .invoicePeriod(List.of(new UblInvoice.InvoicePeriod(null, null, text("Monthly"))))
-                .billingReference(billingReference(h.referenceNo()))
+                .billingReference(billingReference(kind))
                 .accountingSupplierParty(List.of(new UblInvoice.SupplierParty(List.of(supplierParty()))))
                 .accountingCustomerParty(List.of(new UblInvoice.CustomerParty(List.of(customerParty(c)))))
                 .taxTotal(List.of(documentTaxTotal(snapshot, totals, ccy)))
@@ -187,12 +197,32 @@ public class EInvoiceDocumentBuilder {
         return result.isEmpty() ? null : result;
     }
 
-    private static List<UblInvoice.BillingReference> billingReference(String referenceNo) {
-        if (referenceNo == null || referenceNo.isBlank()) {
-            return null;
+    /**
+     * What the document refers back to.
+     *
+     * <p>An invoice sends only its free-text reference, as legacy did. A
+     * credit note additionally names the invoice it corrects: number, LHDN
+     * UUID and the label LHDN expects for that UUID. When the corrected
+     * invoice was never e-invoiced there is no UUID to send, and only its
+     * number goes — legacy sent an empty UUID element instead, which LHDN
+     * rejects.
+     */
+    private static List<UblInvoice.BillingReference> billingReference(EInvoiceDocumentKind kind) {
+        List<UblInvoice.BillingReference> references = new ArrayList<>(2);
+        if (kind.isCreditNote() && kind.originalDocumentNo() != null && !kind.originalDocumentNo().isBlank()) {
+            references.add(UblInvoice.BillingReference.builder()
+                    .invoiceDocumentReference(List.of(new UblInvoice.InvoiceDocumentReference(
+                            id(kind.originalDocumentNo()),
+                            kind.originalDocumentUuid() == null || kind.originalDocumentUuid().isBlank()
+                                    ? null : id(kind.originalDocumentUuid()),
+                            kind.originalDocumentUuid() == null || kind.originalDocumentUuid().isBlank()
+                                    ? null : text(EInvoiceDocumentKind.UUID_DOCUMENT_TYPE))))
+                    .build());
         }
-        return List.of(new UblInvoice.BillingReference(
-                List.of(new UblInvoice.DocumentReference(id(referenceNo)))));
+        if (kind.additionalReference() != null && !kind.additionalReference().isBlank()) {
+            references.add(UblInvoice.BillingReference.additional(id(kind.additionalReference())));
+        }
+        return references.isEmpty() ? null : references;
     }
 
     // ──────────────────────────────────────────────────────────────── lines ──

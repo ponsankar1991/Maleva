@@ -316,6 +316,35 @@ public class DashboardController {
     }
 
     /**
+     * Billed sale orders in a date window, grouped by customer — the
+     * "Completed" panel of the Accounts Receivable desk.
+     * {@code GET /api/dashboard/receivable-billed/6?fromDate=2026-09-01&toDate=2026-09-07}
+     *
+     * <p>Replaces the legacy {@code POST /DashBoard/CompletedPaymentDB}, whose
+     * name is misleading: it reads no payment, only sale orders that already
+     * carry an invoice. Not to be confused with {@code /completed-payment},
+     * which is the payable side.
+     */
+    @GetMapping("/receivable-billed/{comId}")
+    @PermitAll
+    public ResponseEntity<ApiResponse<List<my.maleva.api.module.dashboard.dto.ReceivableBilledCustomerDto>>>
+            getReceivableBilledByCustomer(
+                    @PathVariable Integer comId,
+                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+
+        log.info("GET /api/dashboard/receivable-billed/{} {} to {}", comId, fromDate, toDate);
+        if (comId == null || comId <= 0) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid company ID. Must be a positive number"));
+        }
+        if (fromDate.isAfter(toDate)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("From Date Is Greater Than To Date"));
+        }
+        return ResponseEntity.ok(ApiResponse.success("Billed sale orders fetched successfully",
+                dashboardService.getReceivableBilledByCustomer(comId, fromDate.toString(), toDate.toString())));
+    }
+
+    /**
      * Get unreleased forwarding numbers
      */
     @GetMapping("/unreleased/{comId}")

@@ -37,6 +37,31 @@ public interface SaleMasterRepository extends JpaRepository<SaleMaster, Integer>
                                     @Param("endDate") LocalDateTime endDate);
 
     Optional<SaleMaster> findByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
+
+    /**
+     * Active invoices carrying the number printed on them. Used by the Sale
+     * Credit screen's "Invoice No" box, which legacy resolved by loading the
+     * whole invoice with all its lines through a free-text search.
+     *
+     * <p>Spelled out as JPQL rather than derived from the method name. A
+     * derived {@code ...AndCNumberDisplay...} resolves through the Lombok
+     * accessor {@code getCNumberDisplay()}, whose bean property name keeps
+     * both capitals ({@code CNumberDisplay}) because {@link java.beans.Introspector}
+     * does not decapitalise a name whose first two letters are upper case.
+     * Hibernate maps this entity by field and only knows {@code cNumberDisplay},
+     * so the generated query failed at execution time with
+     * "Could not resolve attribute 'CNumberDisplay'". Naming the attribute
+     * here removes the guess.
+     *
+     * <p>A list, not an {@code Optional}: nothing in the schema stops two rows
+     * sharing a display number, and this must not throw when they do.
+     */
+    @Query("SELECT sm FROM SaleMaster sm WHERE sm.companyRefId = :companyRefId "
+           + "AND sm.cNumberDisplay = :cNumberDisplay AND sm.active = :active ORDER BY sm.id")
+    List<SaleMaster> findByCompanyAndNumberDisplay(@Param("companyRefId") Integer companyRefId,
+                                                   @Param("cNumberDisplay") String cNumberDisplay,
+                                                   @Param("active") Integer active);
+
     boolean existsByCompanyRefIdAndCNumber(Integer companyRefId, Integer cNumber);
 
     @Query("SELECT sm FROM SaleMaster sm WHERE sm.companyRefId = :companyRefId " +

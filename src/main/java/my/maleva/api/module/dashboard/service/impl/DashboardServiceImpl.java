@@ -417,6 +417,25 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
+    public List<my.maleva.api.module.dashboard.dto.ReceivableBilledCustomerDto> getReceivableBilledByCustomer(
+            Integer comId, String fromDate, String toDate) {
+        log.info("Fetching billed sale orders by customer for comId={} {} to {}", comId, fromDate, toDate);
+        try {
+            return dashboardRepository.getReceivableBilledByCustomer(comId, fromDate, toDate).stream()
+                    .map(r -> my.maleva.api.module.dashboard.dto.ReceivableBilledCustomerDto.builder()
+                            .customerRefId(r.CustomerRefId)
+                            .customerName(r.CustomerName)
+                            .jobCount(r.JobCount)
+                            .netAmount(r.NetAmount)
+                            .build())
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error fetching billed sale orders by customer: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
     public List<PendingPaymentDto.UnreleasedNumberDto> getUnreleasedNumbers(Integer comId) {
         log.info("Fetching unreleased numbers for comId={}", comId);
         try {

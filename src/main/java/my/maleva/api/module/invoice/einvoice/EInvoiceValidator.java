@@ -46,15 +46,29 @@ public class EInvoiceValidator {
 
     /** All the reasons the snapshot cannot be sent; empty means go. */
     public List<EInvoiceProblem> validate(EInvoiceSnapshot snapshot) {
+        return validate(snapshot, "Invoice " + snapshot.header().invoiceNo());
+    }
+
+    /**
+     * The same rules for a document that is not called an invoice.
+     *
+     * @param documentLabel how the document is named in every message, e.g.
+     *                      {@code "Credit note CN000000012"} — an operator
+     *                      reading "Invoice CN000000012" would look for the
+     *                      wrong document
+     */
+    public List<EInvoiceProblem> validate(EInvoiceSnapshot snapshot, String documentLabel) {
         List<EInvoiceProblem> problems = new ArrayList<>(snapshot.loadProblems());
         EInvoiceSnapshot.Header h = snapshot.header();
-        String inv = "Invoice " + h.invoiceNo();
+        String inv = documentLabel;
 
         if (!h.active()) {
             problems.add(EInvoiceProblem.of("invoice.inactive", inv + " is cancelled and cannot be e-invoiced"));
         }
         if (h.invoiceNo() == null || h.invoiceNo().isBlank()) {
-            problems.add(EInvoiceProblem.of("invoice.number.missing", "Invoice " + h.invoiceId() + " has no invoice number"));
+            // The label itself would read "Invoice null" here, so name the row id.
+            problems.add(EInvoiceProblem.of("invoice.number.missing",
+                    "The document with id " + h.invoiceId() + " has no number"));
         }
 
         validateCustomer(snapshot.customer(), inv, problems);
@@ -252,7 +266,7 @@ public class EInvoiceValidator {
             // another writer changed the row and the figures are not trustworthy.
             problems.add(EInvoiceProblem.of("header.gross.mismatch",
                     inv + ": header gross " + money(h.grossAmount()) + " ≠ amount " + money(h.amount())
-                            + " — the invoice was changed outside the Sale Invoice screen"));
+                            + " — the document was changed outside its entry screen"));
         }
         if (ratesInUse.size() > 1) {
             // The document format used here carries one taxed subtotal; legacy

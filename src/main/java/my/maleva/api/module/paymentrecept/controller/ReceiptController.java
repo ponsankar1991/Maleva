@@ -17,7 +17,6 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import my.maleva.api.module.paymentrecept.dto.ReceiptSaveRequest;
 import my.maleva.api.module.paymentrecept.dto.ReceiptSaveResponseDto;
@@ -621,21 +620,24 @@ public class ReceiptController {
     @PostMapping(value = {"/insert", "/InsertReceipt", "/save"})
     @PermitAll
     public ResponseEntity<ReceiptSaveResponseDto> insertReceipt(
-            @RequestBody JsonNode payload,
+            // Bound as a plain Object (a Map for `{...}`, a List for `[...]`), not a
+            // JsonNode: the HTTP layer is Jackson 3 and cannot construct Jackson 2's
+            // abstract JsonNode ("no Creators ... abstract types"), which failed
+            // every save with a 500 before a single line of receipt code ran.
+            @RequestBody Object payload,
             @RequestHeader(value = "Comid", required = false) Integer headerComid,
             @RequestHeader(value = "comid", required = false) Integer headerComidLower,
             @RequestParam(value = "companyId", required = false) Integer paramCompanyId) {
         logger.info("Received insertReceipt request");
         try {
             List<ReceiptSaveRequest> requestList = new ArrayList<>();
-            if (payload != null) {
-                if (payload.isArray()) {
-                    requestList = objectMapper.convertValue(payload, new TypeReference<List<ReceiptSaveRequest>>() {});
-                } else if (payload.isObject()) {
-                    ReceiptSaveRequest single = objectMapper.treeToValue(payload, ReceiptSaveRequest.class);
-                    if (single != null) {
-                        requestList.add(single);
-                    }
+            if (payload instanceof List<?>) {
+                // legacy jQuery posted a single-element array
+                requestList = objectMapper.convertValue(payload, new TypeReference<List<ReceiptSaveRequest>>() {});
+            } else if (payload instanceof Map<?, ?>) {
+                ReceiptSaveRequest single = objectMapper.convertValue(payload, ReceiptSaveRequest.class);
+                if (single != null) {
+                    requestList.add(single);
                 }
             }
 

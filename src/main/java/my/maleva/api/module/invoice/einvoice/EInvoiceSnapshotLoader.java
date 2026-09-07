@@ -143,7 +143,7 @@ public class EInvoiceSnapshotLoader {
      * The legacy rule was an exact-match {@code "RM" → "MYR"}; {@code "rm"} or
      * {@code "RM "} went to LHDN verbatim and failed. Trim and upper-case first.
      */
-    static String normaliseCurrency(String stored) {
+    public static String normaliseCurrency(String stored) {
         if (stored == null) {
             return null;
         }

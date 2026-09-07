@@ -114,6 +114,37 @@ public class AttachmentStorageServiceImpl implements AttachmentStorageService {
     }
 
     @Override
+    public java.util.Set<Integer> recordsWithFiles(Integer companyRefId, String folderName) {
+        // validated the same way a scope is, so the folder name cannot escape the root
+        Path parent = AttachmentScope.of(companyRefId, folderName, 0, null)
+                .resolveDirectory(config.getStorageRoot()).getParent();
+        java.util.Set<Integer> ids = new java.util.HashSet<>();
+        if (parent == null || !Files.isDirectory(parent)) {
+            return ids;
+        }
+        try (Stream<Path> records = Files.list(parent)) {
+            records.filter(Files::isDirectory).forEach(dir -> {
+                int id;
+                try {
+                    id = Integer.parseInt(dir.getFileName().toString());
+                } catch (NumberFormatException notARecord) {
+                    return;
+                }
+                try (Stream<Path> files = Files.list(dir)) {
+                    if (files.anyMatch(Files::isRegularFile)) {
+                        ids.add(id);
+                    }
+                } catch (IOException ex) {
+                    logger.debug("Could not read attachment folder {}: {}", dir, ex.getMessage());
+                }
+            });
+        } catch (IOException ex) {
+            throw new UncheckedIOException("Failed to scan attachment folder " + parent, ex);
+        }
+        return ids;
+    }
+
+    @Override
     public AttachmentUploadResultDto delete(AttachmentScope scope, List<String> paths, String filePathTable) {
         Path directory = scope.resolveDirectory(config.getStorageRoot());
         if (!Files.isDirectory(directory)) {

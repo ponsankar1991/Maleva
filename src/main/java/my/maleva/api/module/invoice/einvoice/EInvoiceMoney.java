@@ -63,6 +63,18 @@ public final class EInvoiceMoney {
     }
 
     /**
+     * The same for a column that is already {@code numeric(18,2)} — the credit
+     * note's Amount, for instance. Only the scale is normalised; the value is
+     * exact as stored, so nothing is lost through a double on the way.
+     *
+     * <p>A separate name rather than an overload of {@link #of(Double)}:
+     * {@code of(null)} would otherwise not compile.
+     */
+    public static BigDecimal ofExact(BigDecimal stored) {
+        return stored == null ? null : stored.setScale(SCALE, RoundingMode.HALF_UP);
+    }
+
+    /**
      * A stored quantity or percentage. Not money: the value keeps whatever
      * precision it was saved with (to four decimals) so a quantity of 0.125 is
      * not silently turned into 0.13 before it is compared or sent.

@@ -36,10 +36,39 @@ public class ImapSentFolderService {
     private static final List<String> USUAL_SENT_FOLDERS = List.of("Sent", "INBOX.Sent", "Sent Items", "[Gmail]/Sent Mail");
 
     private final MailProperties properties;
+    /**
+     * One background worker: the IMAP round trip (connect, TLS, login, append)
+     * takes seconds and the mail is already delivered when it starts, so the
+     * screen must not wait for it. Serial so two sends never open two sessions.
+     */
+    private final java.util.concurrent.ExecutorService worker =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "imap-sent-copy");
+                t.setDaemon(true);
+                return t;
+            });
 
     public ImapSentFolderService(MailProperties properties) {
         this.properties = properties;
         log.info("IMAP Sent-folder copies enabled: host={}", properties.getImap().getHost());
+    }
+
+    /** Files the copy in the background; the outcome is logged, not returned. */
+    public void appendToSentAsync(MimeMessage message, String description) {
+        worker.submit(() -> {
+            long started = System.nanoTime();
+            Optional<String> problem = appendToSent(message);
+            if (problem.isEmpty()) {
+                log.info("Sent copy of {} filed in {} ms", description, (System.nanoTime() - started) / 1_000_000);
+            } else {
+                log.warn("Sent copy of {} NOT filed: {}", description, problem.get());
+            }
+        });
+    }
+
+    @jakarta.annotation.PreDestroy
+    void shutdown() {
+        worker.shutdown();
     }
 
     /**

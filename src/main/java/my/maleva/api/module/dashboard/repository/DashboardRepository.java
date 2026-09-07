@@ -2131,4 +2131,64 @@ public class DashboardRepository {
                         .accountName(rs.getString("AccountName"))
                         .build());
     }
+
+    // ========== ACCOUNTS RECEIVABLE DESK ==========
+
+    /**
+     * Sale orders that already carry an invoice, in a date window, grouped by
+     * customer — the "Completed" panel of the Accounts Receivable desk.
+     *
+     * <p>Port of legacy {@code DashBoardServices.CompletedPaymentDB}, which
+     * despite its name reads no payment at all. Dropped from it: three joins
+     * (EmployeeMaster, JobStatusMaster, SaleMaster) whose columns were never
+     * selected, and its {@code OrderByDescending(c => c.DayCount)} — DayCount
+     * was not in the SELECT, so it was null on every row and ordered nothing.
+     * Rows now come back largest first, which is the order this panel is read
+     * in. {@code JobCount} is new: the panel could only ever show how many
+     * customers were billed, never how many jobs.
+     *
+     * <p>The window is bracketed 00:00:00 - 23:59:59 so an order stamped late
+     * on the To date still counts, as the other desk queries do.
+     */
+    public List<ReceivableBilledRow> getReceivableBilledByCustomer(Integer comId, String fromDate, String toDate) {
+        String sql = """
+            SELECT SO.CustomerRefId                        AS CustomerRefId,
+                   C.CustomerName                          AS CustomerName,
+                   COUNT(*)                                AS JobCount,
+                   ROUND(SUM(ISNULL(SO.Amount, 0)), 2)     AS NetAmount
+              FROM SaleOrderMaster SO WITH (NOLOCK)
+             INNER JOIN Customer C WITH (NOLOCK) ON C.Id = SO.CustomerRefId
+             WHERE SO.CompanyRefId = ?
+               AND SO.Active = 1
+               AND SO.InvoiceNo <> 0
+               AND SO.SaleDate BETWEEN ? AND ?
+             GROUP BY SO.CustomerRefId, C.CustomerName
+             ORDER BY NetAmount DESC
+            """;
+
+        return jdbcTemplate.query(sql, RECEIVABLE_BILLED_MAPPER,
+                comId, fromDate + " 00:00:00", toDate + " 23:59:59");
+    }
+
+    /**
+     * Explicit mapper, not {@code BeanPropertyRowMapper}: the bean mapper
+     * matches nothing on these row classes and hands back a list of all-null
+     * rows, which reads on screen as an empty day rather than an error.
+     */
+    private static final RowMapper<ReceivableBilledRow> RECEIVABLE_BILLED_MAPPER = (rs, rowNum) -> {
+        ReceivableBilledRow row = new ReceivableBilledRow();
+        row.CustomerRefId = getInteger(rs, "CustomerRefId");
+        row.CustomerName = rs.getString("CustomerName");
+        row.JobCount = getInteger(rs, "JobCount");
+        row.NetAmount = getDouble(rs, "NetAmount");
+        return row;
+    };
+
+    /** One row of {@link #getReceivableBilledByCustomer}. */
+    public static class ReceivableBilledRow {
+        public Integer CustomerRefId;
+        public String CustomerName;
+        public Integer JobCount;
+        public Double NetAmount;
+    }
 }

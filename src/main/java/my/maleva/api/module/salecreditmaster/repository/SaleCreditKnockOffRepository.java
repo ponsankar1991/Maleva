@@ -42,5 +42,14 @@ public interface SaleCreditKnockOffRepository extends JpaRepository<SaleCreditKn
      * Find records by company and Sale Credit Master
      */
     List<SaleCreditKnockOff> findByCompanyRefIdAndSaleCreditMasterRefId(Integer companyRefId, Integer saleCreditMasterRefId);
+
+    /**
+     * Wholesale replacement of a credit note's knock-offs on save, and the
+     * cleanup on delete — the SP did {@code delete from SaleCreditKnockOff
+     * where SaleCreditMasterRefId=@Id} before re-inserting. Legacy's DELETE
+     * path ran a bare delete of the master and left these rows behind, still
+     * reducing the balance of invoices that no longer had a credit note.
+     */
+    void deleteBySaleCreditMasterRefId(Integer saleCreditMasterRefId);
 }
 

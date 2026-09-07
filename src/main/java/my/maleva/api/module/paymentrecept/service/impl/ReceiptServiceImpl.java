@@ -252,7 +252,7 @@ public class ReceiptServiceImpl implements ReceiptService {
             return ReceiptSaveResponseDto.builder()
                     .ok(false)
                     .isSuccess(false)
-                    .message("Receipt data is empty")
+                    .message("Empty receipt data: nothing to save")
                     .build();
         }
 
@@ -289,7 +289,7 @@ public class ReceiptServiceImpl implements ReceiptService {
                 return ReceiptSaveResponseDto.builder()
                         .ok(false)
                         .isSuccess(false)
-                        .message("Bank  Not Found Issue id" + bankRefId)
+                        .message("Bank Not Found Issue id" + bankRefId)
                         .build();
             }
         }
@@ -457,24 +457,25 @@ public class ReceiptServiceImpl implements ReceiptService {
         }
         List<my.maleva.api.module.paymentrecept.dto.ReceiptViewRowDto> rows = receiptViewQueryRepository.selectReceipts(request);
         // legacy painted a row red when its /Upload/{comid}/Receipt/{id} folder held
-        // a file or Fileupload = 1 — the clerk's cue that a document was attached
-        for (my.maleva.api.module.paymentrecept.dto.ReceiptViewRowDto row : rows) {
-            boolean flagged = row.getFileUpload() != null && row.getFileUpload() == 1;
-            if (!flagged) {
-                try {
-                    flagged = !attachmentStorageService.list(
-                            my.maleva.api.module.filehandling.model.AttachmentScope.of(
-                                    request.getCompanyId(), ATTACHMENT_FOLDER, row.getId(), null)).isEmpty();
-                } catch (RuntimeException ex) {
-                    logger.debug("Attachment folder check failed for receipt {}: {}", row.getId(), ex.getMessage());
-                }
+        // a file or Fileupload = 1 — the clerk's cue that a document was attached.
+        // One scan of the Receipt folder answers it for every row (legacy CheckFiles).
+        java.util.Set<Integer> withFiles = java.util.Set.of();
+        if (!rows.isEmpty()) {
+            try {
+                withFiles = attachmentStorageService.recordsWithFiles(request.getCompanyId(), ATTACHMENT_FOLDER);
+            } catch (RuntimeException ex) {
+                logger.debug("Attachment folder scan failed: {}", ex.getMessage());
             }
-            row.setHasAttachments(flagged);
         }
+        for (my.maleva.api.module.paymentrecept.dto.ReceiptViewRowDto row : rows) {
+            row.setHasAttachments((row.getFileUpload() != null && row.getFileUpload() == 1) || withFiles.contains(row.getId()));
+        }
+        // the total rides on every row (SUM OVER) — no second query
+        BigDecimal total = rows.isEmpty() || rows.get(0).getTotalAmount() == null ? BigDecimal.ZERO : rows.get(0).getTotalAmount();
         return my.maleva.api.module.paymentrecept.dto.ReceiptViewDto.builder()
                 .receiptMaster(rows)
-                .receiptDetails(receiptViewQueryRepository.selectReceiptDetails(request))
-                .totalAmount(receiptViewQueryRepository.sumAmount(request))
+                .receiptDetails(rows.isEmpty() ? List.of() : receiptViewQueryRepository.selectReceiptDetails(request))
+                .totalAmount(total)
                 .count(rows.size())
                 .build();
     }

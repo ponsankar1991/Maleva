@@ -195,12 +195,13 @@ public class ReceiptMailService {
         if (!skipped.isEmpty()) {
             message.append("; missing attachment(s) skipped: ").append(String.join(", ", skipped));
         }
-        // the mail is delivered at this point: a failure to file a copy is only a warning
-        String warning = sentFolder.flatMap(s -> s.appendToSent(sent)).orElse(null);
-        if (warning != null) {
-            message.append("  (delivered, but the copy could not be placed in Sent: ").append(warning).append(')');
-        }
-        return new MailOutcome(true, message.toString(), to, cc, files.size(), warning);
+        // The mail is delivered at this point. Filing the copy in Sent is a
+        // second server round trip that takes seconds, so it runs in the
+        // background and its outcome goes to the log — the operator is not
+        // kept waiting for something that cannot change whether the customer
+        // got the receipt.
+        sentFolder.ifPresent(s -> s.appendToSentAsync(sent, "receipt " + receiptNo));
+        return new MailOutcome(true, message.toString(), to, cc, files.size(), null);
     }
 
     /** The template with its tokens filled; every value is HTML-escaped. */

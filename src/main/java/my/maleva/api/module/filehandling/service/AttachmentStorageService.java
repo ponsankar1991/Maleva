@@ -29,6 +29,13 @@ public interface AttachmentStorageService {
     List<AttachmentDto> list(AttachmentScope scope);
 
     /**
+     * The record ids under {@code companyRefId/folderName} whose folder holds
+     * at least one file — one directory scan for a whole grid, the way the
+     * legacy {@code CheckFiles} did it, instead of a {@link #list} per row.
+     */
+    java.util.Set<Integer> recordsWithFiles(Integer companyRefId, String folderName);
+
+    /**
      * Removes {@code paths} from {@code scope} and reports what remains.
      *
      * @param filePathTable optional table whose {@code FilePath} column is resynced; may be null
