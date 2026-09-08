@@ -6,6 +6,7 @@ import my.maleva.api.common.config.QneProperties;
 import my.maleva.api.integration.qne.QneCall;
 import my.maleva.api.integration.qne.QneGateway;
 import my.maleva.api.integration.qne.QnePayloads;
+import my.maleva.api.integration.qne.QnePushLock;
 import my.maleva.api.integration.qne.QnePushResult;
 import my.maleva.api.integration.qne.dto.QneKnockoffItem;
 import my.maleva.api.integration.qne.dto.QneKnockoffRequest;
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
 public class ReceiptQneService {
 
     private final QneGateway gateway;
+    private final QnePushLock pushLock;
     private final QneProperties properties;
     private final ReceiptRepository receipts;
     private final ReceiptDetailsRepository receiptDetails;
@@ -53,7 +55,31 @@ public class ReceiptQneService {
     private final BankMasterRepository banks;
     private final SaleMasterRepository saleMasters;
 
+    /**
+     * Pushes the receipt, one push at a time.
+     *
+     * <p>QNE can take minutes to answer. The browser gives up first, and an
+     * operator told nothing happened clicks again while the first call is
+     * still open — at which point QNECode is still empty, so the second click
+     * creates a <em>second</em> document in QNE. Refusing the overlapping push
+     * is what stops that; once the first lands, the QNECode check takes over.
+     */
     public QnePushResult push(Integer receiptId, Integer companyId) {
+        String lockKey = "receipt:" + receiptId;
+        if (!pushLock.tryAcquire(lockKey)) {
+            return QnePushResult.localError(409,
+                    "This receipt is already being sent to QNE and QNE has not answered yet. "
+                            + "Wait for it to finish and refresh — pushing again now would "
+                            + "create a second receipt in QNE.");
+        }
+        try {
+            return doPush(receiptId, companyId);
+        } finally {
+            pushLock.release(lockKey);
+        }
+    }
+
+    private QnePushResult doPush(Integer receiptId, Integer companyId) {
         Receipt receipt = receipts.findById(receiptId).orElse(null);
         if (receipt == null) {
             return QnePushResult.localError(404, "Receipt not found: " + receiptId);

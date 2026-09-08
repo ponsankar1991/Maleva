@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.integration.qne.QneCall;
 import my.maleva.api.integration.qne.QneGateway;
 import my.maleva.api.integration.qne.QnePayloads;
+import my.maleva.api.integration.qne.QnePushLock;
 import my.maleva.api.integration.qne.QnePushResult;
 import my.maleva.api.integration.qne.dto.QnePayBillRequest;
 import my.maleva.api.integration.qne.dto.QnePaymentResponse;
@@ -55,11 +56,36 @@ import java.util.Objects;
 public class PaymentQneService {
 
     private final QneGateway gateway;
+    private final QnePushLock pushLock;
     private final PaymentRepository payments;
     private final SupplierRepository suppliers;
     private final BankMasterRepository banks;
 
+    /**
+     * Pushes the payment, one push at a time.
+     *
+     * <p>QNE can take minutes to answer. The browser gives up first, and an
+     * operator told nothing happened clicks again while the first call is
+     * still open — at which point QNECode is still empty, so the second click
+     * creates a <em>second</em> document in QNE. Refusing the overlapping push
+     * is what stops that; once the first lands, the QNECode check takes over.
+     */
     public QnePushResult push(Integer paymentId, Integer companyId) {
+        String lockKey = "payment:" + paymentId;
+        if (!pushLock.tryAcquire(lockKey)) {
+            return QnePushResult.localError(409,
+                    "This payment is already being sent to QNE and QNE has not answered yet. "
+                            + "Wait for it to finish and refresh — pushing again now would "
+                            + "create a second payment in QNE.");
+        }
+        try {
+            return doPush(paymentId, companyId);
+        } finally {
+            pushLock.release(lockKey);
+        }
+    }
+
+    private QnePushResult doPush(Integer paymentId, Integer companyId) {
         Payment payment = payments.findById(paymentId).orElse(null);
         if (payment == null) {
             return QnePushResult.localError(404, "Payment not found: " + paymentId);

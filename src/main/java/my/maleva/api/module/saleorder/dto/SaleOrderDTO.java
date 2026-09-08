@@ -415,7 +415,15 @@ public class SaleOrderDTO {
 
     private Integer destinationRefId;
 
-    private Integer currencyValue;
+    /**
+     * Currency conversion rate, e.g. 4.35 for USD -> MYR.
+     *
+     * Double, not Integer: the column is `real` and the entity is Double, so an
+     * Integer here truncated the rate at both ends of the wire - Jackson cut
+     * 4.35 to 4 coming in on a save, and MapStruct called intValue() on the way
+     * back out, which is the rate the sale order push carried into the invoice.
+     */
+    private Double currencyValue;
 
     @Size(max = 100)
     private String actualNetAmount;

@@ -6,6 +6,7 @@ import my.maleva.api.common.config.QneProperties;
 import my.maleva.api.integration.qne.QneCall;
 import my.maleva.api.integration.qne.QneGateway;
 import my.maleva.api.integration.qne.QnePayloads;
+import my.maleva.api.integration.qne.QnePushLock;
 import my.maleva.api.integration.qne.QnePushResult;
 import my.maleva.api.integration.qne.dto.QneSalesInvoiceLine;
 import my.maleva.api.integration.qne.dto.QneSalesInvoiceRequest;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 public class SaleInvoiceQneService {
 
     private final QneGateway gateway;
+    private final QnePushLock pushLock;
     private final QneProperties properties;
     private final SaleMasterRepository saleMasters;
     private final SaleDetailsRepository saleDetails;
@@ -57,7 +59,33 @@ public class SaleInvoiceQneService {
     private final UomRepository uoms;
     private final DoMasterRepository doMasters;
 
+    /**
+     * Pushes the invoice, one push at a time.
+     *
+     * <p>The guard is the fix for the duplicates in QNE. A create takes long
+     * enough that the browser times out first; the operator, told nothing
+     * happened, clicks again while the first call is still open. QNECode is
+     * only written from the response, so at that moment it is still empty and
+     * the second click would create a <em>second</em> QNE invoice. Refusing
+     * the overlapping push is what stops that; once the first one lands,
+     * QNECode is set and any later click updates the same document.
+     */
     public QnePushResult push(Integer invoiceId, Integer companyId) {
+        String key = "sale-invoice:" + invoiceId;
+        if (!pushLock.tryAcquire(key)) {
+            return QnePushResult.localError(409,
+                    "This invoice is already being sent to QNE and QNE has not answered yet. "
+                            + "Wait for it to finish and refresh the list — pushing again now "
+                            + "would create a second invoice in QNE.");
+        }
+        try {
+            return doPush(invoiceId, companyId);
+        } finally {
+            pushLock.release(key);
+        }
+    }
+
+    private QnePushResult doPush(Integer invoiceId, Integer companyId) {
         SaleMaster invoice = saleMasters.findById(invoiceId).orElse(null);
         if (invoice == null) {
             return QnePushResult.localError(404, "Invoice not found: " + invoiceId);

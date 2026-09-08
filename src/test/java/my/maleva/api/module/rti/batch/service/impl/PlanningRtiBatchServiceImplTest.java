@@ -83,8 +83,16 @@ class PlanningRtiBatchServiceImplTest {
 
     private static PlanRow row(int detailId, int jobId, int truckId, String truckName,
                                String driverName, String pickupDay, int existingRtiId, String existingRtiNo) {
+        return row(detailId, jobId, truckId, truckName, driverName, pickupDay, existingRtiId, existingRtiNo,
+                "", "NORTHPORT", "WESTPORT");
+    }
+
+    /** A row that also carries the planner's REMARKS and its own lane. */
+    private static PlanRow row(int detailId, int jobId, int truckId, String truckName,
+                               String driverName, String pickupDay, int existingRtiId, String existingRtiNo,
+                               String remarks, String origin, String destination) {
         return new PlanRow(detailId, jobId, truckId, truckName, 0, driverName, detailId,
-                "NORTHPORT", "WESTPORT",
+                remarks, origin, destination,
                 pickupDay.isEmpty() ? "" : pickupDay + " 08:00",
                 pickupDay.isEmpty() ? "" : pickupDay + " 17:00",
                 pickupDay,
@@ -393,7 +401,7 @@ class PlanningRtiBatchServiceImplTest {
     void keepsAnExplicitOutsideDriverFromThePlanningModal() {
         // The planning driver modal stores the placeholder id plus the typed name.
         PlanRow outside = new PlanRow(1, 101, 64, "JPM 7151", 22, "RAJU SUBRAMANIAM", 1,
-                "NORTHPORT", "WESTPORT", "2026-08-10 08:00", "2026-08-10 17:00", "2026-08-10",
+                "", "NORTHPORT", "WESTPORT", "2026-08-10 08:00", "2026-08-10 17:00", "2026-08-10",
                 "SO101", "KLIA LOGISTICS", "", "", "", "", "", "", 0, "", "");
         when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(outside));
 
@@ -506,6 +514,162 @@ class PlanningRtiBatchServiceImplTest {
         assertThat(result.jobsCreated()).isEqualTo(1);
         assertThat(result.skipped()).isEmpty();
         assertThat(result.isComplete()).isTrue();
+    }
+
+    @Test
+    void splitsOneTrucksDayIntoTheTripsThePlannerWrote() {
+        // The real grid: JPM 7151 / MUHAMMAD FAKHRUL on three rows.
+        //   1ST TRIP  SERAMBAN -> NORTHPORT
+        //   COMBINE   KLANG    -> SINGAPORE
+        //   2ND TRIP  KLANG    -> SINGAPORE
+        // Two runs, so two RTIs - and COMBINE rides with the run going its way,
+        // which is the 2ND TRIP below it, not the 1ST TRIP above it.
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(14, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "1ST TRIP", "SERAMBAN", "NORTHPORT"),
+                row(15, 102, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "COMBINE", "KLANG", "SINGAPORE"),
+                row(16, 103, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "2ND TRIP", "KLANG", "SINGAPORE")));
+
+        PlanningRtiBatchPreview preview = service.preview(PLAN, COMPANY, null, false);
+
+        assertThat(preview.groups()).hasSize(2);
+        assertThat(preview.isComplete()).isTrue();
+
+        PlanningRtiGroup first = preview.groups().stream()
+                .filter(group -> "Trip 1".equals(group.tripLabel())).findFirst().orElseThrow();
+        assertThat(first.jobs()).extracting(job -> job.saleOrderMasterRefId()).containsExactly(101);
+
+        PlanningRtiGroup second = preview.groups().stream()
+                .filter(group -> "Trip 2".equals(group.tripLabel())).findFirst().orElseThrow();
+        assertThat(second.jobs()).extracting(job -> job.saleOrderMasterRefId())
+                .containsExactlyInAnyOrder(102, 103);
+    }
+
+    @Test
+    void foldsShortFormPlacesWhenMatchingTheCombinedLane() {
+        // "WP" and "WEST PORT" are the same place, and the combine has to see it.
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(1, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "1ST TRIP", "SERAMBAN", "NORTHPORT"),
+                row(2, 102, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "COMBINE", "SG", "WP"),
+                row(3, 103, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "2ND TRIP", "SINGAPORE", "WEST PORT")));
+
+        PlanningRtiBatchPreview preview = service.preview(PLAN, COMPANY, null, false);
+
+        PlanningRtiGroup second = preview.groups().stream()
+                .filter(group -> "Trip 2".equals(group.tripLabel())).findFirst().orElseThrow();
+        assertThat(second.jobs()).hasSize(2);
+    }
+
+    @Test
+    void putsACombineWithNoMatchingLaneOnTheTripAboveIt() {
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(1, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "1ST TRIP", "SERAMBAN", "NORTHPORT"),
+                row(2, 102, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "COMBINE", "IPOH", "PENANG")));
+
+        PlanningRtiBatchPreview preview = service.preview(PLAN, COMPANY, null, false);
+
+        assertThat(preview.groups()).hasSize(1);
+        assertThat(preview.groups().get(0).jobs()).hasSize(2);
+    }
+
+    @Test
+    void leavesAPlanWithoutTripMarkersAsOneRtiPerTruck() {
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(1, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "SG TO PTP", "KLANG", "SINGAPORE"),
+                row(2, 102, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "MONDAY DELIVERY", "SERAMBAN", "NORTHPORT")));
+
+        PlanningRtiBatchPreview preview = service.preview(PLAN, COMPANY, null, false);
+
+        assertThat(preview.groups()).hasSize(1);
+        assertThat(preview.groups().get(0).tripLabel()).isEmpty();
+        assertThat(preview.groups().get(0).jobs()).hasSize(2);
+    }
+
+    @Test
+    void keepsUnmarkedRowsOutOfTheTripsWrittenBesideThem() {
+        // A row with no trip written is not silently swept into someone's trip.
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(1, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "1ST TRIP", "SERAMBAN", "NORTHPORT"),
+                row(2, 102, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, "",
+                        "TBA", "KLANG", "SINGAPORE")));
+
+        PlanningRtiBatchPreview preview = service.preview(PLAN, COMPANY, null, false);
+
+        assertThat(preview.groups()).hasSize(2);
+        assertThat(preview.groups()).extracting(PlanningRtiGroup::tripLabel)
+                .containsExactlyInAnyOrder("Trip 1", "");
+        assertThat(preview.isComplete()).isTrue();
+    }
+
+    @Test
+    void countsARepeatedJobOnceAndStillBalancesTheBatch() {
+        // Plan 1756 in the live data: 28 rows but only 24 jobs - one job listed
+        // three times, two listed twice. The repeats become one RTI line each,
+        // and the ones left over have to be reported or the count comes up short
+        // and fails a batch that was correct.
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(1, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, ""),
+                row(2, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, ""),
+                row(3, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, ""),
+                row(4, 102, 13, "JPM 8020", "KESAVAN A/L TAMILSALVAN", "2026-08-10", 0, ""),
+                row(5, 102, 13, "JPM 8020", "KESAVAN A/L TAMILSALVAN", "2026-08-10", 0, "")));
+
+        PlanningRtiBatchResult result = service.create(PLAN, request(
+                group(64, 85, List.of(101)),
+                group(13, 100, List.of(102))));
+
+        assertThat(result.isComplete()).isTrue();
+        assertThat(result.plannedJobs()).isEqualTo(5);
+        assertThat(result.jobsCreated()).isEqualTo(2);
+        assertThat(result.jobsSkipped()).isEqualTo(3);
+        assertThat(result.skipped()).allSatisfy(skip ->
+                assertThat(skip.reason()).isEqualTo(SkipReason.DUPLICATE_IN_PLAN));
+    }
+
+    @Test
+    void skipsRowsWithNoTruckInsteadOfFailingTheBatch() {
+        // Rows the planner left without a truck or driver are set aside quietly;
+        // the rest of the plan is still created.
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(1, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, ""),
+                row(2, 102, 0, "", "", "2026-08-10", 0, ""),
+                row(3, 103, 0, "", "", "2026-08-10", 0, "")));
+
+        PlanningRtiBatchResult result = service.create(PLAN, request(group(64, 85, List.of(101))));
+
+        assertThat(result.isComplete()).isTrue();
+        assertThat(result.jobsCreated()).isEqualTo(1);
+        assertThat(result.skipped()).hasSize(2)
+                .allSatisfy(skip -> assertThat(skip.reason()).isEqualTo(SkipReason.NO_TRUCK));
+    }
+
+    @Test
+    void balancesAPlanThatMixesRepeatsMissingTrucksAndUnconfirmedTrucks() {
+        when(reader.planRows(PLAN, COMPANY)).thenReturn(List.of(
+                row(1, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, ""),
+                row(2, 101, 64, "JPM 7151", "UGUNTHAN TANGAVELU", "2026-08-10", 0, ""),
+                row(3, 102, 0, "", "", "2026-08-10", 0, ""),
+                row(4, 0, 13, "JPM 8020", "KESAVAN A/L TAMILSALVAN", "2026-08-10", 0, ""),
+                row(5, 103, 13, "JPM 8020", "KESAVAN A/L TAMILSALVAN", "2026-08-10", 0, "")));
+
+        PlanningRtiBatchResult result = service.create(PLAN, request(group(64, 85, List.of(101))));
+
+        assertThat(result.isComplete()).isTrue();
+        assertThat(result.plannedJobs()).isEqualTo(5);
+        assertThat(result.jobsCreated()).isEqualTo(1);
+        assertThat(result.skipped()).extracting(skip -> skip.reason())
+                .containsExactlyInAnyOrder(SkipReason.DUPLICATE_IN_PLAN, SkipReason.NO_TRUCK,
+                        SkipReason.NO_JOB_REFERENCE, SkipReason.NOT_CONFIRMED);
     }
 
     private static PlanningRtiBatchRequest request(PlanningRtiBatchRequest.Group... groups) {

@@ -5,10 +5,10 @@ import java.util.List;
 /**
  * One RTI-to-be: a truck, a driver and the jobs they run.
  *
- * <p>The grouping key is truck + pickup day, because {@code RTIMaster} holds a
- * single truck and a single driver, and because the history says a truck keeps
- * one driver through the day in 97% of cases. When a plan does put two drivers
- * on one truck in one day, the group splits — the schema leaves no choice.
+ * <p>The grouping key is truck + driver + trip. {@code RTIMaster} holds a single
+ * truck and a single driver, so those two are forced; the trip comes from the
+ * planner's REMARKS ("1ST TRIP", "2ND TRIP"), because the same truck and driver
+ * running a second load is a second run and belongs on its own RTI.
  *
  * @param groupKey     stable identity of this group, echoed back on confirm
  * @param driverSource where the driver came from; {@code NONE} means the
@@ -25,6 +25,8 @@ public record PlanningRtiGroup(
         PlanningRtiBatchDtos.DriverSource driverSource,
         String outsideDriver,
         String pickupDate,
+        /** "Trip 1", "Trip 2" from the planning REMARKS; empty when none was written. */
+        String tripLabel,
         List<PlanningRtiJob> jobs,
         List<String> warnings) {
 

@@ -21,6 +21,8 @@ public record PlanningRtiJob(
         String pickupDate,
         String deliveryDate,
         Integer sortBy,
+        /** What the planner wrote in REMARKS - "1ST TRIP", "COMBINE", a note. */
+        String remarks,
         Integer existingRtiId,
         String existingRtiNo,
         String existingRtiDate) {

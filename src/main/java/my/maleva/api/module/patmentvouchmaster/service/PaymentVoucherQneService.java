@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.integration.qne.QneCall;
 import my.maleva.api.integration.qne.QneGateway;
 import my.maleva.api.integration.qne.QnePayloads;
+import my.maleva.api.integration.qne.QnePushLock;
 import my.maleva.api.integration.qne.QnePushResult;
 import my.maleva.api.integration.qne.dto.QnePaymentResponse;
 import my.maleva.api.integration.qne.dto.QnePaymentVoucherLine;
@@ -41,12 +42,37 @@ import java.util.Objects;
 public class PaymentVoucherQneService {
 
     private final QneGateway gateway;
+    private final QnePushLock pushLock;
     private final PaymentVoucherMasterRepository vouchers;
     private final PaymentVoucherDetailsRepository voucherDetails;
     private final BankMasterRepository banks;
     private final GLAccountsRepository glAccounts;
 
+    /**
+     * Pushes the payment voucher, one push at a time.
+     *
+     * <p>QNE can take minutes to answer. The browser gives up first, and an
+     * operator told nothing happened clicks again while the first call is
+     * still open — at which point QNECode is still empty, so the second click
+     * creates a <em>second</em> document in QNE. Refusing the overlapping push
+     * is what stops that; once the first lands, the QNECode check takes over.
+     */
     public QnePushResult push(Integer voucherId, Integer companyId) {
+        String lockKey = "payment-voucher:" + voucherId;
+        if (!pushLock.tryAcquire(lockKey)) {
+            return QnePushResult.localError(409,
+                    "This payment voucher is already being sent to QNE and QNE has not answered yet. "
+                            + "Wait for it to finish and refresh — pushing again now would "
+                            + "create a second payment voucher in QNE.");
+        }
+        try {
+            return doPush(voucherId, companyId);
+        } finally {
+            pushLock.release(lockKey);
+        }
+    }
+
+    private QnePushResult doPush(Integer voucherId, Integer companyId) {
         PaymentVoucherMaster voucher = vouchers.findById(voucherId).orElse(null);
         if (voucher == null) {
             return QnePushResult.localError(404, "Payment voucher not found: " + voucherId);

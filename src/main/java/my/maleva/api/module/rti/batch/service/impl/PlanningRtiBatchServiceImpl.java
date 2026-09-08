@@ -42,13 +42,17 @@ import java.util.Set;
 /**
  * Turns one saved plan into all of its RTIs.
  *
- * <p><b>The grouping rule.</b> One RTI per <em>truck + driver</em>: every job the
- * same truck and the same driver carry on this plan goes onto one RTI, whatever
- * days they fall on. That is both the planner's rule and the only shape
- * {@code RTIMaster} can hold — one truck, one driver. Two drivers on one truck
- * split into two RTIs, because the record cannot hold both. (The history agrees
- * this is rare: a truck keeps one driver through the day in 2299 of 2372
- * truck-days in the 2026 data.)
+ * <p><b>The grouping rule.</b> One RTI per <em>truck + driver + trip</em>. Every
+ * job the same truck and driver carry on one run goes onto one RTI; a second run
+ * is a second RTI. The run comes from the planner's REMARKS — "1ST TRIP",
+ * "2ND TRIP" are the two most common remarks in the whole system — and "COMBINE"
+ * puts a load onto the run going the same way.
+ *
+ * <p>Truck and driver are forced by the record: {@code RTIMaster} holds one of
+ * each, so two drivers on one truck split into two RTIs whatever the remarks
+ * say. (The history agrees this is rare: a truck keeps one driver through the
+ * day in 2299 of 2372 truck-days in the 2026 data.) Rows with no trip written
+ * stay together, which is how every plan without trip markers behaves.
  *
  * <p><b>Drivers.</b> 99% of planning rows carry no {@code DriverRefId} and 57%
  * carry no driver name either — the planner picks the driver when opening the
@@ -251,6 +255,12 @@ public class PlanningRtiBatchServiceImpl implements PlanningRtiBatchService {
 
         // Everything on the plan that the planner did not confirm is reported, not
         // dropped: a job left out of the batch is still a job with no RTI.
+        //
+        // A plan lists the same job more than once fairly often (plan 1756: 28
+        // rows, 24 jobs). Only the first row of a job becomes an RTI line; the
+        // repeats are said out loud rather than passed over, or the count below
+        // would come up short and fail a batch that was in fact correct.
+        Set<Integer> countedJobs = new HashSet<>();
         for (PlanRow row : rows) {
             Integer jobId = row.saleOrderMasterRefId();
             if (jobId == null || jobId <= 0) {
@@ -258,7 +268,13 @@ public class PlanningRtiBatchServiceImpl implements PlanningRtiBatchService {
                         "This row has no job reference — save the plan first.", 0, ""));
                 continue;
             }
+            if (!countedJobs.add(jobId)) {
+                skipped.add(skip(row, SkipReason.DUPLICATE_IN_PLAN,
+                        "This job is on the plan more than once; it goes on one RTI line.", 0, ""));
+                continue;
+            }
             if (handled.contains(jobId)) {
+                // Already created, or already set aside, by the group loop above.
                 continue;
             }
             handled.add(jobId);
@@ -282,8 +298,23 @@ public class PlanningRtiBatchServiceImpl implements PlanningRtiBatchService {
 
         if (!result.isComplete()) {
             // Rolls the whole batch back: better no RTIs than an unexplained gap.
-            throw new IllegalStateException("RTI batch lost a job: planned=" + rows.size()
-                    + " created=" + jobsCreated + " skipped=" + skipped.size());
+            // Naming the rows that were never accounted for makes the gap
+            // findable, instead of leaving three numbers that do not add up.
+            Set<Integer> accounted = new LinkedHashSet<>();
+            skipped.forEach(entry -> accounted.add(entry.planningDetailId()));
+            for (PlanningRtiBatchRequest.Group group : request.getGroups()) {
+                accounted.addAll(group.getSaleOrderMasterRefIds() == null
+                        ? List.of()
+                        : group.getSaleOrderMasterRefIds());
+            }
+            List<Integer> unexplained = rows.stream()
+                    .filter(row -> !accounted.contains(row.planningDetailId())
+                            && !accounted.contains(row.saleOrderMasterRefId()))
+                    .map(PlanRow::planningDetailId)
+                    .toList();
+            throw new IllegalStateException("RTI batch lost a job on plan " + header.planningNo()
+                    + ": planned=" + rows.size() + " created=" + jobsCreated
+                    + " skipped=" + skipped.size() + "; unaccounted planning rows " + unexplained);
         }
         log.info("PLAN_RTI_BATCH: plan {} created {} RTI covering {} job(s), {} skipped{}",
                 header.planningNo(), created.size(), jobsCreated, skipped.size(),
@@ -359,11 +390,13 @@ public class PlanningRtiBatchServiceImpl implements PlanningRtiBatchService {
 
             if (explicit.size() == 1) {
                 // One driver named anywhere on this truck covers all of its jobs.
-                groups.add(buildGroup(truckKey, truckRows, explicit.values().iterator().next(), context));
+                groups.addAll(splitIntoTrips(truckKey, truckRows,
+                        explicit.values().iterator().next(), context, List.of()));
                 continue;
             }
             if (explicit.isEmpty()) {
-                groups.add(buildGroup(truckKey, truckRows, suggestDriver(truckRows.get(0), context), context));
+                groups.addAll(splitIntoTrips(truckKey, truckRows,
+                        suggestDriver(truckRows.get(0), context), context, List.of()));
                 continue;
             }
 
@@ -378,22 +411,132 @@ public class PlanningRtiBatchServiceImpl implements PlanningRtiBatchService {
                 }
             }
             for (Map.Entry<String, List<PlanRow>> driverRows : byDriver.entrySet()) {
-                groups.add(buildGroup(truckKey + "|" + driverRows.getKey(), driverRows.getValue(),
-                        explicit.get(driverRows.getKey()), context));
+                groups.addAll(splitIntoTrips(truckKey + "|" + driverRows.getKey(), driverRows.getValue(),
+                        explicit.get(driverRows.getKey()), context, List.of()));
             }
             if (!unnamed.isEmpty()) {
-                PlanningRtiGroup group = buildGroup(truckKey + "|?", unnamed,
-                        suggestDriver(unnamed.get(0), context), context);
-                List<String> warnings = new ArrayList<>(group.warnings());
-                warnings.add("This truck has more than one driver on the plan — check which one these jobs belong to.");
-                groups.add(new PlanningRtiGroup(group.groupKey(), group.truckRefId(), group.truckName(),
-                        group.driverRefId(), group.driverName(), group.driverSource(), group.outsideDriver(),
-                        group.pickupDate(), group.jobs(), warnings));
+                groups.addAll(splitIntoTrips(truckKey + "|?", unnamed,
+                        suggestDriver(unnamed.get(0), context), context,
+                        List.of("This truck has more than one driver on the plan — check which one these jobs belong to.")));
             }
         }
 
-        groups.sort(Comparator.comparing(group -> safe(group.truckName())));
+        groups.sort(Comparator
+                .comparing((PlanningRtiGroup group) -> safe(group.truckName()))
+                .thenComparing(group -> safe(group.tripLabel())));
         return groups;
+    }
+
+    /**
+     * Splits one truck-and-driver's jobs into the trips the planner wrote.
+     *
+     * <p>"1ST TRIP" and "2ND TRIP" in the REMARKS column are the two most common
+     * remarks in the system. They mean the truck runs a load, comes back, and
+     * runs another — two runs, two RTIs — so they are honoured rather than merged
+     * into one sheet.
+     *
+     * <p>"COMBINE" means a load rides with another one, and the one it rides with
+     * is the load going the same way: same origin, same destination. So a COMBINE
+     * row joins the trip whose lane it shares, even when that trip is written
+     * lower down the plan. Failing a lane match it joins the nearest trip above
+     * it, and failing that it stands on its own.
+     *
+     * <p>Rows with no trip written stay together, which is how every plan without
+     * trip markers behaves.
+     */
+    private List<PlanningRtiGroup> splitIntoTrips(String keyPrefix, List<PlanRow> rows,
+                                                  ResolvedDriver driver, Context context,
+                                                  List<String> extraWarnings) {
+        List<PlanRow> ordered = rows.stream()
+                .sorted(Comparator.comparing((PlanRow row) -> row.sortBy() == null ? 0 : row.sortBy())
+                        .thenComparing(row -> row.planningDetailId() == null ? 0 : row.planningDetailId()))
+                .toList();
+
+        Map<Integer, List<PlanRow>> byTrip = new LinkedHashMap<>();
+        List<PlanRow> combines = new ArrayList<>();
+        List<PlanRow> unmarked = new ArrayList<>();
+        for (PlanRow row : ordered) {
+            int trip = TripMarkers.tripNumber(row.remarks());
+            if (trip > 0) {
+                byTrip.computeIfAbsent(trip, key -> new ArrayList<>()).add(row);
+            } else if (TripMarkers.isCombine(row.remarks())) {
+                combines.add(row);
+            } else {
+                unmarked.add(row);
+            }
+        }
+
+        for (PlanRow row : combines) {
+            Integer trip = tripSharingLane(row, byTrip);
+            if (trip == null) {
+                trip = nearestTripAbove(row, ordered);
+            }
+            if (trip == null) {
+                unmarked.add(row);
+            } else {
+                byTrip.get(trip).add(row);
+            }
+        }
+
+        List<PlanningRtiGroup> groups = new ArrayList<>();
+        for (Map.Entry<Integer, List<PlanRow>> trip : new java.util.TreeMap<>(byTrip).entrySet()) {
+            groups.add(withTrip(
+                    buildGroup(keyPrefix + "|t" + trip.getKey(), trip.getValue(), driver, context),
+                    TripMarkers.label(trip.getKey()), extraWarnings));
+        }
+        if (!unmarked.isEmpty()) {
+            groups.add(withTrip(
+                    buildGroup(byTrip.isEmpty() ? keyPrefix : keyPrefix + "|t0", unmarked, driver, context),
+                    "", extraWarnings));
+        }
+        return groups;
+    }
+
+    /** The trip already holding a job that runs the same lane as this one. */
+    private static Integer tripSharingLane(PlanRow row, Map<Integer, List<PlanRow>> byTrip) {
+        String lane = laneKey(row);
+        if (lane.isBlank()) {
+            return null;
+        }
+        for (Map.Entry<Integer, List<PlanRow>> trip : byTrip.entrySet()) {
+            for (PlanRow candidate : trip.getValue()) {
+                if (lane.equals(laneKey(candidate))) {
+                    return trip.getKey();
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The trip written on the closest row above this one in the plan's order. */
+    private static Integer nearestTripAbove(PlanRow row, List<PlanRow> ordered) {
+        Integer found = null;
+        for (PlanRow candidate : ordered) {
+            if (candidate == row) {
+                return found;
+            }
+            int trip = TripMarkers.tripNumber(candidate.remarks());
+            if (trip > 0) {
+                found = trip;
+            }
+        }
+        return found;
+    }
+
+    /** Origin and destination as one comparable key, short forms folded together. */
+    private static String laneKey(PlanRow row) {
+        String from = NameKeys.place(safe(row.origin()));
+        String to = NameKeys.place(safe(row.destination()));
+        return from.isBlank() && to.isBlank() ? "" : from + ">" + to;
+    }
+
+    /** Re-stamps a built group with its trip name and any extra warnings. */
+    private static PlanningRtiGroup withTrip(PlanningRtiGroup group, String tripLabel, List<String> extra) {
+        List<String> warnings = new ArrayList<>(group.warnings());
+        warnings.addAll(extra);
+        return new PlanningRtiGroup(group.groupKey(), group.truckRefId(), group.truckName(),
+                group.driverRefId(), group.driverName(), group.driverSource(), group.outsideDriver(),
+                group.pickupDate(), tripLabel, group.jobs(), warnings);
     }
 
     private PlanningRtiGroup buildGroup(String groupKey, List<PlanRow> rows, ResolvedDriver driver, Context context) {
@@ -427,7 +570,8 @@ public class PlanningRtiBatchServiceImpl implements PlanningRtiBatchService {
                 .map(row -> new PlanningRtiJob(
                         row.planningDetailId(), row.saleOrderMasterRefId(), row.jobNo(), row.customerName(),
                         row.origin(), row.destination(), row.pickupDate(), row.deliveryDate(), row.sortBy(),
-                        row.existingRtiId(), safe(row.existingRtiNo()), safe(row.existingRtiDate())))
+                        safe(row.remarks()), row.existingRtiId(), safe(row.existingRtiNo()),
+                        safe(row.existingRtiDate())))
                 .toList();
 
         List<String> warnings = new ArrayList<>();
@@ -474,7 +618,7 @@ public class PlanningRtiBatchServiceImpl implements PlanningRtiBatchService {
         return new PlanningRtiGroup(groupKey, first.truckRefId(), first.truckName(),
                 driverId, driverName, source,
                 source == DriverSource.OUTSIDE ? driverName : "",
-                earliestDay, jobs, warnings);
+                earliestDay, "", jobs, warnings);
     }
 
     /**
