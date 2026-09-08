@@ -193,6 +193,28 @@ public class RTIMaster {
         if (exitYN == null) {
             exitYN = 0;
         }
+        // The money columns are NOT NULL in the table but carry a database
+        // default, which never applies: Hibernate names every column in the
+        // INSERT, so a null field is sent as an explicit NULL and the insert is
+        // rejected. The RTI screen happens to compute all of these on the client,
+        // which is why the gap only shows up for a caller that does not — a plan
+        // batch, an import, anything server-side. Zero is what "nothing claimed"
+        // has always meant here.
+        if (amount == null) {
+            amount = 0.0;
+        }
+        if (sleepingAmount == null) {
+            sleepingAmount = 0.0;
+        }
+        if (pickupAmount == null) {
+            pickupAmount = 0.0;
+        }
+        if (dropAmount == null) {
+            dropAmount = 0.0;
+        }
+        if (exitAmount == null) {
+            exitAmount = 0;
+        }
     }
 
     @PreUpdate
