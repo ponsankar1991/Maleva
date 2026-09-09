@@ -6,7 +6,6 @@ import my.maleva.api.module.customer.repository.CustomerRepository;
 import my.maleva.api.module.invoice.dto.SaleDetailsViewModel;
 import my.maleva.api.module.invoice.dto.SaleF5View;
 import my.maleva.api.module.invoice.dto.SaleMasterViewModel;
-import my.maleva.api.module.invoice.mapper.QueryResultMapper;
 import my.maleva.api.module.invoice.mapper.SaleF5ViewMapper;
 import my.maleva.api.module.itemmaster.entity.ItemMaster;
 import my.maleva.api.module.itemmaster.repository.ItemMasterRepository;
@@ -41,7 +40,6 @@ import my.maleva.api.module.umo.entity.Uom;
 import my.maleva.api.module.umo.repository.UomRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +48,6 @@ import java.time.format.DateTimeParseException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,7 +92,6 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     private final SaleOrderDeliveryMapper saleOrderDeliveryMapper;
     private final SaleOrderForwardingMapper saleOrderForwardingMapper;
     private final SaleF5ViewMapper saleF5ViewMapper;
-    private final QueryResultMapper queryResultMapper;
     private final SaleOrderFilterHelper filterHelper;
     private final SequenceNoMasterRepository sequenceNoMasterRepository;
     private final JobStatusMasterRepository jobStatusMasterRepository;
@@ -116,7 +112,6 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                                       SaleOrderDeliveryMapper saleOrderDeliveryMapper,
                                       SaleOrderForwardingMapper saleOrderForwardingMapper,
                                       SaleF5ViewMapper saleF5ViewMapper,
-                                      QueryResultMapper queryResultMapper,
                                       SaleOrderFilterHelper filterHelper,
                                       SequenceNoMasterRepository sequenceNoMasterRepository,
                                       JobStatusMasterRepository jobStatusMasterRepository,
@@ -136,7 +131,6 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         this.saleOrderDeliveryMapper = saleOrderDeliveryMapper;
         this.saleOrderForwardingMapper = saleOrderForwardingMapper;
         this.saleF5ViewMapper = saleF5ViewMapper;
-        this.queryResultMapper = queryResultMapper;
         this.filterHelper = filterHelper;
         this.sequenceNoMasterRepository = sequenceNoMasterRepository;
         this.jobStatusMasterRepository = jobStatusMasterRepository;
@@ -682,16 +676,18 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         logger.info("SelectSaleOrder started - company: {}", filter.getComid());
         long startTime = System.currentTimeMillis();
 
-        Specification<SaleOrderMaster> specification = buildFilterSpecification(filter);
-        List<Integer> filteredOrderIds = getFilteredOrderIds(specification);
+        List<Integer> filteredOrderIds =
+                repository.findFilteredIds(SaleOrderSpecification.buildFilter(filter));
 
         if (filteredOrderIds.isEmpty()) {
             logger.info("SelectSaleOrder completed with no matching records - company: {}", filter.getComid());
             return buildEmptySaleF5ViewResponse();
         }
 
-        List<SaleMasterViewModel> saleMasterList = fetchAndMapSaleMasterData(filter.getComid(), filteredOrderIds);
-        List<SaleDetailsViewModel> saleDetailsList = fetchAndMapSaleDetailsData(filter.getComid(), filteredOrderIds);
+        List<SaleMasterViewModel> saleMasterList =
+                repository.findSaleMasterRows(filter.getComid(), filteredOrderIds);
+        List<SaleDetailsViewModel> saleDetailsList =
+                repository.findSaleDetailRows(filter.getComid(), filteredOrderIds);
 
         long duration = System.currentTimeMillis() - startTime;
         logger.info("SelectSaleOrder completed in {} ms - company: {}, records: {}",
@@ -1301,59 +1297,6 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
         dto.setAmount(totalAmount);
         return dto;
-    }
-
-    private Specification<SaleOrderMaster> buildFilterSpecification(SaleOrderFilterDTO filter) {
-        return SaleOrderSpecification.buildFilter(
-                filter.getComid(),
-                filter.getId(),
-                filter.getJId(),
-                filter.getEmployeeid(),
-                filter.getDashboardStatus(),
-                filter.getStatusList(),
-                filter.getStatusid(),
-                filter.getCompletestatusnotshow(),
-                filter.getRemarks(),
-                filter.getOffvesselname(),
-                filter.getLoadingvesselname(),
-                filter.getSearch(),
-                filter.getInvoice(),
-                filter.getEta(),
-                filter.getEtaType(),
-                filter.getFromdate(),
-                filter.getTodate(),
-                filter.getPickup(),
-                filter.getInvoicecheck(),
-                filter.getPortName()
-        );
-    }
-
-    private List<Integer> getFilteredOrderIds(Specification<SaleOrderMaster> specification) {
-        return repository.findAll(specification)
-                .stream()
-                .map(SaleOrderMaster::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
-    private List<SaleMasterViewModel> fetchAndMapSaleMasterData(Integer companyId, List<Integer> filteredOrderIds) {
-        List<Object[]> rawData = repository.findSaleMasterRawDataWithJoinsByOrderIds(companyId, filteredOrderIds);
-        List<SaleMasterViewModel> mappedData = queryResultMapper.mapSaleMasterRows(rawData);
-
-        return mappedData.stream()
-                .sorted(
-                        Comparator.comparing(
-                                (SaleMasterViewModel item) -> item.getDeta() != null && !item.getDeta().isEmpty()
-                                        ? item.getDeta()
-                                        : "01/01/1900"
-                        ).thenComparing(item -> item.getBillDate() != null ? item.getBillDate() : "")
-                )
-                .collect(Collectors.toList());
-    }
-
-    private List<SaleDetailsViewModel> fetchAndMapSaleDetailsData(Integer companyId, List<Integer> filteredOrderIds) {
-        List<Object[]> rawData = repository.findSaleDetailsRawDataWithJoinsByOrderIds(companyId, filteredOrderIds);
-        return queryResultMapper.mapSaleDetailsRows(rawData);
     }
 
     private SaleF5View buildSaleF5ViewResponse(List<SaleMasterViewModel> saleMasterList,

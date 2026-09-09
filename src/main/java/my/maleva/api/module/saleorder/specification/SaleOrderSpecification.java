@@ -1,6 +1,7 @@
 package my.maleva.api.module.saleorder.specification;
 
 import my.maleva.api.common.exception.InvalidRequestException;
+import my.maleva.api.module.saleorder.dto.SaleOrderFilterDTO;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import my.maleva.api.module.master.entity.RulesTypeMaster;
 import my.maleva.api.module.invoice.entity.SaleMaster;
@@ -27,12 +28,32 @@ public class SaleOrderSpecification {
     /**
      * Build comprehensive filter specification for SaleOrder search
      * Implements all the filtering logic from the .NET SelectSaleOrder method
+     *
+     * Takes the filter DTO directly: the previous 21-positional-argument signature
+     * had four adjacent Boolean parameters (invoice / eta / pickup / invoiceCheck)
+     * that any re-ordering would have silently swapped at the call site.
      */
-    public static Specification<SaleOrderMaster> buildFilter(Integer companyId, Integer customerId,
-            Integer jobId, Integer employeeId, Integer dashboardStatus, String statusList, Integer statusId,
-            Boolean completeStatusNotShow, Integer remarks, String offVesselName, String loadingVesselName,
-            String search, Boolean invoice, Boolean eta, Integer etaType, LocalDate fromDate,
-            LocalDate toDate, Boolean pickup, Boolean invoiceCheck, String portName) {
+    public static Specification<SaleOrderMaster> buildFilter(SaleOrderFilterDTO filter) {
+        Integer companyId = filter.getComid();
+        Integer customerId = filter.getId();
+        Integer jobId = filter.getJId();
+        Integer employeeId = filter.getEmployeeid();
+        Integer dashboardStatus = filter.getDashboardStatus();
+        String statusList = filter.getStatusList();
+        Integer statusId = filter.getStatusid();
+        Boolean completeStatusNotShow = filter.getCompletestatusnotshow();
+        Integer remarks = filter.getRemarks();
+        String offVesselName = filter.getOffvesselname();
+        String loadingVesselName = filter.getLoadingvesselname();
+        String search = filter.getSearch();
+        Boolean invoice = filter.getInvoice();
+        Boolean eta = filter.getEta();
+        Integer etaType = filter.getEtaType();
+        LocalDate fromDate = filter.getFromdate();
+        LocalDate toDate = filter.getTodate();
+        Boolean pickup = filter.getPickup();
+        Boolean invoiceCheck = filter.getInvoicecheck();
+        String portName = filter.getPortName();
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();

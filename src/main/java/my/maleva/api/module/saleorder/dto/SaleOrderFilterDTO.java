@@ -2,6 +2,8 @@ package my.maleva.api.module.saleorder.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +21,12 @@ import java.time.LocalDate;
 @Builder
 public class SaleOrderFilterDTO {
 
+    // The controller marks the body @Valid but nothing on this class was ever
+    // constrained, so the annotation did nothing; the company check lived only in
+    // SaleOrderFilterHelper. Constrained here so a missing tenant is a 400 with a
+    // field name rather than a generic message thrown from the service.
+    @NotNull(message = "Company ID is required")
+    @Positive(message = "Company ID must be greater than zero")
     @JsonProperty("Comid")
     private Integer comid;
 
