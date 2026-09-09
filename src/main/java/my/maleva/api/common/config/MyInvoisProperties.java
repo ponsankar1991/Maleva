@@ -93,6 +93,23 @@ public class MyInvoisProperties {
     private boolean allowForeignCurrency = true;
 
     /**
+     * The LHDN Sale Classification to use for a product that has none set.
+     *
+     * <p>Every e-invoice line must carry a classification; LHDN rejects a
+     * document without one, and a rejected document cannot be corrected, only
+     * cancelled and re-issued. Rather than block the push and make someone go
+     * and fill the item master in, an unclassified product falls back to this
+     * code.
+     *
+     * <p>Default 22 ("Others") because that is what this business already
+     * uses: of 96 active products, the 89 that are classified are <em>all</em>
+     * 22. Set it to 0 to go back to refusing the push instead, which is the
+     * safer setting if classifications ever start to differ per product —
+     * a wrong classification is a filing error nobody will notice.
+     */
+    private int defaultSaleClassification = 22;
+
+    /**
      * One supplier profile per environment, keyed {@code live} / {@code preprod}.
      * LHDN's preprod credentials belong to a different taxpayer than the live
      * ones, so the supplier block must switch with the environment or every

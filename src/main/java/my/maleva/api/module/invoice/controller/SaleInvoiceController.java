@@ -6,6 +6,7 @@ import my.maleva.api.module.invoice.dto.SaleInvoiceRequestDTO;
 import my.maleva.api.module.invoice.dto.SaleInvoiceSaveResult;
 import my.maleva.api.module.invoice.einvoice.EInvoicePushResponses;
 import my.maleva.api.module.invoice.einvoice.SaleInvoiceEInvoiceService;
+import my.maleva.api.module.invoice.print.PrintStash;
 import my.maleva.api.module.invoice.print.SaleInvoicePdfService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -78,10 +79,143 @@ public class SaleInvoiceController {
     private SaleInvoicePdfService saleInvoicePdfService;
 
     @Autowired
+    private PrintStash printStash;
+
+    @Autowired
     private my.maleva.api.module.invoice.view.SaleInvoiceViewService saleInvoiceViewService;
 
     @Autowired
     private my.maleva.api.module.invoice.mail.SaleInvoiceMailService saleInvoiceMailService;
+
+    @Autowired
+    private my.maleva.api.module.invoice.service.SaleInvoiceEditService saleInvoiceEditService;
+
+    @Autowired
+    private my.maleva.api.integration.qne.QnePushRunner qnePushRunner;
+
+    /**
+     * Starts the QNE push and answers at once.
+     * POST /api/v1/sale-invoices/{id}/push-qne/start?companyId=1
+     *
+     * <p>QNE takes minutes to create an invoice, and none of that is our
+     * time — it is one HTTP call to them. Rather than hold the operator on a
+     * spinner for the whole of it, the push runs in the background and this
+     * returns as soon as it has been accepted. The screen then polls
+     * {@code push-qne/status}. Several invoices push at once, so a batch
+     * overlaps instead of running end to end.
+     *
+     * <p>The checks that need no network still run here, so a customer that
+     * is not in QNE yet is reported immediately rather than two minutes later.
+     */
+    @PostMapping("/{id}/push-qne/start")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> startPushToQne(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid ID or company ID", 400));
+        }
+
+        var refused = saleInvoiceQneService.precheck(id, companyId);
+        if (refused.isPresent()) {
+            return QnePushResponses.toResponse(refused.get());
+        }
+
+        String key = SaleInvoiceQneService.pushKey(id);
+        var outcome = qnePushRunner.start(key,
+                () -> saleInvoiceQneService.pushAssumingLockHeld(id, companyId));
+
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        boolean started = outcome == my.maleva.api.integration.qne.QnePushRunner.StartOutcome.STARTED;
+        data.put("status", "running");
+        data.put("started", started);
+        logger.info("QNE push for invoice {} {}", id, started ? "started" : "was already running");
+        return ResponseEntity.accepted().body(ApiResponse.success(data, started
+                ? "Sending to QNE. You can carry on working — the list updates when it lands."
+                : "This invoice is already being sent to QNE."));
+    }
+
+    /**
+     * How the background push is getting on.
+     * GET /api/v1/sale-invoices/{id}/push-qne/status?companyId=1
+     *
+     * <p>{@code status} is "running", "done" or "unknown". "unknown" means no
+     * push is in flight and no recent result is held — after a restart, or
+     * once the result has been collected; the QNE column on the invoice is
+     * the durable answer in that case.
+     */
+    @GetMapping("/{id}/push-qne/status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> pushToQneStatus(
+            @PathVariable Integer id,
+            @RequestParam(required = false) Integer companyId) {
+        String key = SaleInvoiceQneService.pushKey(id);
+        var state = qnePushRunner.state(key);
+
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        if (state.done()) {
+            var result = state.result();
+            data.put("status", "done");
+            data.put("ok", result.success());
+            if (result.qneId() != null) {
+                data.put("qneId", result.qneId());
+            }
+            if (result.qneCode() != null) {
+                data.put("qneCode", result.qneCode());
+            }
+            if (result.reportUrl() != null) {
+                data.put("fileUrl", result.reportUrl());
+            }
+            // Collected once: the next poll reports "unknown" rather than
+            // replaying a result the screen has already shown.
+            qnePushRunner.forget(key);
+            return ResponseEntity.ok(ApiResponse.success(data, result.message()));
+        }
+
+        data.put("status", state.running() ? "running" : "unknown");
+        data.put("ok", false);
+        if (state.running()) {
+            data.put("runningForSeconds", state.runningFor().toSeconds());
+        }
+        return ResponseEntity.ok(ApiResponse.success(data,
+                state.running() ? "Still sending to QNE" : "No push is running for this invoice"));
+    }
+
+    /**
+     * One saved invoice, shaped for the entry screen's form.
+     * GET /api/v1/sale-invoices/{id}/edit?companyId=1
+     *
+     * <p>Replaces the call the screen made to the old .NET server,
+     * {@code POST /api/SaleInvoiceApp/EditSaleInvoice}, which that controller
+     * does not implement — it answered "No HTTP resource was found", so
+     * opening an invoice for editing failed every time. The answer carries the
+     * header, every line, and the pickup and delivery addresses already split,
+     * so the screen fills in one call.
+     */
+    /**
+     * The lines of one invoice, for the row the grid just expanded.
+     * GET /api/v1/sale-invoices/{id}/lines?companyId=1
+     *
+     * <p>The list endpoint used to return every invoice's lines with it. The
+     * grid only ever shows the ones it has been asked to expand, so those are
+     * fetched here instead — one small query when a row opens, rather than
+     * thousands of rows on every search.
+     */
+    @GetMapping("/{id}/lines")
+    public ResponseEntity<ApiResponse<java.util.List<
+            my.maleva.api.module.invoice.view.SaleInvoiceViewDetailRow>>> invoiceLines(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                saleInvoiceViewService.linesOf(id, companyId), "Invoice lines"));
+    }
+
+    @GetMapping("/{id}/edit")
+    public ResponseEntity<ApiResponse<my.maleva.api.module.invoice.dto.SaleInvoiceEditDto>> edit(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        logger.info("Loading invoice {} for edit, company {}", id, companyId);
+        return ResponseEntity.ok(ApiResponse.success(
+                saleInvoiceEditService.load(id, companyId), "Invoice loaded"));
+    }
 
     /**
      * The Sale Invoice view grid.
@@ -198,6 +332,72 @@ public class SaleInvoiceController {
             return printProblem(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Invoice " + id + " could not be printed: " + reason);
         }
+    }
+
+    /**
+     * Render the invoice now and return a ticket the report window can open.
+     * GET /api/v1/sale-invoices/{id}/print-ticket?companyId=1
+     *
+     * <p>This call is authenticated and does the work, so a missing invoice or
+     * a broken template is still reported to the screen exactly as
+     * {@code /print} reports it. The window then opens {@code /print/{ticket}},
+     * which needs no bearer token and, crucially, ends in the invoice number —
+     * so the browser offers "INV000044007.pdf" instead of naming the download
+     * after a blob UUID. See {@link PrintStash}.
+     */
+    @GetMapping("/{id}/print-ticket")
+    public ResponseEntity<?> printTicket(
+            @PathVariable Integer id,
+            @RequestParam Integer companyId) {
+        if (id == null || id <= 0 || companyId == null || companyId <= 0) {
+            return printProblem(HttpStatus.BAD_REQUEST, "Invoice id and company are required");
+        }
+        try {
+            return saleInvoicePdfService.render(id, companyId)
+                    .<ResponseEntity<?>>map(rendered -> {
+                        String ticket = printStash.put(rendered.fileName(), rendered.pdf());
+                        Map<String, Object> body = new HashMap<>();
+                        body.put("Ticket", ticket);
+                        body.put("FileName", rendered.fileName());
+                        body.put("Url", "/api/v1/sale-invoices/print/" + ticket + "/" + rendered.fileName());
+                        return ResponseEntity.ok(ApiResponse.success(body, "Invoice report ready"));
+                    })
+                    .orElseGet(() -> printProblem(HttpStatus.NOT_FOUND,
+                            "Invoice " + id + " was not found for company " + companyId));
+        } catch (Exception e) {
+            logger.error("Invoice {} (company {}) could not be printed", id, companyId, e);
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) {
+                root = root.getCause();
+            }
+            String reason = root.getMessage() == null ? root.getClass().getSimpleName() : root.getMessage();
+            return printProblem(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Invoice " + id + " could not be printed: " + reason);
+        }
+    }
+
+    /**
+     * Collect a report prepared by {@code /print-ticket}.
+     * GET /api/v1/sale-invoices/print/{ticket}/{fileName}
+     *
+     * <p>Deliberately public — a report window carries no Authorization header,
+     * the same reason {@code /uploads/**} is public. It exposes nothing but the
+     * bytes already rendered for whoever held the ticket: the ticket is a random
+     * UUID handed only to an authenticated caller, it expires within minutes,
+     * and it carries no invoice id to tamper with.
+     *
+     * <p>The file name rides in the path as well as the header because that is
+     * what the browser reads when it names a download.
+     */
+    @GetMapping(value = "/print/{ticket}/{fileName}", produces = {MediaType.APPLICATION_PDF_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<?> collectPrint(@PathVariable String ticket, @PathVariable String fileName) {
+        return printStash.get(ticket)
+                .<ResponseEntity<?>>map(entry -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + entry.fileName() + "\"")
+                        .body(entry.pdf()))
+                .orElseGet(() -> printProblem(HttpStatus.NOT_FOUND,
+                        "This report link has expired; open the report again"));
     }
 
     /** A print failure as the standard JSON envelope, so the screen can show the message. */

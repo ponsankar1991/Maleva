@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * One line of a sale invoice, as {@code SP_SaleMaster} reads it.
+ * One line of a sale invoice, as {@code SaleInvoiceWriter} stores it.
  *
  * <p>The procedure re-reads every line from the payload on each save: an edit
  * deletes the existing SaleDetails rows and inserts these, so a line omitted

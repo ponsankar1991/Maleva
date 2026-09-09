@@ -1,6 +1,8 @@
 package my.maleva.api.module.invoice.einvoice;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import my.maleva.api.common.config.MyInvoisProperties;
 import my.maleva.api.module.customer.entity.Customer;
 import my.maleva.api.module.customer.repository.CustomerRepository;
 import my.maleva.api.module.invoice.entity.SaleDetails;
@@ -41,6 +43,7 @@ import java.util.stream.Collectors;
  * line is kept, so the validator can refuse with the reason instead of the
  * government receiving a document that does not add up.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class EInvoiceSnapshotLoader {
@@ -53,6 +56,7 @@ public class EInvoiceSnapshotLoader {
     private final ItemMasterRepository itemMasters;
     private final UomRepository uoms;
     private final ClassificationRepository classifications;
+    private final MyInvoisProperties myInvoisProperties;
 
     /** The invoice, or empty when it does not exist or belongs to another company. */
     @Transactional(readOnly = true)
@@ -206,6 +210,20 @@ public class EInvoiceSnapshotLoader {
                 }
                 if (item.getSaleClassification() != null) {
                     classificationCode = classificationCodes.get(item.getSaleClassification());
+                }
+                if (classificationCode == null || classificationCode <= 0) {
+                    // The product has no classification of its own. Rather than
+                    // refuse the whole invoice, fall back to the configured
+                    // code — LHDN requires one on every line and rejects a
+                    // document without it, and a rejected document can only be
+                    // cancelled and re-issued, never corrected.
+                    int fallback = myInvoisProperties.getDefaultSaleClassification();
+                    if (fallback > 0) {
+                        classificationCode = fallback;
+                        log.warn("Invoice {} line {} ({}): product has no Sale Classification; "
+                                        + "sending the default {} — set it on the item master to be explicit",
+                                invoiceNo, row, productCode, fallback);
+                    }
                 }
             }
 

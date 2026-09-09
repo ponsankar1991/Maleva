@@ -155,10 +155,17 @@ public class EInvoiceValidator {
             }
             if (line.itemMasterRefId() != null && line.productCode() != null
                     && (line.classificationCode() == null || line.classificationCode() <= 0)) {
-                // Legacy sent "000" here; 898 of the 935 documents LHDN marked
-                // Invalid contained such a line, and each is stuck for good.
+                // Only reachable when myinvois.default-sale-classification is
+                // 0, i.e. the fallback is switched off deliberately. With a
+                // fallback configured the loader has already filled this in.
+                //
+                // The check exists because legacy sent "000" when the product
+                // had none: 898 of the 935 documents LHDN marked Invalid
+                // contained such a line, and an Invalid document cannot be
+                // corrected — only cancelled and re-issued.
                 problems.add(EInvoiceProblem.of("line.classification.missing",
-                        where + ": product has no valid Sale Classification — set it on the item master and push again"));
+                        where + ": product has no valid Sale Classification — set it on the item master,"
+                                + " or set myinvois.default-sale-classification to a code to send automatically"));
             }
         }
     }

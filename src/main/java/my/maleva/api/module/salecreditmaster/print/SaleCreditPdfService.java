@@ -51,7 +51,9 @@ public class SaleCreditPdfService {
      * first, so the paper carries the status and the QR.
      */
     public Optional<RenderedCreditNote> render(Integer creditNoteId, Integer companyId) {
-        eInvoiceBackfill.ensureStatusKnown(creditNoteId, companyId);
+        // Started, not waited for: an LHDN call with a two-minute timeout must
+        // not sit in front of a PDF that prints from stored data.
+        eInvoiceBackfill.refreshInBackground(creditNoteId, companyId);
         Optional<CreditNotePrintSnapshot> loaded = loader.load(creditNoteId, companyId);
         if (loaded.isEmpty()) {
             return Optional.empty();

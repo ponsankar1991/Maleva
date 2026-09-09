@@ -90,8 +90,45 @@ public class SaleInvoiceViewService {
                 """ + where.sql() + " ORDER BY B.Id";
 
         List<SaleInvoiceViewRow> master = jdbc.query(masterSql, where.params(), (rs, i) -> masterRow(rs));
-        List<SaleInvoiceViewDetailRow> details = jdbc.query(detailSql, where.params(), (rs, i) -> detailRow(rs));
+        // Only when asked. The grid shows lines for the single row the operator
+        // expands, so fetching every invoice's lines up front was work thrown
+        // away — see linesOf, which the screen calls on expand instead.
+        List<SaleInvoiceViewDetailRow> details = filter.isIncludeDetails()
+                ? jdbc.query(detailSql, where.params(), (rs, i) -> detailRow(rs))
+                : List.of();
         return new SaleInvoiceViewResult(master, details);
+    }
+
+    /**
+     * The lines of one invoice, for the row the operator just expanded.
+     *
+     * <p>The list used to carry the lines of every invoice it returned. This
+     * fetches the handful actually being looked at, scoped to the company so
+     * an id from another tenant returns nothing rather than another company's
+     * figures.
+     */
+    @Transactional(readOnly = true)
+    public List<SaleInvoiceViewDetailRow> linesOf(Integer invoiceId, Integer companyId) {
+        if (invoiceId == null || invoiceId <= 0 || companyId == null || companyId <= 0) {
+            return List.of();
+        }
+        return jdbc.query("""
+                SELECT B.SaleMasterRefId AS SaleRefId, I.Prod_Code AS ProductCode, I.PName AS ProductName,
+                       B.SDRemarks, B.SalesRate AS SaleRate, B.ItemQty, B.MRP, B.TaxPercent,
+                       A.TaxAmount AS TaxAmt, B.DiscPer AS DiscountPercent, B.DiscAmount AS DiscountAmt,
+                       B.Amount AS SAmount, ISNULL(B.CurrencyValue, 0) AS CurrencyValue,
+                       ISNULL(B.ActualAmount, 0) AS ActualAmount,
+                       ISNULL(B.SaleOrderMasterRefId, 0) AS SaleOrderMasterRefId,
+                       ISNULL(SO.CNumberDisplay, '') AS SaleOrderMasterNoDisplay
+                FROM SaleDetails B WITH (NOLOCK)
+                INNER JOIN SaleMaster A WITH (NOLOCK) ON B.SaleMasterRefId = A.Id
+                INNER JOIN ItemMaster I WITH (NOLOCK) ON B.ItemMasterRefId = I.Id
+                LEFT JOIN SaleOrderMaster SO WITH (NOLOCK) ON SO.Id = B.SaleOrderMasterRefId
+                WHERE B.SaleMasterRefId = :invoiceId AND A.CompanyRefId = :companyId AND A.Active = 1
+                ORDER BY B.Id
+                """,
+                new MapSqlParameterSource().addValue("invoiceId", invoiceId).addValue("companyId", companyId),
+                (rs, i) -> detailRow(rs));
     }
 
     /** The WHERE fragment (starting with AND) and its bound values. Package-private for the tests. */

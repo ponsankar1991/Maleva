@@ -150,7 +150,23 @@ class MyInvoisTokenProviderTest {
         MyInvoisTokenProvider.TokenResult result = provider.accessToken(1);
 
         assertThat(result.success()).isFalse();
-        assertThat(result.failure()).contains("myinvois.client-secret");
+        // Named as the environment variable the operator actually sets, and
+        // saying which of the two is missing — setting one and forgetting the
+        // other is the usual mistake.
+        assertThat(result.failure())
+                .contains("MYINVOIS_CLIENT_SECRET is missing")
+                .contains("MYINVOIS_CLIENT_ID");
+        server.verify();
+    }
+
+    @Test
+    void bothCredentialsMissingSaysSo() {
+        properties.setClientId("");
+        properties.setClientSecret("");
+
+        MyInvoisTokenProvider.TokenResult result = provider.accessToken(1);
+
+        assertThat(result.failure()).contains("both are missing");
         server.verify();
     }
 

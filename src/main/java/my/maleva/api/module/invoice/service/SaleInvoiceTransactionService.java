@@ -1,8 +1,5 @@
 package my.maleva.api.module.invoice.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.invoice.dto.SaleInvoiceDetailRequestDTO;
 import my.maleva.api.module.invoice.dto.SaleInvoiceRequestDTO;
@@ -15,63 +12,55 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.sql.Timestamp;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
- * Saves a sale invoice through {@code SP_SaleMaster}.
+ * Saves a sale invoice.
  *
- * <p><b>Why the procedure is still called.</b> One save writes SaleMaster,
- * deletes and re-inserts SaleDetails, deletes and re-inserts
- * SaleMasterReference, clears and re-stamps {@code SaleOrderMaster.InvoiceNo}
- * for every job it touches, and allocates the invoice number from
- * SequenceNoMaster - all in one transaction. That is the procedure's contract
- * and it is shared with the .NET screens still in production, so both callers
- * must go through it or the two will allocate the same number and disagree on
- * which jobs are invoiced. Re-implementing it in JPA is a separate migration,
- * not a side effect of this endpoint.
+ * <p>The rows are written by {@link SaleInvoiceWriter}, in Java. This service
+ * owns everything around that write: the foreign-key checks, the invoice
+ * number, the lock that serialises numbering, and the transaction it all runs
+ * in.
  *
- * <p><b>What is different from the legacy caller.</b>
+ * <p><b>Why not SP_SaleMaster.</b> The .NET screens still call the procedure
+ * and can carry on doing so; this application does not. The procedure
+ * serialises the invoice to JSON, shreds it back out with OPENJSON into a temp
+ * table, loops over that table a row at a time and re-declares a hundred
+ * locals to perform one insert. Doing the same writes directly is faster,
+ * debuggable and testable. The two stay compatible — same tables, same
+ * columns, same numbering — so an invoice written here is indistinguishable
+ * from one the procedure wrote; every quirk worth keeping is documented on
+ * {@link SaleInvoiceWriter}.
+ *
+ * <p><b>What this does better than the procedure.</b>
  * <ul>
- *   <li>The payload is bound as a parameter. Legacy pasted the JSON into
- *       {@code "Exec [SP_SaleMaster] '" + details + "'," + Comid} after running
- *       {@code Replace("'", "")} over it, so every apostrophe in a remark or an
- *       address was deleted before it reached the database - and anything the
- *       replace missed could rewrite the statement.</li>
- *   <li>Jackson writes the JSON. Legacy also ran
- *       {@code Replace("null", "\"\"")} over the serialized string, which
- *       replaced the four characters {@code null} <i>anywhere</i> they appeared,
- *       including inside legitimate text.</li>
- *   <li>Foreign keys are validated here, before the call. The procedure's own
- *       checks build their message with {@code 'text' + @intVariable}, which
- *       raises a conversion error instead of returning the message - so the
- *       operator saw a type error rather than "Employee Not Found". Validating
- *       first also keeps the procedure off its {@code ROLLBACK TRAN} path, which
- *       would otherwise unwind the transaction Spring opened and surface as a
- *       transaction-count mismatch on commit.</li>
- *   <li>The SequenceNoMaster row is created if it is missing. The procedure's
+ *   <li>Foreign keys are checked before anything is written. The procedure's
+ *       own checks build their message with {@code 'text' + @intVariable},
+ *       which raises a conversion error instead of returning the message, so
+ *       the operator saw a type error rather than "Employee Not Found".</li>
+ *   <li>The SequenceNoMaster row is created when missing. The procedure's
  *       bootstrap branch runs {@code UPDATE SequenceNoMaster ...} when no row
- *       exists yet, which matches nothing, so the sequence never advanced and
- *       every invoice for that company was numbered 1.</li>
+ *       exists, which matches nothing, so the sequence never advanced and
+ *       every invoice for that company came out numbered 1.</li>
  *   <li>Number allocation is serialised per company with an application lock.
  *       The procedure reads {@code MAX(SequenceNo)} and updates it as two
  *       statements with nothing in between; its own lock call is commented
  *       out.</li>
+ *   <li>No JSON round trip, so nothing has to survive the legacy caller's
+ *       {@code Replace("'", "")} over the payload, which deleted every
+ *       apostrophe in a remark or an address before it reached the database.</li>
  * </ul>
- *
- * <p><b>Legacy behaviour deliberately preserved.</b> {@code SaleType} is forced
- * to {@code 'CREDIT'} by the procedure whatever is sent; {@code BillType} and
- * {@code DOCNo} are written on insert only; {@code CNumber} and
- * {@code CNumberDisplay} are never re-written on an edit; and an edit updates
- * {@code LastEmployeeRefId} while leaving the original {@code EmployeeRefId}
- * alone. None of that is changed here.
  */
 @Service
 public class SaleInvoiceTransactionService {
@@ -84,19 +73,22 @@ public class SaleInvoiceTransactionService {
     private static final String NUMBER_PREFIX = "INV";
     private static final int NUMBER_DIGITS = 9;
 
-    /** Rows the procedure treats as live. */
+    /** Rows that count as live. */
     private static final int ACTIVE = 1;
 
     private final NamedParameterJdbcTemplate jdbc;
     private final SequenceNoMasterRepository sequences;
-    private final ObjectMapper objectMapper;
+    private final SaleInvoiceWriter writer;
+    private final InvoiceSaveGuard saveGuard;
 
     public SaleInvoiceTransactionService(NamedParameterJdbcTemplate jdbc,
                                          SequenceNoMasterRepository sequences,
-                                         ObjectMapper objectMapper) {
+                                         SaleInvoiceWriter writer,
+                                         InvoiceSaveGuard saveGuard) {
         this.jdbc = jdbc;
         this.sequences = sequences;
-        this.objectMapper = objectMapper;
+        this.writer = writer;
+        this.saveGuard = saveGuard;
     }
 
     // ─────────────────────────────────────────────────────────────── save ──
@@ -121,8 +113,8 @@ public class SaleInvoiceTransactionService {
                 ? List.of()
                 : request.getDetails().stream().filter(Objects::nonNull).toList();
         if (lines.isEmpty()) {
-            // The procedure deletes the existing SaleDetails rows before
-            // inserting these, so an empty list on an edit empties the invoice.
+            // An edit clears the existing lines before writing these, so an
+            // empty list would silently empty the invoice.
             throw new InvalidRequestException("An invoice needs at least one line");
         }
         for (SaleInvoiceDetailRequestDTO line : lines) {
@@ -135,33 +127,79 @@ public class SaleInvoiceTransactionService {
 
         requireLookupsExist(request, companyId);
         ensureSequenceRowExists(companyId);
-        lockNumberAllocation(companyId);
 
-        String payload = writePayload(request, lines);
-
-        Map<String, Object> row = jdbc.queryForMap(
-                "EXEC [SP_SaleMaster] :master, :comid",
-                new MapSqlParameterSource()
-                        .addValue("master", payload)
-                        .addValue("comid", companyId));
-
-        Integer resultCode = asInteger(row.get("Result"));
-        if (resultCode == null || resultCode != 1) {
-            String message = trimToNull(String.valueOf(row.getOrDefault("msg", "")));
-            logger.warn("SP_SaleMaster rejected the invoice for company {}: {}", companyId, message);
-            throw new InvalidRequestException(message == null ? "The invoice was not saved" : message);
+        String saveKey = trimToNull(request.getClientRequestId());
+        if (saveKey == null) {
+            // No key, so nothing here can tell a second press from a second
+            // invoice. Saved as before.
+            return writeInvoice(request, lines, companyId, creating);
         }
 
-        Integer savedId = asInteger(row.get("id"));
-        if (savedId == null || savedId == 0) {
-            savedId = request.getId();
+        Optional<SaleInvoiceSaveResult> alreadySaved = saveGuard.begin(saveKey);
+        if (alreadySaved.isPresent()) {
+            // This exact save already finished. Hand back the invoice it made
+            // instead of making a second one.
+            return alreadySaved.get();
         }
+        try {
+            SaleInvoiceSaveResult result = writeInvoice(request, lines, companyId, creating);
+            recordOnCommit(saveKey, result);
+            return result;
+        } catch (RuntimeException failed) {
+            saveGuard.abandon(saveKey);
+            throw failed;
+        }
+    }
 
-        // The procedure only fills @SaleNoDisplay on its insert branch, so an
-        // edit hands back a null BillNo. Read what was actually stored instead.
-        String billNo = trimToNull(String.valueOf(row.getOrDefault("BillNo", "")));
-        Integer billNumber = null;
-        if (billNo == null && savedId != null) {
+    /**
+     * Marks the key finished only once the transaction has committed.
+     *
+     * <p>Recording it earlier would let a save that later rolled back be
+     * replayed as a success. A rollback releases the key instead, so the
+     * operator can genuinely try again.
+     */
+    private void recordOnCommit(String saveKey, SaleInvoiceSaveResult result) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            saveGuard.complete(saveKey, result);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) {
+                    saveGuard.complete(saveKey, result);
+                } else {
+                    saveGuard.abandon(saveKey);
+                }
+            }
+        });
+    }
+
+    /**
+     * Writes the invoice and hands back what the screen needs.
+     *
+     * <p>Runs inside the caller's transaction, after the foreign-key checks
+     * and while the number lock is held, so the header, its lines, the
+     * references and the sale-order stamps all commit or all fail together.
+     */
+    private SaleInvoiceSaveResult writeInvoice(SaleInvoiceRequestDTO request,
+                                               List<SaleInvoiceDetailRequestDTO> lines,
+                                               Integer companyId,
+                                               boolean creating) {
+        Integer savedId = writer.write(request, lines);
+
+        String billNo;
+        Integer billNumber;
+        if (creating) {
+            billNumber = allocateNumber(companyId);
+            billNo = NUMBER_PREFIX + String.format("%0" + NUMBER_DIGITS + "d", billNumber);
+            jdbc.update("UPDATE SaleMaster SET CNumber = :number, CNumberDisplay = :display WHERE Id = :id",
+                    new MapSqlParameterSource()
+                            .addValue("number", billNumber)
+                            .addValue("display", billNo)
+                            .addValue("id", savedId));
+        } else {
+            // An edit never renumbers. Report the number it already carries.
             Map<String, Object> stored = jdbc.queryForMap(
                     "SELECT CNumber, CNumberDisplay FROM SaleMaster WITH (NOLOCK) WHERE Id = :id",
                     new MapSqlParameterSource("id", savedId));
@@ -175,9 +213,43 @@ public class SaleInvoiceTransactionService {
                 .id(savedId)
                 .billNo(billNo)
                 .billNumber(billNumber)
-                .saleTime(asDateTime(row.get("SaleTime")))
+                .saleTime(LocalDateTime.now())
                 .created(creating)
                 .build();
+    }
+
+    /**
+     * Takes the next invoice number for the company.
+     *
+     * <p>One atomic statement, not a lock plus a read plus a write. The old
+     * shape took {@code sp_getapplock} with {@code @LockOwner = 'Transaction'}
+     * <em>before</em> the invoice was written, so it was held for the whole
+     * save: every save for a company queued behind every other, with a
+     * 15-second timeout — and when that timeout passed the code logged
+     * "saving unguarded" and carried on, which is precisely when two saves
+     * could take the same number.
+     *
+     * <p>{@code UPDATE ... OUTPUT} increments and reads as one statement, so
+     * no two callers can see the same value however many save at once. It runs
+     * at the end of the save, so the row lock it takes is held for a moment
+     * instead of for the length of the transaction. The number still belongs
+     * to this transaction: a rollback returns it and the sequence has no gap.
+     */
+    private Integer allocateNumber(Integer companyId) {
+        List<Integer> allocated = jdbc.queryForList(
+                "UPDATE SequenceNoMaster SET SequenceNo = ISNULL(SequenceNo, 0) + 1 "
+                        + "OUTPUT INSERTED.SequenceNo "
+                        + "WHERE CompanyRefId = :comid AND SequenceName = :name",
+                new MapSqlParameterSource().addValue("comid", companyId).addValue("name", SEQUENCE_NAME),
+                Integer.class);
+        if (allocated.isEmpty()) {
+            // ensureSequenceRowExists ran first, so the row is only missing if
+            // it was deleted underneath us. Refuse rather than number this
+            // invoice 1 and collide with the first one ever issued.
+            throw new InvalidRequestException(
+                    "No invoice number sequence exists for this company; the invoice was not saved");
+        }
+        return allocated.get(0);
     }
 
     // ───────────────────────────────────────────────────────── validation ──
@@ -191,47 +263,91 @@ public class SaleInvoiceTransactionService {
      * "not supplied" here too.
      */
     private void requireLookupsExist(SaleInvoiceRequestDTO r, Integer companyId) {
-        requireExists("Login user", "AppUser", r.getUserRefId(), companyId);
-        requireExists("Employee", "EmployeeMaster", r.getEmployeeRefId(), companyId);
-        requireExists("Agent company", "AgentCompanyMaster", r.getAgentCompanyRefId(), companyId);
-        requireExists("Agent", "Agent", r.getAgentMasterRefId(), companyId);
-        requireExists("Off agent company", "AgentCompanyMaster", r.getOAgentCompanyRefId(), companyId);
-        requireExists("Off agent", "Agent", r.getOAgentMasterRefId(), companyId);
-        requireExists("Truck", "TruckMaster", r.getTruckRefId(), companyId);
-        requireExists("Driver", "DriverMaster", r.getDriverRefId(), companyId);
-        requireExists("Forklift operator", "EmployeeMaster", r.getForkliftByRefId(), companyId);
-        requireExists("Seal by", "EmployeeMaster", r.getSealByRefId(), companyId);
-        requireExists("Break seal by", "EmployeeMaster", r.getSealBreakByRefId(), companyId);
-        requireExists("Seal by 2", "EmployeeMaster", r.getSealByRefId2(), companyId);
-        requireExists("Break seal by 2", "EmployeeMaster", r.getSealBreakByRefId2(), companyId);
-        requireExists("Seal by 3", "EmployeeMaster", r.getSealByRefId3(), companyId);
-        requireExists("Break seal by 3", "EmployeeMaster", r.getSealBreakByRefId3(), companyId);
-        requireExists("Boarding officer", "EmployeeMaster", r.getBoardingOfficerRefId(), companyId);
-        requireExists("Boarding officer 2", "EmployeeMaster", r.getBoardingOfficer1RefId(), companyId);
-    }
-
-    private void requireExists(String label, String table, Integer id, Integer companyId) {
-        if (id == null || id == 0) {
+        List<Lookup> wanted = new ArrayList<>(17);
+        addLookup(wanted, "Login user", "AppUser", r.getUserRefId());
+        addLookup(wanted, "Employee", "EmployeeMaster", r.getEmployeeRefId());
+        addLookup(wanted, "Agent company", "AgentCompanyMaster", r.getAgentCompanyRefId());
+        addLookup(wanted, "Agent", "Agent", r.getAgentMasterRefId());
+        addLookup(wanted, "Off agent company", "AgentCompanyMaster", r.getOAgentCompanyRefId());
+        addLookup(wanted, "Off agent", "Agent", r.getOAgentMasterRefId());
+        addLookup(wanted, "Truck", "TruckMaster", r.getTruckRefId());
+        addLookup(wanted, "Driver", "DriverMaster", r.getDriverRefId());
+        addLookup(wanted, "Forklift operator", "EmployeeMaster", r.getForkliftByRefId());
+        addLookup(wanted, "Seal by", "EmployeeMaster", r.getSealByRefId());
+        addLookup(wanted, "Break seal by", "EmployeeMaster", r.getSealBreakByRefId());
+        addLookup(wanted, "Seal by 2", "EmployeeMaster", r.getSealByRefId2());
+        addLookup(wanted, "Break seal by 2", "EmployeeMaster", r.getSealBreakByRefId2());
+        addLookup(wanted, "Seal by 3", "EmployeeMaster", r.getSealByRefId3());
+        addLookup(wanted, "Break seal by 3", "EmployeeMaster", r.getSealBreakByRefId3());
+        addLookup(wanted, "Boarding officer", "EmployeeMaster", r.getBoardingOfficerRefId());
+        addLookup(wanted, "Boarding officer 2", "EmployeeMaster", r.getBoardingOfficer1RefId());
+        if (wanted.isEmpty()) {
             return;
         }
-        Integer found = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM [" + table + "] WITH (NOLOCK) "
-                        + "WHERE Id = :id AND CompanyRefId = :comid AND Active = :active",
-                new MapSqlParameterSource()
-                        .addValue("id", id)
-                        .addValue("comid", companyId)
-                        .addValue("active", ACTIVE),
-                Integer.class);
-        if (found == null || found == 0) {
-            throw new InvalidRequestException(label + " " + id + " was not found for this company");
+
+        Set<String> found = findExisting(wanted, companyId);
+        for (Lookup lookup : wanted) {
+            if (!found.contains(lookup.key())) {
+                throw new InvalidRequestException(
+                        lookup.label() + " " + lookup.id() + " was not found for this company");
+            }
         }
+    }
+
+    /** One id the invoice points at, and the table it has to exist in. */
+    private record Lookup(String label, String table, Integer id) {
+        String key() {
+            return table + ":" + id;
+        }
+    }
+
+    /** Skips ids the procedure skipped: 0 and null both mean "not supplied". */
+    private static void addLookup(List<Lookup> wanted, String label, String table, Integer id) {
+        if (id != null && id != 0) {
+            wanted.add(new Lookup(label, table, id));
+        }
+    }
+
+    /**
+     * Which of those ids exist, in one round trip.
+     *
+     * <p>This used to be seventeen separate {@code SELECT COUNT(*)} queries,
+     * one per reference, run on every single save whether or not the fields
+     * were filled in. They are now one statement: the tables actually
+     * referenced are unioned together and every id is checked at once. A
+     * typical invoice names one or two tables, so a save that cost up to
+     * seventeen round trips now costs one.
+     *
+     * <p>The table names are not user input — they are the literals above —
+     * so building the statement from them is safe; every id is still bound.
+     */
+    private Set<String> findExisting(List<Lookup> wanted, Integer companyId) {
+        Map<String, List<Integer>> byTable = new LinkedHashMap<>();
+        for (Lookup lookup : wanted) {
+            byTable.computeIfAbsent(lookup.table(), table -> new ArrayList<>()).add(lookup.id());
+        }
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("comid", companyId)
+                .addValue("active", ACTIVE);
+        List<String> branches = new ArrayList<>(byTable.size());
+        int index = 0;
+        for (Map.Entry<String, List<Integer>> entry : byTable.entrySet()) {
+            String idsParam = "ids" + index++;
+            params.addValue(idsParam, entry.getValue());
+            branches.add("SELECT '" + entry.getKey() + "' AS TableName, Id FROM [" + entry.getKey() + "] "
+                    + "WITH (NOLOCK) WHERE CompanyRefId = :comid AND Active = :active AND Id IN (:" + idsParam + ")");
+        }
+
+        return new HashSet<>(jdbc.query(String.join(" UNION ALL ", branches), params,
+                (rs, i) -> rs.getString("TableName") + ":" + rs.getInt("Id")));
     }
 
     // ─────────────────────────────────────────────────────────── numbering ──
 
     /**
-     * Makes sure the company has a SequenceNoMaster row before the procedure
-     * looks for one, seeded from the highest CNumber already issued so an
+     * Makes sure the company has a SequenceNoMaster row before a number is
+     * taken from it, seeded from the highest CNumber already issued so an
      * existing company does not restart at 1.
      */
     private void ensureSequenceRowExists(Integer companyId) {
@@ -253,273 +369,10 @@ public class SaleInvoiceTransactionService {
         logger.info("Created the {} sequence for company {} at {}", SEQUENCE_NAME, companyId, seed.getSequenceNo());
     }
 
-    /**
-     * Serialises invoice numbering for one company until this transaction ends.
-     * The procedure reads the sequence and updates it as separate statements,
-     * so two concurrent saves would otherwise take the same number.
-     */
-    private void lockNumberAllocation(Integer companyId) {
-        try {
-            Integer status = jdbc.queryForObject(
-                    "DECLARE @status int; "
-                            + "EXEC @status = sp_getapplock @Resource = :key, "
-                            + "@LockMode = 'Exclusive', @LockOwner = 'Transaction', "
-                            + "@LockTimeout = 15000; SELECT @status",
-                    new MapSqlParameterSource("key", "SaleMasterNumber:" + companyId),
-                    Integer.class);
-            if (status != null && status < 0) {
-                logger.warn("Invoice-number lock for company {} timed out (status {}); saving unguarded",
-                        companyId, status);
-            }
-        } catch (Exception ex) {
-            // Never let the guard itself block a save.
-            logger.warn("Could not take the invoice-number lock ({}); saving unguarded", ex.getMessage());
-        }
-    }
-
-    // ───────────────────────────────────────────────────────────── payload ──
-
-    /**
-     * Builds the JSON array the procedure reads with OPENJSON.
-     *
-     * <p>The null conventions are the procedure's, not ours:
-     * <ul>
-     *   <li>text fields are written as {@code ""} rather than JSON null, because
-     *       the invoice list filters on {@code Remarks = ''} and
-     *       {@code Remarks <> ''} and a NULL satisfies neither;</li>
-     *   <li>reference ids are written as {@code 0}. The procedure only validates
-     *       an id when it is {@code <> 0}, and its {@code IF @x = ''} block then
-     *       turns the 0 into a NULL before the insert - in T-SQL {@code 0 = ''}
-     *       is true, because the empty string converts to int 0;</li>
-     *   <li>dates are written as JSON null, which OPENJSON reads as NULL. Sending
-     *       {@code ""} instead would first convert to 1900-01-01 and rely on the
-     *       same guard to undo it.</li>
-     * </ul>
-     */
-    private String writePayload(SaleInvoiceRequestDTO r, List<SaleInvoiceDetailRequestDTO> lines) {
-        ObjectNode master = objectMapper.createObjectNode();
-
-        // The procedure's ROW_NUMBER() OVER(ORDER BY SNo) reads this.
-        master.put("boundindex", 1);
-
-        master.put("Id", zeroIfNull(r.getId()));
-        master.put("CompanyRefId", r.getCompanyRefId());
-        master.put("CustomerRefId", r.getCustomerRefId());
-        master.put("JobMasterRefId", r.getJobMasterRefId());
-        master.put("EmployeeRefId", zeroIfNull(r.getEmployeeRefId()));
-        master.put("UserRefId", zeroIfNull(r.getUserRefId()));
-        master.put("AgentCompanyRefId", zeroIfNull(r.getAgentCompanyRefId()));
-        master.put("AgentMasterRefId", zeroIfNull(r.getAgentMasterRefId()));
-        master.put("OAgentCompanyRefId", zeroIfNull(r.getOAgentCompanyRefId()));
-        master.put("OAgentMasterRefId", zeroIfNull(r.getOAgentMasterRefId()));
-
-        putDate(master, "SaleDate", r.getSaleDate());
-        master.put("BillType", blank(r.getBillType()));
-        // Written for completeness only; the procedure hard-codes 'CREDIT'.
-        master.put("SaleType", "CREDIT");
-
-        master.put("GrossAmount", zeroIfNull(r.getGrossAmount()));
-        master.put("TaxAmount", zeroIfNull(r.getTaxAmount()));
-        master.put("DiscountAmount", zeroIfNull(r.getDiscountAmount()));
-        master.put("PlusAmount", zeroIfNull(r.getPlusAmount()));
-        master.put("MinusAmount", zeroIfNull(r.getMinusAmount()));
-        master.put("Coinage", zeroIfNull(r.getCoinage()));
-        master.put("Amount", zeroIfNull(r.getAmount()));
-        master.put("CurrencyValue", zeroIfNull(r.getCurrencyValue()));
-        master.put("ActualNetAmount", zeroIfNull(r.getActualNetAmount()));
-        master.put("SymbolRefId", zeroIfNull(r.getSymbolRefId()));
-
-        master.put("Remarks", blank(r.getRemarks()));
-        master.put("Remarks1", blank(r.getRemarks1()));
-        master.put("DODescription", blank(r.getDoDescription()));
-        master.put("Offvesselname", blank(r.getOffVesselName()));
-        master.put("Loadingvesselname", blank(r.getLoadingVesselName()));
-        master.put("TruckSize", blank(r.getTruckSize()));
-        master.put("SPort", blank(r.getSPort()));
-        master.put("OPort", blank(r.getOPort()));
-        master.put("SCN", blank(r.getScn()));
-        master.put("LSCN", blank(r.getLscn()));
-        master.put("Vessel", blank(r.getVessel()));
-        master.put("OVessel", blank(r.getOVessel()));
-        master.put("Commodity", blank(r.getCommodity()));
-        master.put("Cargo", blank(r.getCargo()));
-        master.put("AWBNo", blank(r.getAwbNo()));
-        master.put("BLCopy", blank(r.getBlCopy()));
-        master.put("Quantity", blank(r.getQuantity()));
-        master.put("TotalWeight", blank(r.getTotalWeight()));
-        master.put("PTW", blank(r.getPtw()));
-        master.put("Origin", blank(r.getOrigin()));
-        master.put("Destination", blank(r.getDestination()));
-
-        putDateTime(master, "ETA", r.getEta());
-        putDateTime(master, "ETB", r.getEtb());
-        putDateTime(master, "ETD", r.getEtd());
-        putDateTime(master, "OETA", r.getOEta());
-        putDateTime(master, "OETB", r.getOEtb());
-        putDateTime(master, "OETD", r.getOEtd());
-        putDateTime(master, "PickupDate", r.getPickupDate());
-        putDateTime(master, "DeliveryDate", r.getDeliveryDate());
-        putDateTime(master, "WareHouseEnterDate", r.getWareHouseEnterDate());
-        putDateTime(master, "WareHouseExitDate", r.getWareHouseExitDate());
-
-        master.put("PickupAddress", blank(r.getPickupAddress()));
-        master.put("DeliveryAddress", blank(r.getDeliveryAddress()));
-        master.put("WareHouseAddress", blank(r.getWareHouseAddress()));
-
-        master.put("DOCNo", zeroIfNull(r.getDocNo()));
-        master.put("SaleOrderMasterNo", zeroIfNull(r.getSaleOrderMasterNo()));
-        master.put("TruckRefid", zeroIfNull(r.getTruckRefId()));
-        master.put("DriverRefid", zeroIfNull(r.getDriverRefId()));
-        master.put("JStatus", zeroIfNull(r.getJStatus()));
-        master.put("OStatus", zeroIfNull(r.getOStatus()));
-
-        master.put("ForkliftbyRefid", zeroIfNull(r.getForkliftByRefId()));
-        master.put("SealbyRefid", zeroIfNull(r.getSealByRefId()));
-        master.put("SealbreakbyRefid", zeroIfNull(r.getSealBreakByRefId()));
-        master.put("SealbyRefid2", zeroIfNull(r.getSealByRefId2()));
-        master.put("SealbreakbyRefid2", zeroIfNull(r.getSealBreakByRefId2()));
-        master.put("SealbyRefid3", zeroIfNull(r.getSealByRefId3()));
-        master.put("SealbreakbyRefid3", zeroIfNull(r.getSealBreakByRefId3()));
-        master.put("BoardingOfficerRefid", zeroIfNull(r.getBoardingOfficerRefId()));
-        master.put("BoardingOfficer1Refid", zeroIfNull(r.getBoardingOfficer1RefId()));
-        master.put("BoardingAmount", zeroIfNull(r.getBoardingAmount()));
-        master.put("BoardingAmount1", zeroIfNull(r.getBoardingAmount1()));
-
-        master.put("Forwarding", blank(r.getForwarding()));
-        master.put("Forwarding2", blank(r.getForwarding2()));
-        master.put("Forwarding3", blank(r.getForwarding3()));
-        master.put("ForwardingEnterRef", blank(r.getForwardingEnterRef()));
-        master.put("ForwardingExitRef", blank(r.getForwardingExitRef()));
-        master.put("ForwardingEnterRef2", blank(r.getForwardingEnterRef2()));
-        master.put("ForwardingExitRef2", blank(r.getForwardingExitRef2()));
-        master.put("ForwardingEnterRef3", blank(r.getForwardingEnterRef3()));
-        master.put("ForwardingExitRef3", blank(r.getForwardingExitRef3()));
-        master.put("ForwardingSMKNo", blank(r.getForwardingSmkNo()));
-        master.put("ForwardingSMKNo2", blank(r.getForwardingSmkNo2()));
-        master.put("ForwardingSMKNo3", blank(r.getForwardingSmkNo3()));
-
-        master.put("PortChargesRef", blank(r.getPortChargesRef()));
-        master.put("PortCharges", zeroIfNull(r.getPortCharges()));
-        master.put("SealAmount", zeroIfNull(r.getSealAmount()));
-        master.put("BreakSealAmount", zeroIfNull(r.getBreakSealAmount()));
-        master.put("SealAmount2", zeroIfNull(r.getSealAmount2()));
-        master.put("BreakSealAmount2", zeroIfNull(r.getBreakSealAmount2()));
-        master.put("SealAmount3", zeroIfNull(r.getSealAmount3()));
-        master.put("BreakSealAmount3", zeroIfNull(r.getBreakSealAmount3()));
-
-        master.put("Zb", blank(r.getZb()));
-        master.put("Zb2", blank(r.getZb2()));
-        master.put("ZbRef", blank(r.getZbRef()));
-        master.put("ZbRef2", blank(r.getZbRef2()));
-
-        // Allocated by the procedure from SequenceNoMaster on insert and left
-        // alone on edit; sent only so OPENJSON finds the keys it declares.
-        master.put("CNumber", 0);
-        master.put("CNumberDisplay", "");
-
-        master.set("SaleInvoiceDetails", writeLines(lines));
-        master.set("SaleOrderRefId", writeReferences(r, lines));
-
-        ArrayNode payload = objectMapper.createArrayNode();
-        payload.add(master);
-        return payload.toString();
-    }
-
-    private ArrayNode writeLines(List<SaleInvoiceDetailRequestDTO> lines) {
-        ArrayNode array = objectMapper.createArrayNode();
-        for (SaleInvoiceDetailRequestDTO line : lines) {
-            ObjectNode node = objectMapper.createObjectNode();
-            node.put("ItemMasterRefId", line.getItemMasterRefId());
-            node.put("MRP", zeroIfNull(line.getMrp()));
-            node.put("PurchaseRate", zeroIfNull(line.getPurchaseRate()));
-            node.put("ItemQty", zeroIfNull(line.getItemQty()));
-            node.put("DiscPer", zeroIfNull(line.getDiscountPercent()));
-            node.put("DiscAmount", zeroIfNull(line.getDiscountAmount()));
-            node.put("LandingCost", zeroIfNull(line.getLandingCost()));
-            node.put("TaxPercent", zeroIfNull(line.getTaxPercent()));
-            node.put("TaxAmount", zeroIfNull(line.getTaxAmount()));
-            node.put("SalesRate", zeroIfNull(line.getSalesRate()));
-            node.put("NetSalesRate", zeroIfNull(line.getNetSalesRate()));
-            node.put("Amount", zeroIfNull(line.getAmount()));
-            node.put("CurrencyValue", zeroIfNull(line.getCurrencyValue()));
-            node.put("TaxRefId", zeroIfNull(line.getTaxRefId()));
-            node.put("ActualAmount", zeroIfNull(line.getActualAmount()));
-            node.put("SDRemarks", blank(line.getRemarks()));
-            node.put("SaleOrderMasterRefId", zeroIfNull(line.getSaleOrderMasterRefId()));
-            array.add(node);
-        }
-        return array;
-    }
-
-    /**
-     * The distinct sale orders this invoice covers. Taken from the request when
-     * it names them, otherwise derived from the lines - the screen builds the
-     * list that way and the two must not disagree, because the procedure stamps
-     * {@code SaleOrderMaster.InvoiceNo} from this list alone.
-     */
-    private ArrayNode writeReferences(SaleInvoiceRequestDTO r, List<SaleInvoiceDetailRequestDTO> lines) {
-        List<Integer> ids = new ArrayList<>();
-        if (r.getSaleOrderRefIds() != null) {
-            ids.addAll(r.getSaleOrderRefIds());
-        }
-        if (ids.isEmpty()) {
-            lines.stream()
-                    .map(SaleInvoiceDetailRequestDTO::getSaleOrderMasterRefId)
-                    .filter(Objects::nonNull)
-                    .forEach(ids::add);
-        }
-
-        ArrayNode array = objectMapper.createArrayNode();
-        for (Integer id : new LinkedHashSet<>(ids)) {
-            if (id == null || id == 0) {
-                continue;
-            }
-            ObjectNode node = objectMapper.createObjectNode();
-            node.put("SaleOrderMasterRefId", id);
-            array.add(node);
-        }
-        return array;
-    }
-
-    // ───────────────────────────────────────────────────────────── helpers ──
-
-    private void putDate(ObjectNode node, String field, LocalDate value) {
-        if (value == null) {
-            node.putNull(field);
-        } else {
-            node.put(field, value.toString());
-        }
-    }
-
-    private void putDateTime(ObjectNode node, String field, LocalDateTime value) {
-        if (value == null) {
-            node.putNull(field);
-        } else {
-            node.put(field, value.toString());
-        }
-    }
-
-    private static String blank(String value) {
-        return value == null ? "" : value;
-    }
-
-    private static int zeroIfNull(Integer value) {
-        return value == null ? 0 : value;
-    }
-
-    private static double zeroIfNull(Double value) {
-        return value == null ? 0d : value;
-    }
+    // ─────────────────────────────────────────────────────────── helpers ──
 
     private static Integer asInteger(Object value) {
         return value instanceof Number number ? number.intValue() : null;
-    }
-
-    private static LocalDateTime asDateTime(Object value) {
-        if (value instanceof Timestamp timestamp) {
-            return timestamp.toLocalDateTime();
-        }
-        return value instanceof LocalDateTime dateTime ? dateTime : null;
     }
 
     private static String trimToNull(String value) {

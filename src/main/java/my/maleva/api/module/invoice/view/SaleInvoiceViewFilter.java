@@ -89,4 +89,19 @@ public class SaleInvoiceViewFilter {
     public int etaTypeOrDefault() {
         return etaType == null ? 0 : etaType;
     }
+
+    /**
+     * Whether to return every invoice's lines alongside the list.
+     *
+     * <p>Off unless asked. The grid only shows lines for the one row the
+     * operator expands, but the list used to fetch the lines of <em>every</em>
+     * invoice in the range — thousands of rows read, serialised and sent for a
+     * handful that might be looked at. The screen now asks for one invoice's
+     * lines when it expands that row.
+     */
+    private Boolean includeDetails;
+
+    public boolean isIncludeDetails() {
+        return Boolean.TRUE.equals(includeDetails);
+    }
 }

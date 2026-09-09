@@ -6,14 +6,18 @@ import my.maleva.api.module.invoice.entity.SaleMaster;
 import my.maleva.api.module.invoice.repository.SaleMasterRepository;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.when;
 
 /**
@@ -78,6 +82,58 @@ class InvoicePrintEInvoiceBackfillTest {
     void anotherCompanysInvoiceIsIgnored() {
         invoice("8TCBM57R389YDSAVW6YEH01M10", "", "", null);
         assertThat(backfill.ensureStatusKnown(15897, 1)).isFalse();
+        verify(eInvoiceService, never()).refreshStatus(anyInt(), anyInt());
+    }
+
+    @Test
+    void theBackgroundRefreshDoesNotHoldThePrint() throws Exception {
+        invoice("UID-1", "", "", null);
+        CountDownLatch lhdnCalled = new CountDownLatch(1);
+        CountDownLatch releaseLhdn = new CountDownLatch(1);
+        when(eInvoiceService.refreshStatus(anyInt(), anyInt())).thenAnswer(call -> {
+            lhdnCalled.countDown();
+            // Stands in for LHDN taking its time — up to two minutes in the
+            // real thing, which is what used to be in front of the PDF.
+            releaseLhdn.await(10, TimeUnit.SECONDS);
+            return EInvoicePushResult.builder()
+                    .outcome(EInvoicePushResult.Outcome.STATUS_REFRESHED).status("Valid").build();
+        });
+
+        long before = System.nanoTime();
+        backfill.refreshInBackground(15897, 6);
+        Duration blocked = Duration.ofNanos(System.nanoTime() - before);
+
+        // The whole point of the change: rendering must not wait for LHDN.
+        assertThat(blocked).isLessThan(Duration.ofSeconds(2));
+        assertThat(lhdnCalled.await(10, TimeUnit.SECONDS)).isTrue();
+        releaseLhdn.countDown();
+    }
+
+    @Test
+    void repeatedPrintsQueueOneReadNotMany() throws Exception {
+        invoice("UID-1", "", "", null);
+        CountDownLatch releaseLhdn = new CountDownLatch(1);
+        when(eInvoiceService.refreshStatus(anyInt(), anyInt())).thenAnswer(call -> {
+            releaseLhdn.await(10, TimeUnit.SECONDS);
+            return EInvoicePushResult.builder()
+                    .outcome(EInvoicePushResult.Outcome.STATUS_REFRESHED).status("Valid").build();
+        });
+
+        for (int i = 0; i < 5; i++) {
+            backfill.refreshInBackground(15897, 6);
+        }
+
+        // Five prints of the same invoice must not become five LHDN reads.
+        verify(eInvoiceService, timeout(5000).times(1)).refreshStatus(15897, 6);
+        releaseLhdn.countDown();
+    }
+
+    @Test
+    void anInvoiceWithNothingMissingNeverReachesTheBackgroundPool() {
+        invoice("UID-1", "LONG-1", "Valid", LocalDateTime.now());
+
+        backfill.refreshInBackground(15897, 6);
+
         verify(eInvoiceService, never()).refreshStatus(anyInt(), anyInt());
     }
 }

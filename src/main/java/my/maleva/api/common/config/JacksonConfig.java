@@ -14,6 +14,27 @@ import org.springframework.context.annotation.Primary;
 
 import java.io.IOException;
 
+/**
+ * The Jackson <b>2</b> mapper, for the services that inject
+ * {@link ObjectMapper} and do their own JSON (QNE, MyInvois, Wialon, the LLM
+ * providers, the entry screens that store JSON blobs).
+ *
+ * <p><b>This does not configure request or response binding.</b> Spring Boot 4
+ * reads and writes HTTP bodies with Jackson <b>3</b>
+ * ({@code tools.jackson.databind}), a different library with different
+ * classes; both are on the classpath. Nothing set here — the
+ * case-insensitive matching, the empty-string coercions, the date settings —
+ * reaches a controller.
+ *
+ * <p>That cost a day on 2026-09-09: the sale-invoice save rejected every
+ * request with "Company Reference ID is required" while the payload plainly
+ * carried {@code CompanyRefId}, because the case-insensitive matching the
+ * React screens depend on was enabled only on this mapper. Web-layer settings
+ * belong in {@code application.yaml} under {@code spring.jackson.*}, which
+ * binds to the Jackson 3 mapper Boot builds; see
+ * {@code spring.jackson.mapper.accept-case-insensitive-properties} there and
+ * the test {@code SaleInvoiceRequestBindingTest} that pins it.
+ */
 @Configuration
 public class JacksonConfig {
 
@@ -133,6 +154,9 @@ public class JacksonConfig {
         // Configure to not fail on empty beans and format dates nicely
         mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        // Kept for the services that inject this mapper. It has no effect on
+        // controllers - see the class comment; the web layer is Jackson 3 and
+        // is configured from application.yaml.
         mapper.configure(com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
         return mapper;
     }

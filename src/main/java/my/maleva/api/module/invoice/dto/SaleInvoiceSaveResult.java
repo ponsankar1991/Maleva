@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * What {@code SP_SaleMaster} hands back after a successful save.
+ * What a successful save hands back.
  *
  * <p>The procedure only sets its {@code @SaleNoDisplay} variable on the insert
  * branch, so an edit returns a null BillNo; the service reads the stored

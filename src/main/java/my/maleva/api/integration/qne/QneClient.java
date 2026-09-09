@@ -9,10 +9,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
@@ -64,7 +65,7 @@ public class QneClient {
 
     @Autowired
     public QneClient(QneProperties properties, ObjectMapper objectMapper) {
-        this(properties, objectMapper, RestClient.builder().requestFactory(timeoutFactory()));
+        this(properties, objectMapper, RestClient.builder().requestFactory(pooledFactory()));
     }
 
     /**
@@ -77,9 +78,29 @@ public class QneClient {
         this.restClient = builder.build();
     }
 
-    private static SimpleClientHttpRequestFactory timeoutFactory() {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(CONNECT_TIMEOUT);
+    /**
+     * A pooled client, replacing the per-call {@code HttpURLConnection} the
+     * first port used.
+     *
+     * <p>That one opened a fresh TCP connection and negotiated TLS again for
+     * every single call. Against an HTTPS endpoint that is a few hundred
+     * milliseconds of pure handshake per push, paid again on the report-URL
+     * fetch and on every master sync. The JDK client keeps connections alive
+     * and reuses them, so a run of pushes pays the handshake once.
+     *
+     * <p>Pinned to HTTP/1.1 on purpose: the JDK client would otherwise try to
+     * negotiate HTTP/2, which is a change in how QNE is talked to and is not
+     * what any of this was tested against. The win here is connection reuse,
+     * not a new protocol. Timeouts are unchanged — 30 minutes to read is
+     * QNE's real behaviour on bulk work, not an accident.
+     */
+    private static JdkClientHttpRequestFactory pooledFactory() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(CONNECT_TIMEOUT)
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(READ_TIMEOUT);
         return requestFactory;
     }
@@ -114,6 +135,10 @@ public class QneClient {
             return QneResult.notSent(DISABLED_MESSAGE);
         }
 
+        // Every call is timed. Without this the log could not answer the only
+        // question that matters when someone says a push is slow — how long
+        // QNE actually took — and the two-minute waits were invisible.
+        long startedAt = System.nanoTime();
         try {
             RestClient.RequestBodySpec request = restClient
                     .method(method)
@@ -137,18 +162,41 @@ public class QneClient {
 
             // exchange() hands us every status without throwing, which is the
             // whole point: 400/404 carry messages the caller must see.
-            return request.exchange((clientRequest, clientResponse) -> {
+            QneResult result = request.exchange((clientRequest, clientResponse) -> {
                 int status = clientResponse.getStatusCode().value();
                 String responseBody =
                         new String(clientResponse.getBody().readAllBytes(), StandardCharsets.UTF_8);
                 return toResult(method, url, status, responseBody);
             });
+            logDuration(method, url, startedAt, result.success() ? "ok" : "refused");
+            return result;
 
         } catch (Exception ex) {
             Throwable root = rootCause(ex);
-            log.error("QNE transport failure: {} {}", method, url, ex);
+            // The elapsed time is the diagnosis here: a failure after seconds
+            // is QNE refusing or unreachable; one after minutes is a read
+            // timeout, and the document may well have been created anyway.
+            logDuration(method, url, startedAt, "transport-failure");
+            log.error("QNE transport failure after {} ms: {} {}",
+                    elapsedMillis(startedAt), method, url, ex);
             return QneResult.notSent(root.toString());
         }
+    }
+
+    /** Above this, a call is worth complaining about in the log. */
+    private static final long SLOW_CALL_MILLIS = 10_000;
+
+    private void logDuration(HttpMethod method, String url, long startedAt, String outcome) {
+        long millis = elapsedMillis(startedAt);
+        if (millis >= SLOW_CALL_MILLIS) {
+            log.warn("QNE {} {} took {} ms ({})", method, url, millis, outcome);
+        } else {
+            log.info("QNE {} {} took {} ms ({})", method, url, millis, outcome);
+        }
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     private QneResult toResult(HttpMethod method, String url, int status, String body) {

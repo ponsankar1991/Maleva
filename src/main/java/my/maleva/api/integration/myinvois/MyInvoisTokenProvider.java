@@ -144,8 +144,18 @@ public class MyInvoisTokenProvider {
     private TokenResult fetchAndCache(Integer companyId) {
         if (properties.getClientId() == null || properties.getClientId().isBlank()
                 || properties.getClientSecret() == null || properties.getClientSecret().isBlank()) {
-            return TokenResult.failed("MyInvois client credentials are not configured "
-                    + "(myinvois.client-id / myinvois.client-secret)");
+            // Named as the environment variables, not the property keys: that
+            // is what is actually set on these machines, and a message telling
+            // an operator to edit a YAML file they do not have sends them the
+            // wrong way. Which of the two is missing is stated, because
+            // setting one and forgetting the other is the usual mistake.
+            String missing = isBlank(properties.getClientId())
+                    ? (isBlank(properties.getClientSecret()) ? "both are" : "MYINVOIS_CLIENT_ID is")
+                    : "MYINVOIS_CLIENT_SECRET is";
+            return TokenResult.failed("MyInvois client credentials are not configured — " + missing
+                    + " missing. Set MYINVOIS_CLIENT_ID and MYINVOIS_CLIENT_SECRET as user environment"
+                    + " variables, then start a new terminal (or restart the IDE) before running the"
+                    + " server; the startup log line \"MyInvois e-invoicing: ...\" confirms what was picked up.");
         }
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
@@ -301,5 +311,9 @@ public class MyInvoisTokenProvider {
         boolean isUsable(Instant now) {
             return accessToken != null && !accessToken.isBlank() && now.isBefore(expiresAt);
         }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

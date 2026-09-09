@@ -40,3 +40,6 @@ logs/
 .gitattributes
 /referance/
 /db
+
+# Local credentials. Never commit: see secrets.yaml.example.
+secrets.yaml

@@ -4,6 +4,23 @@ spring:
   jackson:
     time-zone: Asia/Kuala_Lumpur
     date-format: dd/MM/yyyy
+    mapper:
+      # The React screens post the legacy PascalCase field names the old .NET
+      # pages used ("CompanyRefId"), while the DTOs are camelCase. Without this
+      # the request binds nothing and every header field arrives null, which is
+      # exactly how the sale-invoice save failed on 2026-09-09.
+      #
+      # This has to be set HERE, not in JacksonConfig: Spring Boot 4 binds the
+      # request body with Jackson 3 (tools.jackson), and JacksonConfig builds a
+      # Jackson 2 mapper (com.fasterxml.jackson) that only the services which
+      # inject ObjectMapper ever use. Enabling the feature on that mapper has no
+      # effect on the web layer at all.
+      #
+      # Kept in both files on purpose. The profile file only has to carry it if
+      # the base application.yaml is ever not loaded, but this file already
+      # duplicates the whole base config, so leaving a gap here is how live ends
+      # up behaving differently from local.
+      accept-case-insensitive-properties: true
   autoconfigure:
     exclude:
   # Disable Spring Boot Docker Compose dev-services so the app runs standalone
@@ -121,16 +138,19 @@ springdoc:
 
 # SMTP comes from MAIL_SMTP_* env vars (see application.yaml for why there is
 # no smtp block here).
-mail:
-  from:
-    email: ${MAIL_FROM_EMAIL:admin@maleva.my}
-    name: ${MAIL_FROM_NAME:MALEVA}
-  invoice-recipients:
-    - eswaranmaleva@gmail.com
-    - systransportservice@gmail.com
-    - shalinisivabalan1806@gmail.com
-    - saravanakumart05@gmail.com
-    - manimala7151@gmail.com
+# Mail is deliberately NOT redefined here. The whole block - SMTP, IMAP, the
+# from address, the invoice recipients, the receipt CC - lives once in
+# application.yaml and applies to this profile too, so live and local send the
+# same mail from the same mailbox and cannot drift apart.
+#
+# Until 2026-09-09 this file overrode only the from address, to
+# "admin@maleva.my", while still authenticating to SMTP as
+# account@maleva.com.my from the base file. That is a different domain from the
+# authenticated account and from everything else in the config; the sender is
+# now account@maleva.com.my / "Maleva Accounts" in both, which is the mailbox
+# the legacy commonfunctions.cs actually sent from.
+#
+# Override MAIL_FROM_EMAIL / MAIL_FROM_NAME on the server if live must differ.
 
 invoice-print:
   heading: INVOICE
@@ -151,6 +171,8 @@ invoice-print:
 # credentials are environment variables. Supplier profiles as in application.yaml.
 myinvois:
   enabled: ${MYINVOIS_ENABLED:true}
+  # LIVE, matching application.yaml. See the note there: a document submitted
+  # against this URL is a real tax document, in every environment.
   environment: ${MYINVOIS_ENVIRONMENT:live}
   client-id: ${MYINVOIS_CLIENT_ID:}
   client-secret: ${MYINVOIS_CLIENT_SECRET:}
@@ -237,7 +259,7 @@ rti:
 # ---------------------------------------------------------------------------
 
 wialon:
-  enabled: ${WIALON_ENABLED:True}
+  enabled: ${WIALON_ENABLED:true}
   base-url: ${WIALON_BASE_URL:https://hst-api.wialon.com/wialon/ajax.html}
   token: ${WIALON_TOKEN:}
   company-ref-id: ${WIALON_COMPANY_REF_ID:6}

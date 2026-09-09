@@ -93,12 +93,14 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-docker-compose</artifactId>
-			<scope>runtime</scope>
-			<optional>true</optional>
-		</dependency>
+		<!--
+			spring-boot-docker-compose is deliberately absent. It exists to start
+			containers from a docker-compose file while the application boots.
+			This application talks to a real SQL Server, Docker is not installed
+			on the machines it runs on, and an empty docker-compose.yml left in
+			the project root was enough to make Spring try to run "docker" and
+			fail the whole startup with DockerProcessStartException.
+		-->
 		<dependency>
 			<groupId>com.microsoft.sqlserver</groupId>
 			<artifactId>mssql-jdbc</artifactId>

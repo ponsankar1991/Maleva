@@ -256,9 +256,25 @@ public class SaleInvoiceRequestDTO {
     private List<SaleInvoiceDetailRequestDTO> details;
 
     /**
-     * The sale orders this invoice covers. The procedure stamps
-     * {@code SaleOrderMaster.InvoiceNo} for each and writes one
-     * SaleMasterReference row per entry; an edit clears both first.
+     * The sale orders this invoice covers. Each gets its
+     * {@code SaleOrderMaster.InvoiceNo} stamped and one SaleMasterReference
+     * row written; an edit clears both first.
      */
     private List<Integer> saleOrderRefIds;
+
+    /**
+     * Identifies one logical save, so pressing Save twice cannot create two
+     * invoices.
+     *
+     * <p>The screen makes one value per save attempt and keeps it across
+     * retries, replacing it only after a save succeeds. The server claims it
+     * for the duration: a second request carrying the same value is refused
+     * while the first is running, and answered with the first result once it
+     * has finished. Optional — a request without one is saved as before, with
+     * only the browser's disabled button standing between a double press and
+     * a duplicate.
+     *
+     * @see my.maleva.api.module.invoice.service.InvoiceSaveGuard
+     */
+    private String clientRequestId;
 }

@@ -1,9 +1,29 @@
 spring:
+  # Secrets live in a file that is never committed, so they do not have to be
+  # re-entered as environment variables on every machine and never end up in
+  # git. Create secrets.yaml next to the pom (see secrets.yaml.example) and put
+  # the MyInvois / QNE / mail credentials there. "optional:" means the
+  # application still starts when the file is absent, which is what servers
+  # that supply real environment variables do.
+  config:
+    import: optional:file:./secrets.yaml
   application:
     name: Maleva
   jackson:
     time-zone: Asia/Kuala_Lumpur
     date-format: dd/MM/yyyy
+    mapper:
+      # The React screens post the legacy PascalCase field names the old .NET
+      # pages used ("CompanyRefId"), while the DTOs are camelCase. Without this
+      # the request binds nothing and every header field arrives null, which is
+      # exactly how the sale-invoice save failed on 2026-09-09.
+      #
+      # This has to be set HERE, not in JacksonConfig: Spring Boot 4 binds the
+      # request body with Jackson 3 (tools.jackson), and JacksonConfig builds a
+      # Jackson 2 mapper (com.fasterxml.jackson) that only the services which
+      # inject ObjectMapper ever use. Enabling the feature on that mapper has no
+      # effect on the web layer at all.
+      accept-case-insensitive-properties: true
   autoconfigure:
     exclude:
   # Disable Spring Boot Docker Compose dev-services so the app runs standalone
@@ -221,7 +241,13 @@ credit-note-print:
 # ─────────────────────────────────────────────────────────────────────────────
 myinvois:
   enabled: ${MYINVOIS_ENABLED:true}
-  environment: ${MYINVOIS_ENVIRONMENT:preprod}
+  # LIVE in both files, by decision on 2026-09-09: Maleva e-invoices go to
+  # LHDN production from every environment, the same way the .NET screens
+  # always did. A document submitted from here is a real tax document with a
+  # real UUID - there is no "test invoice" against this URL. Set
+  # MYINVOIS_ENVIRONMENT=preprod (and the preprod credentials) to aim a machine
+  # at the sandbox instead; the preprod supplier profile below stays for that.
+  environment: ${MYINVOIS_ENVIRONMENT:live}
   client-id: ${MYINVOIS_CLIENT_ID:}
   client-secret: ${MYINVOIS_CLIENT_SECRET:}
   timeout: 120s
@@ -231,6 +257,12 @@ myinvois:
   # figure in the old document shape. See MyInvoisProperties.lineAmountPolicy.
   line-amount-policy: ${MYINVOIS_LINE_AMOUNT_POLICY:EXCLUSIVE}
   allow-resubmit-invalid: true
+  # Sale Classification for a product that has none on the item master. Every
+  # e-invoice line must carry one and LHDN rejects a document without it, so an
+  # unclassified product is sent as this code instead of blocking the push.
+  # 22 = "Others", which is what all 89 classified products here already use.
+  # Set to 0 to refuse the push instead and make someone fill in the item master.
+  default-sale-classification: ${MYINVOIS_DEFAULT_SALE_CLASSIFICATION:22}
   # SGD/USD invoices are 40% of what has been e-invoiced; LHDN accepts them as sent.
   allow-foreign-currency: true
   supplier-profiles:

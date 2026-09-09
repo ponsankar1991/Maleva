@@ -43,6 +43,7 @@ class EInvoiceSnapshotLoaderTest {
     private UomRepository uoms;
     private ClassificationRepository classifications;
     private EInvoiceSnapshotLoader loader;
+    private my.maleva.api.common.config.MyInvoisProperties myInvoisProperties;
 
     @BeforeEach
     void setUp() {
@@ -54,7 +55,11 @@ class EInvoiceSnapshotLoaderTest {
         items = Mockito.mock(ItemMasterRepository.class);
         uoms = Mockito.mock(UomRepository.class);
         classifications = Mockito.mock(ClassificationRepository.class);
-        loader = new EInvoiceSnapshotLoader(saleMasters, saleDetails, customers, symbols, countries, items, uoms, classifications);
+        myInvoisProperties = new my.maleva.api.common.config.MyInvoisProperties();
+        // Off by default in the tests, so the existing expectations still
+        // describe the "product has no classification" path explicitly.
+        myInvoisProperties.setDefaultSaleClassification(0);
+        loader = new EInvoiceSnapshotLoader(saleMasters, saleDetails, customers, symbols, countries, items, uoms, classifications, myInvoisProperties);
 
         SaleMaster invoice = new SaleMaster();
         invoice.setId(4711);
@@ -166,6 +171,34 @@ class EInvoiceSnapshotLoaderTest {
         EInvoiceSnapshot snapshot = loader.load(4711, 1).orElseThrow();
 
         assertThat(snapshot.lines().get(0).classificationCode()).isNull();
+    }
+
+    @Test
+    void anUnclassifiedProductFallsBackToTheConfiguredCodeInsteadOfBlockingThePush() {
+        myInvoisProperties.setDefaultSaleClassification(22);
+        Classification zero = new Classification();
+        zero.setId(3);
+        zero.setClassificationCode(0);
+        when(classifications.findAllById(any())).thenReturn(List.of(zero));
+
+        EInvoiceSnapshot snapshot = loader.load(4711, 1).orElseThrow();
+
+        // LHDN rejects a line with no classification, and a rejected document
+        // can only be cancelled and re-issued. Sending the house default beats
+        // both blocking the operator and sending nothing.
+        assertThat(snapshot.lines().get(0).classificationCode()).isEqualTo(22);
+        assertThat(snapshot.loadProblems()).noneMatch(p -> p.code().equals("line.classification.missing"));
+    }
+
+    @Test
+    void aProductWithItsOwnClassificationIsNeverOverriddenByTheDefault() {
+        myInvoisProperties.setDefaultSaleClassification(22);
+
+        EInvoiceSnapshot snapshot = loader.load(4711, 1).orElseThrow();
+
+        // The fallback only fills a gap; a product that states its own
+        // classification keeps it, whatever the default is.
+        assertThat(snapshot.lines().get(0).classificationCode()).isEqualTo(22);
     }
 
     @Test

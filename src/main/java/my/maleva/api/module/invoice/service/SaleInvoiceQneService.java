@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -70,8 +71,13 @@ public class SaleInvoiceQneService {
      * the overlapping push is what stops that; once the first one lands,
      * QNECode is set and any later click updates the same document.
      */
+    /** The single-flight key for one invoice, shared with the background runner. */
+    public static String pushKey(Integer invoiceId) {
+        return "sale-invoice:" + invoiceId;
+    }
+
     public QnePushResult push(Integer invoiceId, Integer companyId) {
-        String key = "sale-invoice:" + invoiceId;
+        String key = pushKey(invoiceId);
         if (!pushLock.tryAcquire(key)) {
             return QnePushResult.localError(409,
                     "This invoice is already being sent to QNE and QNE has not answered yet. "
@@ -85,22 +91,55 @@ public class SaleInvoiceQneService {
         }
     }
 
-    private QnePushResult doPush(Integer invoiceId, Integer companyId) {
+    /**
+     * The checks that need no network: does the invoice exist, is it this
+     * company's, and is its customer in QNE yet.
+     *
+     * <p>Separate so the background push can run them on the request thread
+     * and answer at once. A missing customer code is the common case and the
+     * operator should see it immediately, not two minutes later.
+     *
+     * @return the failure to show now, or empty when the push may proceed
+     */
+    public Optional<QnePushResult> precheck(Integer invoiceId, Integer companyId) {
         SaleMaster invoice = saleMasters.findById(invoiceId).orElse(null);
         if (invoice == null) {
-            return QnePushResult.localError(404, "Invoice not found: " + invoiceId);
+            return Optional.of(QnePushResult.localError(404, "Invoice not found: " + invoiceId));
         }
         if (!Objects.equals(invoice.getCompanyRefId(), companyId)) {
-            return QnePushResult.localError(403, "Invoice does not belong to company " + companyId);
+            return Optional.of(QnePushResult.localError(403,
+                    "Invoice does not belong to company " + companyId));
         }
-        Customer customer = customers.findById(invoice.getCustomerRefId()).orElse(null);
+        Customer customer = invoice.getCustomerRefId() == null
+                ? null : customers.findById(invoice.getCustomerRefId()).orElse(null);
         if (customer == null) {
-            return QnePushResult.localError(409, "Customer not found for invoice " + invoiceId);
+            return Optional.of(QnePushResult.localError(409, "Customer not found for invoice " + invoiceId));
         }
         if (QnePayloads.isBlank(customer.getCompanyCode())) {
-            return QnePushResult.localError(409,
-                    "Customer '" + customer.getCustomerName() + "' is not in QNE yet — push the customer first");
+            return Optional.of(QnePushResult.localError(409,
+                    "Customer '" + customer.getCustomerName() + "' is not in QNE yet — push the customer first"));
         }
+        return Optional.empty();
+    }
+
+    /**
+     * The push itself, without taking the single-flight lock.
+     *
+     * <p>Only for a caller that already holds it — {@code QnePushRunner} does,
+     * for the whole life of the background task. Calling this directly from a
+     * request would reopen the duplicate-invoice hole.
+     */
+    public QnePushResult pushAssumingLockHeld(Integer invoiceId, Integer companyId) {
+        return doPush(invoiceId, companyId);
+    }
+
+    private QnePushResult doPush(Integer invoiceId, Integer companyId) {
+        Optional<QnePushResult> refused = precheck(invoiceId, companyId);
+        if (refused.isPresent()) {
+            return refused.get();
+        }
+        SaleMaster invoice = saleMasters.findById(invoiceId).orElseThrow();
+        Customer customer = customers.findById(invoice.getCustomerRefId()).orElseThrow();
 
         boolean multiReference = saleMasterReferences.countBySaleMasterRefId(invoice.getId()) > 1;
         QneSalesInvoiceRequest request = buildRequest(

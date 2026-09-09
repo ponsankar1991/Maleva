@@ -127,6 +127,12 @@ public class SecurityConfig {
                         // Stored attachments are fetched by <img>/<a> and by new
                         // tabs, neither of which carries the bearer token.
                         .requestMatchers("/uploads/**").permitAll()
+                        // A report window is a new tab and carries no bearer
+                        // token either. It opens a ticket minted by the
+                        // authenticated /print-ticket call: a random UUID, valid
+                        // for minutes, that returns only the bytes already
+                        // rendered for that caller. See PrintStash.
+                        .requestMatchers("/api/v1/sale-invoices/print/**").permitAll()
                         // welcome requires JWT auth
                         .requestMatchers("/api/welcome").authenticated()
                         // all other endpoints require authentication
