@@ -1,4 +1,12 @@
 spring:
+  # Same two secret locations as application.yaml. Repeated here on purpose:
+  # this file is the one a server administrator reads, and the absolute-path
+  # option is the whole reason live credentials load at all. See the note in
+  # application.yaml.
+  config:
+    import:
+      - optional:file:./secrets.yaml
+      - optional:file:${MALEVA_SECRETS_FILE:./secrets.yaml}
   application:
     name: Maleva Production
   jackson:

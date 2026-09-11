@@ -43,6 +43,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.tokenStore = tokenStore;
     }
 
+    /**
+     * A WebSocket handshake must reach Tomcat with the container's own request
+     * and response. Once the handshake returns 101 the socket no longer belongs
+     * to the servlet layer: it has been handed to the WebSocket protocol
+     * handler, and anything this filter does afterwards - wrapping the response,
+     * writing to it, flushing it - writes HTTP framing into a stream that is now
+     * carrying WebSocket frames. The handshake still logs "101 Success" while
+     * the client sees a corrupt or closed connection, never receives the STOMP
+     * CONNECTED frame, and reconnects forever. So the upgrade is let through
+     * untouched. /api/ws is permitAll in SecurityConfig and carries no bearer
+     * token, so there is nothing here it needs.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return isWebSocketUpgrade(request);
+    }
+
+    /** True for the GET that carries "Upgrade: websocket". */
+    static boolean isWebSocketUpgrade(HttpServletRequest request) {
+        String upgrade = request.getHeader("Upgrade");
+        return upgrade != null && upgrade.trim().equalsIgnoreCase("websocket");
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // Generate or extract request ID for correlation

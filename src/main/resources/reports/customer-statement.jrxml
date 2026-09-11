@@ -1,0 +1,492 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Customer Statement of Account: the Jasper port of the legacy Crystal
+  CRCustomerStatementAllReport.rpt, laid out to match its output line for
+  line (595 x 842 pt, Verdana as Crystal set it; ReportFonts supplies it).
+
+  What the page carries, top to bottom, as the Crystal export did:
+    - a thin frame round the page, the content inset a few points from it on both sides;
+    - on a customer's FIRST page: the letterhead (logo, company, registration
+      line, four address lines, "STATEMENT OF ACCOUNT", a rule) and the boxed
+      customer block beside "Page N of M", A/C CODE, TERMS, Date;
+    - on every page that still has lines to show: the plain column heads
+      DATE - INVOICE NO - REFERENCE - DESCRIPTION - DEBIT - CREDIT - BALANCE
+      between a heavy rule and a light one;
+    - the lines, one per row, all in black;
+    - pinned to the page bottom: a heavy rule, the currency with the debit and
+      credit totals, the boxed Jan..Jun / Jul..Dec ageing grid (month top-left,
+      amount bottom-right in each cell), the two notice lines, and the
+      PREPARED BY / APPROVED BY blocks.
+
+  Page numbers run through the whole report, as Crystal's did ("Page 5 of
+  185" on an all-customers run; "Page 1 of 2" when one customer is printed
+  or mailed). The data source is one StatementPrintRow per line; every row
+  carries its statement's header, totals and ageing cells, so nothing here
+  does arithmetic - it is computed in CustomerStatementService. Which pages
+  get the letterhead and the column heads is decided from printedLines, kept
+  by StatementLinesScriptlet: 0 = the customer's first page; < lineCount =
+  lines still to come; = lineCount = a page holding only the totals block.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="customer-statement" pageWidth="595" pageHeight="842" columnWidth="575"
+              scriptletClass="my.maleva.api.module.customerstatement.print.StatementLinesScriptlet"
+              leftMargin="12" rightMargin="8" topMargin="18" bottomMargin="18"
+              whenNoDataType="NoPages" isFloatColumnFooter="true">
+
+    <style name="Base" isDefault="true" fontName="Verdana" fontSize="8" isBlankWhenNull="true"/>
+    <style name="Label" style="Base" isBold="true"/>
+    <style name="Fine" style="Base" fontSize="6.5"/>
+    <style name="Title" style="Base" fontSize="11" isBold="true"/>
+    <style name="Company" style="Base" fontSize="11" isBold="true"/>
+    <style name="ColHead" style="Base" fontSize="8"/>
+    <style name="Row" style="Base" fontSize="8"/>
+    <!-- the invoice number in black like the rest of the line (Crystal's blue was asked away) -->
+    <style name="RowInvoice" style="Row"/>
+    <style name="RowMoney" style="Row" pattern="#,##0.00"/>
+    <style name="TotalMoney" style="Base" fontSize="8" isBold="true" pattern="#,##0.00"/>
+    <style name="CellLabel" style="Base" fontSize="8"/>
+    <style name="CellMoney" style="Base" fontSize="8" pattern="#,##0.00"/>
+    <style name="Notice" style="Base" fontSize="7"/>
+
+    <parameter name="LOGO" class="java.io.InputStream"/>
+    <parameter name="COMPANY" class="java.lang.String"/>
+    <parameter name="REG_NO" class="java.lang.String"/>
+    <parameter name="ADDRESS1" class="java.lang.String"/>
+    <parameter name="ADDRESS2" class="java.lang.String"/>
+    <parameter name="ADDRESS3" class="java.lang.String"/>
+    <parameter name="ADDRESS4" class="java.lang.String"/>
+    <parameter name="TITLE" class="java.lang.String"/>
+    <parameter name="NOTE1" class="java.lang.String"/>
+    <parameter name="NOTE2" class="java.lang.String"/>
+
+    <field name="customerId" class="java.lang.Integer"/>
+    <field name="customerName" class="java.lang.String"/>
+    <field name="address1" class="java.lang.String"/>
+    <field name="address2" class="java.lang.String"/>
+    <field name="address3" class="java.lang.String"/>
+    <field name="phone" class="java.lang.String"/>
+    <field name="attn" class="java.lang.String"/>
+    <field name="accountCode" class="java.lang.String"/>
+    <field name="terms" class="java.lang.String"/>
+    <field name="currency" class="java.lang.String"/>
+    <field name="statementDate" class="java.lang.String"/>
+    <field name="lineDate" class="java.lang.String"/>
+    <field name="documentNo" class="java.lang.String"/>
+    <field name="reference" class="java.lang.String"/>
+    <field name="description" class="java.lang.String"/>
+    <field name="debit" class="java.math.BigDecimal"/>
+    <field name="credit" class="java.math.BigDecimal"/>
+    <field name="balance" class="java.math.BigDecimal"/>
+    <field name="totalDebit" class="java.math.BigDecimal"/>
+    <field name="totalCredit" class="java.math.BigDecimal"/>
+    <field name="openingBalance" class="java.math.BigDecimal"/>
+    <field name="closingBalance" class="java.math.BigDecimal"/>
+    <field name="lineCount" class="java.lang.Integer"/>
+    <field name="ageLabel1" class="java.lang.String"/>
+    <field name="ageLabel2" class="java.lang.String"/>
+    <field name="ageLabel3" class="java.lang.String"/>
+    <field name="ageLabel4" class="java.lang.String"/>
+    <field name="ageLabel5" class="java.lang.String"/>
+    <field name="ageLabel6" class="java.lang.String"/>
+    <field name="ageLabel7" class="java.lang.String"/>
+    <field name="ageLabel8" class="java.lang.String"/>
+    <field name="ageLabel9" class="java.lang.String"/>
+    <field name="ageLabel10" class="java.lang.String"/>
+    <field name="ageLabel11" class="java.lang.String"/>
+    <field name="ageLabel12" class="java.lang.String"/>
+    <field name="ageAmount1" class="java.math.BigDecimal"/>
+    <field name="ageAmount2" class="java.math.BigDecimal"/>
+    <field name="ageAmount3" class="java.math.BigDecimal"/>
+    <field name="ageAmount4" class="java.math.BigDecimal"/>
+    <field name="ageAmount5" class="java.math.BigDecimal"/>
+    <field name="ageAmount6" class="java.math.BigDecimal"/>
+    <field name="ageAmount7" class="java.math.BigDecimal"/>
+    <field name="ageAmount8" class="java.math.BigDecimal"/>
+    <field name="ageAmount9" class="java.math.BigDecimal"/>
+    <field name="ageAmount10" class="java.math.BigDecimal"/>
+    <field name="ageAmount11" class="java.math.BigDecimal"/>
+    <field name="ageAmount12" class="java.math.BigDecimal"/>
+
+    <!-- lines of the current customer already placed on a page; set by StatementLinesScriptlet -->
+    <variable name="printedLines" class="java.lang.Integer" calculation="System">
+        <initialValueExpression><![CDATA[0]]></initialValueExpression>
+    </variable>
+
+    <!-- one customer per group, each on a fresh page; the totals block sits at the page bottom as Crystal printed it -->
+    <group name="Customer" isStartNewPage="true" isReprintHeaderOnEachPage="true" footerPosition="ForceAtBottom">
+        <groupExpression><![CDATA[$F{customerId}]]></groupExpression>
+
+        <groupHeader>
+            <!-- ================= a customer's first page: letterhead + customer block ================= -->
+            <band height="216">
+                <printWhenExpression><![CDATA[$V{printedLines} == 0]]></printWhenExpression>
+
+                <image scaleImage="RetainShape" hAlign="Left" vAlign="Top" isUsingCache="false" onErrorType="Blank">
+                    <reportElement x="12" y="2" width="96" height="96"/>
+                    <imageExpression><![CDATA[$P{LOGO}]]></imageExpression>
+                </image>
+                <textField>
+                    <reportElement style="Company" x="126" y="6" width="440" height="15"/>
+                    <textFieldExpression><![CDATA[$P{COMPANY}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Fine" x="126" y="22" width="440" height="10"/>
+                    <textElement><font size="7"/></textElement>
+                    <textFieldExpression><![CDATA[$P{REG_NO}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Base" x="126" y="40" width="440" height="11"/>
+                    <textElement><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA[$P{ADDRESS1}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Base" x="126" y="51" width="440" height="11"/>
+                    <textElement><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA[$P{ADDRESS2}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Base" x="126" y="62" width="440" height="11"/>
+                    <textElement><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA[$P{ADDRESS3}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Base" x="126" y="73" width="440" height="11"/>
+                    <textElement><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA[$P{ADDRESS4}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement style="Title" x="126" y="94" width="440" height="15"/>
+                    <textFieldExpression><![CDATA[$P{TITLE}]]></textFieldExpression>
+                </textField>
+                <line>
+                    <reportElement x="0" y="118" width="574" height="1"/>
+                    <graphicElement><pen lineWidth="1.25"/></graphicElement>
+                </line>
+
+                <!-- boxed customer block -->
+                <rectangle>
+                    <reportElement x="8" y="128" width="400" height="82"/>
+                    <graphicElement><pen lineWidth="0.75"/></graphicElement>
+                </rectangle>
+                <textField textAdjust="CutText">
+                    <reportElement style="Label" x="16" y="134" width="384" height="12"/>
+                    <textFieldExpression><![CDATA[$F{customerName}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Fine" x="16" y="150" width="384" height="10"/>
+                    <textElement><font size="7"/></textElement>
+                    <textFieldExpression><![CDATA[$F{address1}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Fine" x="16" y="160" width="384" height="10"/>
+                    <textElement><font size="7"/></textElement>
+                    <textFieldExpression><![CDATA[$F{address2}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Fine" x="16" y="170" width="384" height="10"/>
+                    <textElement><font size="7"/></textElement>
+                    <textFieldExpression><![CDATA[$F{address3}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Base" x="16" y="183" width="384" height="10"/>
+                    <textElement><font size="7"/></textElement>
+                    <textFieldExpression><![CDATA[$F{phone}]]></textFieldExpression>
+                </textField>
+                <textField textAdjust="CutText">
+                    <reportElement style="Label" x="16" y="195" width="384" height="11"/>
+                    <textElement><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA[$F{attn}]]></textFieldExpression>
+                </textField>
+
+                <!-- Page N of M, through the whole report as Crystal numbered it -->
+                <textField>
+                    <reportElement style="Label" x="448" y="130" width="70" height="11"/>
+                    <textElement textAlignment="Right"><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER} + " of"]]></textFieldExpression>
+                </textField>
+                <textField evaluationTime="Report">
+                    <reportElement style="Label" x="520" y="130" width="48" height="11"/>
+                    <textElement textAlignment="Left"><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+                </textField>
+
+                <staticText>
+                    <reportElement style="Base" x="418" y="154" width="60" height="11"/>
+                    <text><![CDATA[A/C CODE]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Base" x="480" y="154" width="8" height="11"/>
+                    <text><![CDATA[:]]></text>
+                </staticText>
+                <textField textAdjust="CutText">
+                    <reportElement style="Label" x="490" y="154" width="78" height="11"/>
+                    <textElement textAlignment="Right"/>
+                    <textFieldExpression><![CDATA[$F{accountCode}]]></textFieldExpression>
+                </textField>
+
+                <staticText>
+                    <reportElement style="Base" x="418" y="170" width="60" height="11"/>
+                    <text><![CDATA[TERMS]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Base" x="480" y="170" width="8" height="11"/>
+                    <text><![CDATA[:]]></text>
+                </staticText>
+                <textField textAdjust="CutText">
+                    <reportElement style="Base" x="490" y="170" width="78" height="11"/>
+                    <textElement textAlignment="Right"/>
+                    <textFieldExpression><![CDATA[$F{terms}]]></textFieldExpression>
+                </textField>
+
+                <!-- Crystal's suppressed "Open Credit" row: shown only when there is an opening balance,
+                     because then the first line's balance is not its debit and the reader needs to see why -->
+                <staticText>
+                    <reportElement style="Base" x="418" y="182" width="60" height="11">
+                        <printWhenExpression><![CDATA[$F{openingBalance} != null && $F{openingBalance}.signum() != 0]]></printWhenExpression>
+                    </reportElement>
+                    <text><![CDATA[OPENING]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Base" x="480" y="182" width="8" height="11">
+                        <printWhenExpression><![CDATA[$F{openingBalance} != null && $F{openingBalance}.signum() != 0]]></printWhenExpression>
+                    </reportElement>
+                    <text><![CDATA[:]]></text>
+                </staticText>
+                <textField pattern="#,##0.00">
+                    <reportElement style="Base" x="490" y="182" width="78" height="11">
+                        <printWhenExpression><![CDATA[$F{openingBalance} != null && $F{openingBalance}.signum() != 0]]></printWhenExpression>
+                    </reportElement>
+                    <textElement textAlignment="Right"/>
+                    <textFieldExpression><![CDATA[$F{openingBalance}]]></textFieldExpression>
+                </textField>
+
+                <staticText>
+                    <reportElement style="Base" x="418" y="194" width="60" height="11"/>
+                    <text><![CDATA[Date]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Base" x="480" y="194" width="8" height="11"/>
+                    <text><![CDATA[:]]></text>
+                </staticText>
+                <textField>
+                    <reportElement style="Base" x="490" y="194" width="78" height="11"/>
+                    <textElement textAlignment="Right"/>
+                    <textFieldExpression><![CDATA[$F{statementDate}]]></textFieldExpression>
+                </textField>
+            </band>
+
+            <!-- ================= continuation page: the page number, where the customer block's would be ================= -->
+            <band height="12">
+                <printWhenExpression><![CDATA[$V{printedLines} > 0]]></printWhenExpression>
+                <!-- continuation page: the page number sits where the customer block's would be -->
+                <textField>
+                    <reportElement style="Label" x="448" y="0" width="70" height="11"/>
+                    <textElement textAlignment="Right"><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER} + " of"]]></textFieldExpression>
+                </textField>
+                <textField evaluationTime="Report">
+                    <reportElement style="Label" x="520" y="0" width="48" height="11"/>
+                    <textElement textAlignment="Left"><font size="7.5"/></textElement>
+                    <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+                </textField>
+
+            </band>
+
+            <!-- ================= every page with lines still to come: the column heads ================= -->
+            <band height="15">
+                <printWhenExpression><![CDATA[$V{printedLines} < $F{lineCount}]]></printWhenExpression>
+                <line>
+                    <reportElement x="0" y="0" width="574" height="1"/>
+                    <graphicElement><pen lineWidth="1.25"/></graphicElement>
+                </line>
+                <staticText><reportElement style="ColHead" x="8" y="2" width="62" height="12"/><textElement verticalAlignment="Middle"><paragraph leftIndent="3"/></textElement><text><![CDATA[DATE]]></text></staticText>
+                <staticText><reportElement style="ColHead" x="70" y="2" width="86" height="12"/><textElement verticalAlignment="Middle"/><text><![CDATA[INVOICE NO]]></text></staticText>
+                <staticText><reportElement style="ColHead" x="156" y="2" width="96" height="12"/><textElement verticalAlignment="Middle"/><text><![CDATA[REFERENCE]]></text></staticText>
+                <staticText><reportElement style="ColHead" x="252" y="2" width="146" height="12"/><textElement verticalAlignment="Middle"/><text><![CDATA[DESCRIPTION]]></text></staticText>
+                <staticText><reportElement style="ColHead" x="398" y="2" width="55" height="12"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[DEBIT]]></text></staticText>
+                <staticText><reportElement style="ColHead" x="453" y="2" width="55" height="12"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[CREDIT]]></text></staticText>
+                <staticText><reportElement style="ColHead" x="508" y="2" width="60" height="12"/><textElement textAlignment="Right" verticalAlignment="Middle"><paragraph rightIndent="3"/></textElement><text><![CDATA[BALANCE]]></text></staticText>
+                <line>
+                    <reportElement x="0" y="14" width="574" height="1"/>
+                    <graphicElement><pen lineWidth="0.5"/></graphicElement>
+                </line>
+            </band>
+        </groupHeader>
+
+        <!-- ================= totals, ageing grid, notes, signatures - at the page bottom ================= -->
+        <groupFooter>
+            <band height="182" splitType="Prevent">
+                <line>
+                    <reportElement x="0" y="0" width="574" height="1"/>
+                    <graphicElement><pen lineWidth="1.25"/></graphicElement>
+                </line>
+                <!-- currency, total debit, total credit - Crystal's Symbol / BillAmount / PaidAmount -->
+                <textField>
+                    <reportElement style="Label" x="16" y="4" width="200" height="14"/>
+                    <textElement verticalAlignment="Middle"/>
+                    <textFieldExpression><![CDATA[$F{currency}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement style="TotalMoney" x="398" y="4" width="55" height="14"/>
+                    <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                    <textFieldExpression><![CDATA[$F{totalDebit}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement style="TotalMoney" x="453" y="4" width="55" height="14"/>
+                    <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                    <textFieldExpression><![CDATA[$F{totalCredit}]]></textFieldExpression>
+                </textField>
+
+                <!-- ageing grid: Jan..Jun over Jul..Dec, each cell a box with the month top-left and the amount bottom-right -->
+                <frame><reportElement x="8"   y="22" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel1}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount1}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="101"  y="22" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel2}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount2}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="194" y="22" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel3}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount3}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="287" y="22" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel4}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount4}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="380" y="22" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel5}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount5}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="473" y="22" width="95" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel6}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="88" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount6}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="8"   y="60" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel7}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount7}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="101"  y="60" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel8}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount8}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="194" y="60" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel9}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount9}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="287" y="60" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel10}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount10}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="380" y="60" width="93" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel11}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="86" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount11}]]></textFieldExpression></textField>
+                </frame>
+                <frame><reportElement x="473" y="60" width="95" height="38"/><box><pen lineWidth="0.75"/></box>
+                    <textField><reportElement style="CellLabel" x="3" y="2" width="60" height="12"/><textFieldExpression><![CDATA[$F{ageLabel12}]]></textFieldExpression></textField>
+                    <textField><reportElement style="CellMoney" x="3" y="22" width="88" height="13"/><textElement textAlignment="Right"/><textFieldExpression><![CDATA[$F{ageAmount12}]]></textFieldExpression></textField>
+                </frame>
+
+                <!-- notices -->
+                <textField>
+                    <reportElement style="Notice" x="16" y="106" width="550" height="10"/>
+                    <textFieldExpression><![CDATA[$P{NOTE1}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement style="Notice" x="16" y="120" width="550" height="10"/>
+                    <textFieldExpression><![CDATA[$P{NOTE2}]]></textFieldExpression>
+                </textField>
+
+                <!-- signatures -->
+                <staticText>
+                    <reportElement style="Label" x="16" y="140" width="150" height="11"/>
+                    <text><![CDATA[PREPARED BY:]]></text>
+                </staticText>
+                <line>
+                    <reportElement x="16" y="153" width="150" height="1"/>
+                    <graphicElement><pen lineWidth="0.75"/></graphicElement>
+                </line>
+                <staticText>
+                    <reportElement style="Fine" x="16" y="157" width="150" height="9"/>
+                    <textElement textAlignment="Center"/>
+                    <text><![CDATA[This is an computer generated statement.]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Fine" x="16" y="166" width="150" height="9"/>
+                    <textElement textAlignment="Center"/>
+                    <text><![CDATA[No signatory is required]]></text>
+                </staticText>
+
+                <staticText>
+                    <reportElement style="Label" x="408" y="140" width="158" height="11"/>
+                    <text><![CDATA[APPROVED BY:]]></text>
+                </staticText>
+                <line>
+                    <reportElement x="408" y="153" width="158" height="1"/>
+                    <graphicElement><pen lineWidth="0.75"/></graphicElement>
+                </line>
+                <staticText>
+                    <reportElement style="Fine" x="408" y="157" width="158" height="9"/>
+                    <text><![CDATA[NAME & SIGNATURE:]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement style="Fine" x="408" y="168" width="158" height="9"/>
+                    <text><![CDATA[DATE :]]></text>
+                </staticText>
+            </band>
+        </groupFooter>
+    </group>
+
+    <!-- the thin frame round every page, as the Crystal export drew it -->
+    <background>
+        <band height="806">
+            <rectangle>
+                <reportElement x="0" y="0" width="574" height="805"/>
+                <graphicElement><pen lineWidth="0.75"/></graphicElement>
+            </rectangle>
+        </band>
+    </background>
+
+    <!-- ================= one statement line ================= -->
+    <detail>
+        <band height="16">
+            <textField>
+                <reportElement style="Row" x="8" y="0" width="62" height="16"/>
+                <textElement verticalAlignment="Middle"><paragraph leftIndent="3"/></textElement>
+                <textFieldExpression><![CDATA[$F{lineDate}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="CutText">
+                <reportElement style="RowInvoice" x="70" y="0" width="86" height="16"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{documentNo}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="CutText">
+                <reportElement style="Row" x="156" y="0" width="96" height="16"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{reference}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="CutText">
+                <reportElement style="Row" x="252" y="0" width="146" height="16"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="RowMoney" x="398" y="0" width="55" height="16"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{debit}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="RowMoney" x="453" y="0" width="55" height="16"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{credit}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="RowMoney" x="508" y="0" width="60" height="16"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><paragraph rightIndent="3"/></textElement>
+                <textFieldExpression><![CDATA[$F{balance}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+</jasperReport>

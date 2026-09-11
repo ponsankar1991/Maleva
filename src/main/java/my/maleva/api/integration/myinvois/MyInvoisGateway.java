@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.integration.myinvois.dto.DocumentSubmissionRequest;
 import my.maleva.api.integration.myinvois.dto.DocumentSubmissionResponse;
 import my.maleva.api.integration.myinvois.dto.SubmissionStatusResponse;
+import my.maleva.api.integration.myinvois.dto.TaxpayerTinResponse;
 import org.springframework.stereotype.Component;
 
 /**
@@ -35,6 +36,24 @@ public class MyInvoisGateway {
     public MyInvoisCall<SubmissionStatusResponse> submissionStatus(String submissionUid, Integer companyId) {
         MyInvoisResult result = client.get(urls.documentSubmission(submissionUid), companyId);
         return parse(result, SubmissionStatusResponse.class);
+    }
+
+    /**
+     * {@code GET /taxpayer/validate/{tin}?…}: does this TIN exist, and does it
+     * belong to the name and registration number given?
+     *
+     * <p>Returns the raw result rather than a {@link MyInvoisCall} because
+     * there is nothing to parse — LHDN answers a valid pairing with a bare 200
+     * and an invalid one with an error status. A call whose body is empty
+     * would never satisfy {@code MyInvoisCall.success()}.
+     */
+    public MyInvoisResult validateTin(String tin, String query, Integer companyId) {
+        return client.get(urls.validateTin(tin, query), companyId);
+    }
+
+    /** {@code GET /taxpayer/search/tin?…}: the TIN for a name and registration number. */
+    public MyInvoisCall<TaxpayerTinResponse> searchTin(String query, Integer companyId) {
+        return parse(client.get(urls.searchTin(query), companyId), TaxpayerTinResponse.class);
     }
 
     private <T> MyInvoisCall<T> parse(MyInvoisResult result, Class<T> type) {

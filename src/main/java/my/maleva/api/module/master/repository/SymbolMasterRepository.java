@@ -80,5 +80,14 @@ public interface SymbolMasterRepository extends JpaRepository<SymbolMaster, Inte
      */
     @Query(value = "SELECT * FROM SymbolMaster WHERE companyrefid = :companyRefId AND active != :active", nativeQuery = true)
     List<SymbolMaster> findByCompanyRefIdAndActiveNot(@Param("companyRefId") Integer companyRefId, @Param("active") Integer active);
+
+    /**
+     * Does this symbol exist, active, for this company? SP_Customer's guard
+     * before it writes SymbolRefid.
+     */
+    boolean existsByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
+
+    /** One symbol, scoped to its company — the QNE currency lookup's WHERE clause. */
+    Optional<SymbolMaster> findByIdAndCompanyRefId(Integer id, Integer companyRefId);
 }
 

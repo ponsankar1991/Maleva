@@ -133,6 +133,7 @@ public class SecurityConfig {
                         // for minutes, that returns only the bytes already
                         // rendered for that caller. See PrintStash.
                         .requestMatchers("/api/v1/sale-invoices/print/**").permitAll()
+                        .requestMatchers("/api/customer-statements/print/**").permitAll()
                         // welcome requires JWT auth
                         .requestMatchers("/api/welcome").authenticated()
                         // all other endpoints require authentication

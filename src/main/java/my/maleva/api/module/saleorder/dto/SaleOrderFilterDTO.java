@@ -33,6 +33,13 @@ public class SaleOrderFilterDTO {
     @JsonProperty("Id")
     private Integer id;
 
+    // The sale order row itself, not the customer: "Id" above filters by
+    // CustomerRefId, so a caller holding a sale order id (the Push PO hand-off)
+    // had no way to ask for that one row and fell back to matching the job
+    // number as free text.
+    @JsonProperty("SaleOrderId")
+    private Integer saleOrderId;
+
     @JsonProperty("JId")
     private Integer jId;
 

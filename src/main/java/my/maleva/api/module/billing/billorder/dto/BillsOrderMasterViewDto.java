@@ -38,6 +38,12 @@ public class BillsOrderMasterViewDto {
 
     private String description;
     private Integer fileupload;
+
+    /** Off-loading vessel typed on the PO (BillsOrderMaster.OffVessal); '' when none. */
+    private String offVesselName;
+
+    /** Loading vessel typed on the PO (BillsOrderMaster.LodingVessal); '' when none. */
+    private String loadingVesselName;
 }
 
 

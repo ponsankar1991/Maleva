@@ -777,13 +777,15 @@ public class BillsOrderMasterService {
 
             // Filter by vessel name (HIGHEST PRIORITY - clears all other filters including search and dates)
             // NOTE: When VessalNameSearch is provided, date filters are NOT applied (matches .NET behavior)
-            // Equivalent to .NET: where = " and (A.OffVessal = '" + objlist.VessalNameSearch + "' ..."
-            if (filterModel.getVessalNameSearch() != null && !filterModel.getVessalNameSearch().isEmpty()) {
-                String vessel = filterModel.getVessalNameSearch();
+            // .NET compared the three columns with '=' so the user had to type the full vessel name
+            // exactly. The React page refetches as the user types, so this is a contains-match instead:
+            // "MAERSK" finds "MAERSK LINE" on the off vessel, loading vessel or remarks.
+            MapSqlParameterSource params = new MapSqlParameterSource();
+            if (filterModel.getVessalNameSearch() != null && !filterModel.getVessalNameSearch().trim().isEmpty()) {
+                String vessel = filterModel.getVessalNameSearch().trim();
                 whereClause.setLength(0); // Clear all previous filters (including dates) - vessel search takes absolute priority
-                whereClause.append(" AND (A.OffVessal = '").append(vessel.replace("'", "''"))
-                        .append("' OR A.LodingVessal = '").append(vessel.replace("'", "''"))
-                        .append("' OR A.Remarks = '").append(vessel.replace("'", "''")).append("')");
+                whereClause.append(" AND (A.OffVessal LIKE :vessel OR A.LodingVessal LIKE :vessel OR A.Remarks LIKE :vessel)");
+                params.addValue("vessel", "%" + escapeLike(vessel) + "%");
             }
 
             // Build final SQL query for master records
@@ -795,7 +797,8 @@ public class BillsOrderMasterService {
                     "S.SupplierName, A.Amount AS NetAmt, A.SaleType, A.CNumber AS BillNo, " +
                     "ISNULL(J.TruckName, '') AS TruckName, ISNULL(K.DriverName, '') AS DriverName, " +
                     "ISNULL(SA.CNumberDisplay, '') AS BillNoDisplay1, A.BillStatus, A.PayTo, " +
-                    "A.Description, A.Fileupload " +
+                    "A.Description, A.Fileupload, " +
+                    "ISNULL(A.OffVessal, '') AS OffVessal, ISNULL(A.LodingVessal, '') AS LodingVessal " +
                     "FROM BillsOrderMaster A WITH(NOLOCK) " +
                     "INNER JOIN Supplier S WITH(NOLOCK) ON A.SupplierRefId = S.Id " +
                     "LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = A.EmployeeRefId " +
@@ -818,8 +821,7 @@ public class BillsOrderMasterService {
                     "WHERE A.CompanyRefId = " + filterModel.getComid() + " AND A.Active = 1 " + whereClause;
 
             logger.debug("Executing master SQL query: {}", masterSql);
-            List<Map<String, Object>> masterRows = namedParameterJdbcTemplate.queryForList(
-                    masterSql, new MapSqlParameterSource());
+            List<Map<String, Object>> masterRows = namedParameterJdbcTemplate.queryForList(masterSql, params);
 
             List<BillsOrderMasterViewDto> masterList = masterRows.stream().map(row ->
                     BillsOrderMasterViewDto.builder()
@@ -842,12 +844,13 @@ public class BillsOrderMasterService {
                             .payTo((String) row.get("PayTo"))
                             .description((String) row.get("Description"))
                             .fileupload(row.get("Fileupload") != null ? ((Number) row.get("Fileupload")).intValue() : 0)
+                            .offVesselName((String) row.get("OffVessal"))
+                            .loadingVesselName((String) row.get("LodingVessal"))
                             .build()
             ).collect(Collectors.toList());
 
             logger.debug("Executing detail SQL query: {}", detailSql);
-            List<Map<String, Object>> detailRows = namedParameterJdbcTemplate.queryForList(
-                    detailSql, new MapSqlParameterSource());
+            List<Map<String, Object>> detailRows = namedParameterJdbcTemplate.queryForList(detailSql, params);
 
             List<BillsOrderDetailsViewDto> detailList = detailRows.stream().map(row ->
                     BillsOrderDetailsViewDto.builder()
@@ -887,6 +890,14 @@ public class BillsOrderMasterService {
         }
 
         return result;
+    }
+
+    /**
+     * Escapes the SQL Server LIKE wildcards so a typed "%" or "_" matches literally.
+     * Bracket escaping needs no ESCAPE clause on SQL Server.
+     */
+    private static String escapeLike(String value) {
+        return value.replace("[", "[[]").replace("%", "[%]").replace("_", "[_]");
     }
 }
 

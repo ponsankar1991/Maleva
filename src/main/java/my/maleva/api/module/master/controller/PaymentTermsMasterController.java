@@ -29,6 +29,16 @@ public class PaymentTermsMasterController {
         return service.listAll();
     }
 
+    /**
+     * The dropdown source: active terms for one company, ordered by name.
+     * Prefer this over the unscoped list above wherever a screen is filling a
+     * combo — that one returns every company's rows.
+     */
+    @GetMapping("/company/{companyId}")
+    public List<PaymentTermsMasterDto> listForCompany(@PathVariable Integer companyId) {
+        return service.listForCompany(companyId);
+    }
+
     @GetMapping("/{id}")
     public PaymentTermsMasterDto get(@PathVariable Integer id) {
         return service.getById(id);

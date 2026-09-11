@@ -39,6 +39,10 @@ public class SaleOrderFilterHelper {
             throw new InvalidRequestException(SaleOrderApiConstants.MESSAGE_COMPANY_REQUIRED);
         }
 
+        // Careful: these defaults are not inert. SaleOrderSpecification applies the
+        // range only when Search is empty, so a caller that sends neither a search
+        // term nor dates silently gets TODAY ONLY rather than everything. That is why
+        // the specification skips the range when SaleOrderId addresses a single row.
         if (filter.getFromdate() == null) {
             filter.setFromdate(LocalDate.now());
         }

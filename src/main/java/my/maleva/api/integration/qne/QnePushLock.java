@@ -95,6 +95,11 @@ public class QnePushLock {
         inFlight.remove(key);
     }
 
+    /** Returns true if a push is currently in flight for this key. */
+    public boolean isHeld(String key) {
+        return inFlight.containsKey(key);
+    }
+
     /** How long the in-flight push for this key has been running, for messages and tests. */
     public Duration runningFor(String key) {
         Instant startedAt = inFlight.get(key);

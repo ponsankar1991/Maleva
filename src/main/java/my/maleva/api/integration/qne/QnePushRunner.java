@@ -134,8 +134,9 @@ public class QnePushRunner {
         if (done != null) {
             return new State(false, done.result(), Duration.ZERO);
         }
-        Duration runningFor = pushLock.runningFor(key);
-        return new State(!runningFor.isZero(), null, runningFor);
+        boolean running = pushLock.isHeld(key);
+        Duration runningFor = running ? pushLock.runningFor(key) : Duration.ZERO;
+        return new State(running, null, runningFor);
     }
 
     /** Drops the remembered result for a key, once the screen has shown it. */

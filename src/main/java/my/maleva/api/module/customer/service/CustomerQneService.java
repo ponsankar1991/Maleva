@@ -43,14 +43,37 @@ public class CustomerQneService {
      */
     public void pushCreatedAfterCommit(Customer saved) {
         QneAfterCommit.run(() -> {
-            QnePushResult result = pushCreated(saved);
-            if (!result.success()) {
-                log.warn("QNE push for new customer {} did not complete: {}",
-                        saved.getId(), result.message());
+            try {
+                QnePushResult result = pushCreated(saved);
+                if (!result.success()) {
+                    log.warn("QNE push for new customer {} did not complete: {}",
+                            saved.getId(), result.message());
+                }
+            } catch (RuntimeException ex) {
+                // Nothing thrown here may escape. Spring propagates an
+                // afterCommit failure to the caller, so a stumble in the
+                // currency lookup or the id write-back would answer a save
+                // that has already committed with a 500 — and the operator
+                // would enter the customer a second time. QNE transport
+                // failures are already returned rather than thrown; this
+                // catches everything around them.
+                log.error("QNE push for new customer {} threw after the row was committed",
+                        saved.getId(), ex);
             }
         });
     }
 
+    /**
+     * Pushes a customer that QNE does not have yet. Called from both save
+     * paths: legacy's guard was {@code Id == 0 || CompanyCode is blank}, so an
+     * edit of a never-pushed customer created it too.
+     *
+     * <p>One deliberate divergence: legacy's leading {@code Id == 0} meant a
+     * NEW customer was pushed even when someone had pasted a QNE code into the
+     * form, creating a second QNE company for one customer. A blank code is the
+     * only condition here, which is also what {@code claimQneIdentity} relies
+     * on to make the write-back a one-time claim.
+     */
     public QnePushResult pushCreated(Customer customer) {
         if (!QnePayloads.isBlank(customer.getCompanyCode())) {
             return QnePushResult.alreadyPushed(customer.getUpdateId(), customer.getCompanyCode(),
@@ -120,11 +143,19 @@ public class CustomerQneService {
                 "QNE customer statement URL fetched");
     }
 
+    /**
+     * The currency QNE is told about, from the customer's symbol.
+     *
+     * <p>Scoped to the company, as legacy's
+     * {@code WHERE S.CompanyRefId = @Comid AND S.Id = @SymbolRefid} was: the id
+     * alone would happily read another tenant's symbol. Absent or unmatched
+     * gives "", which is what the legacy ExecuteScalar's null coalesce produced.
+     */
     private String currencyName(Customer customer) {
-        if (customer.getSymbolRefid() == null) {
+        if (customer.getSymbolRefid() == null || customer.getSymbolRefid() == 0) {
             return "";
         }
-        return symbols.findById(customer.getSymbolRefid())
+        return symbols.findByIdAndCompanyRefId(customer.getSymbolRefid(), customer.getCompanyRefId())
                 .map(SymbolMaster::getSName)
                 .orElse("");
     }

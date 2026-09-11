@@ -1,5 +1,9 @@
 package my.maleva.api.module.customer.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +19,22 @@ import java.time.LocalDateTime;
 @Builder
 public class CustomerDto {
     private Integer id;
+
+    /**
+     * The tenant every write is scoped to. The controller marks the body
+     * {@code @Valid} but nothing on this class was constrained, so the
+     * annotation did nothing and a payload with no company reached the service.
+     */
+    @NotNull(message = "Company is required")
+    @Positive(message = "Company must be greater than zero")
     private Integer companyRefId;
+
+    /**
+     * The one field the legacy screen actually required — everything else in
+     * its {@code emptycheck()} is commented out. Length matches the column.
+     */
+    @NotBlank(message = "Customer name is required")
+    @Size(max = 500, message = "Customer name cannot exceed 500 characters")
     private String customerName;
     private String cNumberDisplay;
     private Integer cNumber;

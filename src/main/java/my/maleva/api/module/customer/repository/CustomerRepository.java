@@ -2,6 +2,7 @@ package my.maleva.api.module.customer.repository;
 
 import my.maleva.api.module.customer.entity.Customer;
 import my.maleva.api.module.accounting.dto.CurrencyValueDto;
+import my.maleva.api.module.customer.dto.response.CustomerOptionDto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -81,4 +82,23 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
     int backfillQneId(@Param("companyRefId") Integer companyRefId,
                       @Param("companyCode") String companyCode,
                       @Param("qneId") String qneId);
+
+    /**
+     * Highest customer number issued to this company, 0 when it has none.
+     * SP_Customer's {@code select isnull(Max(CNumber),0) ... where CompanyRefId=@Comid}
+     * — the sequence is per company, not global, and there is no SequenceNoMaster
+     * row behind it.
+     */
+    @Query("SELECT COALESCE(MAX(c.cNumber), 0) FROM Customer c WHERE c.companyRefId = :companyRefId")
+    Integer findMaxCNumber(@Param("companyRefId") Integer companyRefId);
+
+    /**
+     * Active customers of one company as dropdown entries — legacy
+     * {@code select Id, customername+'-'+CompanyCode, OEmail1 from Customer
+     * where CompanyRefId=@Comid and Active=1}. Three columns, one query.
+     */
+    @Query("SELECT new my.maleva.api.module.customer.dto.response.CustomerOptionDto(c.id, c.customerName, c.companyCode) "
+         + "FROM Customer c WHERE c.companyRefId = :companyRefId AND c.active = 1 "
+         + "ORDER BY c.customerName")
+    List<CustomerOptionDto> findOptions(@Param("companyRefId") Integer companyRefId);
 }

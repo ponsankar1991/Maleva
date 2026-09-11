@@ -36,6 +36,7 @@ public class SaleOrderSpecification {
     public static Specification<SaleOrderMaster> buildFilter(SaleOrderFilterDTO filter) {
         Integer companyId = filter.getComid();
         Integer customerId = filter.getId();
+        Integer saleOrderId = filter.getSaleOrderId();
         Integer jobId = filter.getJId();
         Integer employeeId = filter.getEmployeeid();
         Integer dashboardStatus = filter.getDashboardStatus();
@@ -65,6 +66,13 @@ public class SaleOrderSpecification {
             // Filter by customer ID if provided
             if (customerId != null && customerId != 0) {
                 predicates.add(cb.equal(root.get("customerRefId"), customerId));
+            }
+
+            // Filter by the sale order row itself. The Push PO hand-off knows the
+            // exact id, so it does not have to hope the job number is filled in
+            // and unique; when it is set the row is identified outright.
+            if (saleOrderId != null && saleOrderId != 0) {
+                predicates.add(cb.equal(root.get("id"), saleOrderId));
             }
 
             // Filter by job ID if provided
@@ -202,8 +210,14 @@ public class SaleOrderSpecification {
                     predicates.add(cb.like(cb.lower(root.get("cNumberDisplay")), likeSearch));
                 }
             } else {
-                // Date range filters (only applied when search is empty)
-                if (fromDate != null && toDate != null) {
+                // Date range filters (only applied when search is empty).
+                //
+                // Skipped outright when a sale order id was given: that addresses one
+                // row, and SaleOrderFilterHelper.validateFilter defaults a missing range
+                // to TODAY - so an id lookup for any order raised before today would be
+                // filtered down to nothing and read as "not found".
+                boolean addressesOneRow = saleOrderId != null && saleOrderId != 0;
+                if (fromDate != null && toDate != null && !addressesOneRow) {
                     LocalDateTime startDateTime = LocalDateTime.of(fromDate, LocalTime.MIN);
                     LocalDateTime endDateTime = LocalDateTime.of(toDate, LocalTime.of(23, 59, 59));
 

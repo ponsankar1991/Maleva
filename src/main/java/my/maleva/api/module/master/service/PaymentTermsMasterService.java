@@ -27,6 +27,13 @@ public class PaymentTermsMasterService {
         return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
+    /** Active terms for one company, for the master dropdowns. */
+    @Transactional(readOnly = true)
+    public List<PaymentTermsMasterDto> listForCompany(Integer companyRefId) {
+        return repository.findByCompanyRefIdAndActiveOrderByTermsNameAsc(companyRefId, 1)
+                .stream().map(mapper::toDto).collect(Collectors.toList());
+    }
+
     public PaymentTermsMasterDto getById(Integer id) {
         PaymentTermsMaster ent = repository.findById(id).orElseThrow(() -> new EntityNotFoundException("PaymentTermsMaster not found: " + id));
         return mapper.toDto(ent);

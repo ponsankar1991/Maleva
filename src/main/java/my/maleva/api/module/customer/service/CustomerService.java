@@ -1,6 +1,7 @@
 package my.maleva.api.module.customer.service;
 
 import my.maleva.api.module.customer.dto.CustomerDto;
+import my.maleva.api.module.customer.dto.response.CustomerOptionDto;
 import my.maleva.api.module.customer.dto.request.CustomerSelectRequest;
 import my.maleva.api.module.customer.dto.response.CustomerSelectResult;
 
@@ -22,4 +23,7 @@ public interface CustomerService {
     CustomerSelectResult selectCustomer(CustomerSelectRequest request);
 
 
+
+    /** Active customers of a company, for dropdowns. */
+    List<CustomerOptionDto> options(Integer companyId);
 }

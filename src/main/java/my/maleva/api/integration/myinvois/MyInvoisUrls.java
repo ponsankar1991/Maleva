@@ -37,6 +37,26 @@ public class MyInvoisUrls {
     }
 
     /**
+     * {@code GET /taxpayer/validate/{tin}?…} — "is this TIN real, and does it
+     * belong to the name/registration number given?" LHDN answers with a bare
+     * 200 or 404; there is no body to read.
+     */
+    public String validateTin(String tin, String query) {
+        return environment().apiBaseUrl() + "/api/v1.0/taxpayer/validate/" + tin + query;
+    }
+
+    /**
+     * {@code GET /taxpayer/search/tin?…} — "what is the TIN for this name and
+     * registration number?" Answers with {@code {"tin": "..."}}.
+     *
+     * <p>Legacy reached this by string-replacing {@code "tin?"} inside the
+     * validate URL, which is why the two look like one endpoint. They are not.
+     */
+    public String searchTin(String query) {
+        return environment().apiBaseUrl() + "/api/v1.0/taxpayer/search/tin" + query;
+    }
+
+    /**
      * The public share link for a validated document; this is what the QR on
      * the printed invoice encodes.
      */

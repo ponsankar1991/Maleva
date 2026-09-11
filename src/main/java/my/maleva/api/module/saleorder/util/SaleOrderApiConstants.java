@@ -35,6 +35,14 @@ public final class SaleOrderApiConstants {
     public static final String MESSAGE_ORDER_NOT_FOUND = "Sale order not found with ID: %d";
     public static final String MESSAGE_SAVE_FAILED = "Failed to save sale order";
     public static final String MESSAGE_UPDATE_FAILED = "Failed to update sale order";
+
+    /**
+     * Raised when the URL names one sale order and the body names another. Both ids are
+     * in the message because the two come from different places in the caller and the
+     * pair is what identifies the bug.
+     */
+    public static final String MESSAGE_ID_MISMATCH =
+            "Sale order ID mismatch: pathId=%d, bodyId=%d. The request URL and the request body identify different sale orders, so the update was rejected.";
     public static final String MESSAGE_DELETE_FAILED = "Failed to delete sale order";
     public static final String MESSAGE_CNUMBER_REQUIRED = "C Number is required for update and must be positive";
     public static final String MESSAGE_COMPANY_REF_REQUIRED = "Company Reference ID is required and must be positive";

@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailAuthenticationException;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -18,7 +20,9 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -164,6 +168,22 @@ public class EmailService {
      */
     public MimeMessage sendHtmlMail(List<String> to, List<String> cc, String subject, String htmlBody,
                                     List<EmailAttachment> attachments) {
+        MimeMessage message = prepareHtmlMail(to, cc, subject, htmlBody, attachments);
+        mailSender.get().send(message);
+        logger.info("Mail '{}' sent to {} recipient(s), {} cc", subject, to.size(), cc == null ? 0 : cc.size());
+        return message;
+    }
+
+    /**
+     * Build the HTML mail {@link #sendHtmlMail} would send, without sending it
+     * — for a caller that wants several messages to leave over ONE server
+     * connection through {@link #sendPrepared}.
+     *
+     * @throws IllegalStateException when the mail server is not configured or
+     *                               no To address was given
+     */
+    public MimeMessage prepareHtmlMail(List<String> to, List<String> cc, String subject, String htmlBody,
+                                       List<EmailAttachment> attachments) {
         if (!emailConfigured) {
             throw new IllegalStateException("Mail server is not configured (mail.smtp.host)");
         }
@@ -189,12 +209,66 @@ public class EmailService {
                 helper.addAttachment(attachment.fileName(),
                         () -> new java.io.ByteArrayInputStream(attachment.content()), type);
             }
-            mailSender.get().send(message);
-            logger.info("Mail '{}' sent to {} recipient(s), {} cc", subject, to.size(), cc == null ? 0 : cc.size());
             return message;
         } catch (MessagingException | IOException ex) {
             throw new IllegalStateException(ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Send prepared messages over one SMTP connection and report which the
+     * relay refused.
+     *
+     * <p>Connect + STARTTLS + login is most of the cost of a mail; Spring's
+     * sender opens the connection once for the whole array and reconnects
+     * only if the relay drops it mid-way. A refused message does not stop the
+     * rest: the returned map names each refused message with the relay's
+     * reason, and every message not in it was accepted.
+     *
+     * @return refused messages and their reasons; empty when all were accepted
+     * @throws IllegalStateException when the mail server is not configured or
+     *                               refuses the login — nothing was sent, and
+     *                               the next batch would fail the same way
+     */
+    public Map<MimeMessage, String> sendPrepared(List<MimeMessage> messages) {
+        if (!emailConfigured) {
+            throw new IllegalStateException("Mail server is not configured (mail.smtp.host)");
+        }
+        if (messages == null || messages.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            mailSender.get().send(messages.toArray(new MimeMessage[0]));
+            logger.info("{} mail(s) sent over one connection", messages.size());
+            return Map.of();
+        } catch (MailAuthenticationException ex) {
+            throw new IllegalStateException("Mail server refused the login: " + rootMessage(ex), ex);
+        } catch (MailSendException ex) {
+            Map<MimeMessage, String> refused = new LinkedHashMap<>();
+            ex.getFailedMessages().forEach((original, cause) -> {
+                if (original instanceof MimeMessage mime) {
+                    refused.put(mime, rootMessage(cause));
+                }
+            });
+            if (refused.isEmpty()) {
+                // Spring throws this form only when every message was accepted
+                // and closing the connection afterwards failed. Not a failure
+                // of any mail — reporting one would make a retry send twice.
+                logger.warn("Mail connection did not close cleanly after {} message(s): {}", messages.size(), rootMessage(ex));
+                return Map.of();
+            }
+            logger.warn("{} of {} mail(s) refused by the relay", refused.size(), messages.size());
+            return refused;
+        }
+    }
+
+    private static String rootMessage(Throwable ex) {
+        Throwable t = ex;
+        while (t.getCause() != null && t.getCause() != t) {
+            t = t.getCause();
+        }
+        String message = t.getMessage();
+        return message == null || message.isBlank() ? t.getClass().getSimpleName() : message.trim();
     }
 
     /**

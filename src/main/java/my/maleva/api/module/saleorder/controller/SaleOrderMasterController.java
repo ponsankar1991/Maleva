@@ -90,14 +90,18 @@ public class SaleOrderMasterController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<SaleOrderMasterDto>> update(@PathVariable @Positive Integer id,
                                                                   @Valid @RequestBody SaleOrderDTO dto) {
-        logger.info("Update SaleOrder aggregate request received - id: {}, company: {}, customer: {}",
-                id, dto.getCompanyRefId(), dto.getCustomerRefId());
-        
-        try {
-            String jsonPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dto);
-            logger.error("DEBUG PAYLOAD JSON for PUT /api/sale-orders/{}:\n{}", id, jsonPayload);
-        } catch (Exception e) {
-            logger.error("Could not serialize payload to JSON: {}", e.getMessage());
+        // Body id is logged because a body naming a different order than the URL is the
+        // signature of a stale client form; the service refuses that request.
+        logger.info("Update SaleOrder aggregate request received - pathId: {}, bodyId: {}, company: {}, customer: {}",
+                id, dto.getId(), dto.getCompanyRefId(), dto.getCustomerRefId());
+
+        if (logger.isDebugEnabled()) {
+            try {
+                logger.debug("Payload for PUT /api/sale-orders/{}:\n{}",
+                        id, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(dto));
+            } catch (Exception e) {
+                logger.debug("Could not serialize payload to JSON: {}", e.getMessage());
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.success(service.update(id, dto), SaleOrderApiConstants.MESSAGE_UPDATE_SUCCESS

@@ -6,7 +6,23 @@ spring:
   # application still starts when the file is absent, which is what servers
   # that supply real environment variables do.
   config:
-    import: optional:file:./secrets.yaml
+    # Two locations, tried in order, both optional.
+    #
+    #   ./secrets.yaml            - next to the pom. Works locally, where the
+    #                               app is started from the project folder.
+    #   ${MALEVA_SECRETS_FILE}    - an ABSOLUTE path for servers.
+    #
+    # "./" is relative to the process working directory, NOT to the war. A
+    # Windows service, an IIS app pool or a scheduled task rarely starts in the
+    # folder holding the file, so on those the first entry silently finds
+    # nothing - and because the import is "optional:" the application starts
+    # anyway with blank credentials, and the only symptom is "MyInvois client
+    # credentials are not configured" when an operator clicks e-Invoice hours
+    # later. Set MALEVA_SECRETS_FILE on the server (machine scope) and the
+    # working directory stops mattering.
+    import:
+      - optional:file:./secrets.yaml
+      - optional:file:${MALEVA_SECRETS_FILE:./secrets.yaml}
   application:
     name: Maleva
   jackson:
@@ -176,6 +192,39 @@ mail:
   from:
     email: ${MAIL_FROM_EMAIL:account@maleva.com.my}
     name: ${MAIL_FROM_NAME:Maleva Accounts}
+  # Customer Statement of Account mail (CustomerStatementMailService).
+  # Wording lives in resources/mail/statement-*.html; these are the parts that vary by deployment.
+  statement:
+    cc: ${MAIL_STATEMENT_CC:receivable@maleva.com.my,mala@maleva.com.my}
+    banner-url: ${MAIL_STATEMENT_BANNER_URL:https://www.maleva.my/Content/images/pngimages/MalevaBanner.png}
+    # Bulk run: messages sent per SMTP connection, and an optional pause between
+    # connections for a relay that rate-limits (0 = none). Connect + STARTTLS +
+    # login is most of the cost of a mail, so ten per connection is the win.
+    batch-size: ${MAIL_STATEMENT_BATCH_SIZE:10}
+    pause-between-batches-ms: ${MAIL_STATEMENT_PAUSE_MS:0}
+    log:
+      # Every statement mail (sent or refused) is recorded in
+      # dbo.CustomerStatementMailLog so the screen can show "last sent" and stop
+      # a customer being mailed twice. The table is created at startup when it
+      # is missing (script: db/customer-statement-mail-log.sql). Set false where
+      # the app's SQL login may not create tables, and run the script by hand.
+      auto-create: ${MAIL_STATEMENT_LOG_AUTO_CREATE:true}
+    # Customers' replies: read the accounts mailbox (mail.imap.*) every poll-ms,
+    # keep the mails that answer a statement we sent (In-Reply-To / References
+    # naming our Message-ID, else the subject with its "Re:" stripped), store
+    # them in dbo.CustomerStatementMailReply with attachments under
+    # <upload-dir>/statement-replies/. Only reads; never flags, moves or deletes.
+    replies:
+      enabled: ${MAIL_STATEMENT_REPLIES_ENABLED:true}
+      folder: ${MAIL_STATEMENT_REPLIES_FOLDER:INBOX}
+      poll-ms: ${MAIL_STATEMENT_REPLIES_POLL_MS:180000}
+      initial-delay-ms: ${MAIL_STATEMENT_REPLIES_INITIAL_DELAY_MS:45000}
+      # a first scan (or one after the mailbox reset its UIDs) looks back this far
+      initial-days: ${MAIL_STATEMENT_REPLIES_INITIAL_DAYS:7}
+      max-per-run: ${MAIL_STATEMENT_REPLIES_MAX_PER_RUN:200}
+      # Who sees the header bell for new replies: role ids or names, comma-separated.
+      # The JWT grants ROLE_<name> for a known role, ROLE_<id> otherwise; both work here.
+      notify-roles: ${MAIL_STATEMENT_REPLIES_NOTIFY_ROLES:100,SUPERADMIN}
   # Who gets the "Invoice Created" mail from the Sale Invoice view's Share
   # button — the list legacy hard-coded in commonfunctions.TESTMail3.
   invoice-recipients:

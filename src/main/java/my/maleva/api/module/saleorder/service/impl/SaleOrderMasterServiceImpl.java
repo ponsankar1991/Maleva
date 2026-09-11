@@ -439,10 +439,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
             throw new InvalidRequestException(SaleOrderApiConstants.MESSAGE_UPDATE_FAILED);
         }
 
-        if (dto.getId() != null && dto.getId() > 0 && !Objects.equals(dto.getId(), id)) {
-            logger.warn("Sale order update request body id {} did not match path id {}. Using path id.",
-                    dto.getId(), id);
-        }
+        requireMatchingId(id, dto.getId());
 
         dto.setId(id);
         return save(dto);
@@ -455,6 +452,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     @Override
     @Transactional
     public SaleOrderMasterDto updateMaster(Integer id, SaleOrderMasterDto dto) {
+        requireMatchingId(id, dto == null ? null : dto.getId());
+
         SaleOrderMaster entity = findActiveSaleOrder(id);
         Integer originalStatusId = entity.getJStatus();
         validateMasterUpdateRequest(dto, entity);
@@ -535,6 +534,7 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     @Transactional
     public SaleOrderQuickUpdateDto updateQuickFields(Integer id, SaleOrderQuickUpdateDto dto) {
         validateQuickUpdateRequest(id, dto);
+        requireMatchingId(id, dto.getId());
 
         SaleOrderMaster entity = findActiveSaleOrder(id);
         if (!Objects.equals(entity.getCompanyRefId(), dto.getCompanyRefId())) {
@@ -694,6 +694,30 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                 duration, filter.getComid(), filteredOrderIds.size());
 
         return buildSaleF5ViewResponse(saleMasterList, saleDetailsList);
+    }
+
+    /**
+     * Rejects an update whose body identifies a different sale order than the URL.
+     *
+     * These two ids reach the server from different places in the caller - the URL from
+     * whichever row is selected, the body from whatever the form last loaded - so they can
+     * drift apart when a load fails and the stale form is saved against the new row. This
+     * used to be logged as a warning and the path id used anyway, which copied one order's
+     * master row and every child row onto another. There is no safe way to guess which of
+     * the two the caller meant, so the request is refused before anything is written.
+     *
+     * A body that omits the id (null or 0) is allowed: the URL is then the only identifier
+     * and nothing contradicts it.
+     */
+    private void requireMatchingId(Integer pathId, Integer bodyId) {
+        if (bodyId == null || bodyId <= 0 || Objects.equals(bodyId, pathId)) {
+            return;
+        }
+
+        logger.error("Sale order update rejected - path id {} and body id {} identify different orders",
+                pathId, bodyId);
+        throw new InvalidRequestException(
+                String.format(SaleOrderApiConstants.MESSAGE_ID_MISMATCH, pathId, bodyId));
     }
 
     private boolean isCreateOperation(Integer id) {

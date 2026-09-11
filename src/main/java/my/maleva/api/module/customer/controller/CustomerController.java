@@ -4,6 +4,10 @@ import jakarta.annotation.security.PermitAll;
 import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.customer.dto.CustomerDto;
+import my.maleva.api.module.customer.dto.CustomerTinCheckRequest;
+import my.maleva.api.module.customer.dto.CustomerTinCheckResult;
+import my.maleva.api.module.customer.dto.response.CustomerOptionDto;
+import my.maleva.api.module.customer.service.CustomerTinService;
 import my.maleva.api.module.customer.dto.request.CustomerSelectRequest;
 import my.maleva.api.module.customer.dto.response.CustomerSelectResult;
 import my.maleva.api.module.customer.service.CustomerQneService;
@@ -23,11 +27,15 @@ import java.util.Map;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final CustomerTinService tinService;
     private final CustomerQneService customerQneService;
 
-    public CustomerController(CustomerService customerService, CustomerQneService customerQneService) {
+    public CustomerController(CustomerService customerService,
+                              CustomerQneService customerQneService,
+                              CustomerTinService tinService) {
         this.customerService = customerService;
         this.customerQneService = customerQneService;
+        this.tinService = tinService;
     }
 
     /* ================= QNE ================= */
@@ -56,19 +64,67 @@ public class CustomerController {
         return QnePushResponses.toResponse(customerQneService.statementUrl(id, year, month));
     }
 
+    /**
+     * The customer screen's TIN button — legacy {@code CheckCustomerTin}.
+     *
+     * <p>Always 200: the three outcomes (confirmed, no such taxpayer, LHDN
+     * refused) are states of a completed lookup, not transport failures, and
+     * the screen shows a different thing for each. Legacy answered a refusal
+     * with {@code IsSuccess = false} but {@code StatusCode = Success}, which
+     * agreed with neither reading.
+     */
+    @PostMapping("/tin-check")
+    public ResponseEntity<ApiResponse<CustomerTinCheckResult>> checkTin(
+            @RequestBody CustomerTinCheckRequest request,
+            @RequestParam(required = false) Integer companyId
+    ) {
+        CustomerTinCheckResult result = tinService.check(request, companyId);
+        return ResponseEntity.ok(ApiResponse.success(result.message(), result));
+    }
+
+    /**
+     * Dropdown entries: active customers of the company, name-and-code
+     * labelled, ordered by name. The legacy {@code GetCustomer}. Use this for
+     * any combo — {@code /select} is the paged master list and is far too
+     * heavy to fill one.
+     */
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<List<CustomerOptionDto>>> options(@RequestParam Integer companyId) {
+        List<CustomerOptionDto> options = customerService.options(companyId);
+        return ResponseEntity.ok(ApiResponse.success(options.size() + " customer(s)", options));
+    }
+
     /* ================= CREATE ================= */
 
+    /**
+     * Creates a customer, then answers with the row as it stands once the QNE
+     * push has run.
+     *
+     * <p>The re-read is the point. {@code create} commits and only then pushes
+     * to QNE, so the object it returns cannot yet carry the QNE identity the
+     * push writes back. Reading the row here — after the transactional call has
+     * returned, and therefore after the after-commit push — means CompanyCode
+     * and UpdateId are populated when the push worked and blank when it did
+     * not, which is how the screen knows to warn.
+     *
+     * <p>Legacy answered a failed QNE push with {@code IsSuccess = false} and
+     * the QNE message, for a customer it had already committed. The screen then
+     * kept EditId at 0, so pressing Save again created a <i>second</i> customer.
+     * That is deliberately not copied: the save succeeded and is reported as
+     * such, with the QNE state visible in the response.
+     */
     @PostMapping
     public ResponseEntity<ApiResponse<CustomerDto>> create(
             @Valid @RequestBody CustomerDto dto
     ) {
         CustomerDto created = customerService.create(dto);
+        CustomerDto saved = customerService.getById(created.getId());
 
         return ResponseEntity
-                .created(URI.create("/api/customers/" + created.getId()))
+                .created(URI.create("/api/customers/" + saved.getId()))
                 .body(ApiResponse.success(
                         "Customer created successfully",
-                        created
+                        saved
                 ));
     }
 
