@@ -1,6 +1,7 @@
 package my.maleva.api.common.config;
 
 import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -61,8 +62,15 @@ public class DataSourceConfig {
      */
     @Bean
     @Primary
-    public JdbcTemplate jdbcTemplate(HikariDataSource dataSource) {
-        return new JdbcTemplate(dataSource);
+    public JdbcTemplate jdbcTemplate(HikariDataSource dataSource,
+                                     @Value("${DB_QUERY_TIMEOUT_MS:120000}") long queryTimeoutMs) {
+        JdbcTemplate template = new JdbcTemplate(dataSource);
+        // Statement timeout, the same value JPA uses (jakarta.persistence.query.timeout).
+        // It cancels only the slow statement, so the connection survives and a
+        // transaction can still roll back. Without it the only limit was the JDBC
+        // socket timeout, which kills the connection and loses the real error.
+        template.setQueryTimeout((int) Math.max(1, queryTimeoutMs / 1000));
+        return template;
     }
 
     /** Same reasoning as {@link #jdbcTemplate} for the named-parameter flavour. */

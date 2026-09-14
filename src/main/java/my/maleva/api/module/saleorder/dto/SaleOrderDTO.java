@@ -24,6 +24,16 @@ public class SaleOrderDTO {
     // Main Order Fields
     private Integer id;
 
+    /**
+     * One value per new order on the page, kept across a failed or timed-out
+     * Save and replaced after a create succeeds. A create repeating a finished
+     * one gets that order back instead of making a second. Ignored on updates.
+     *
+     * @see my.maleva.api.module.saleorder.service.SaleOrderCreateGuard
+     */
+    @JsonAlias("ClientRequestId")
+    private String clientRequestId;
+
     private Integer spotId;
 
     @NotNull(message = "Company Reference ID is required")

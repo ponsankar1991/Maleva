@@ -37,11 +37,9 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "https://mydriverszone.com",
-                "https://maleva.mydriverszone.com",
-                // Spring trims a trailing slash, but an Origin header never
-                // carries one, so the list is written the way browsers send it.
-                "https://maleva.my",
-                "https://www.maleva.my"
+                "https://www.mydriverszone.com",
+                "https://maleva.mydriverszone.com"
+
         ));
 
         config.setAllowedMethods(java.util.List.of(
@@ -122,6 +120,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // public endpoints (call requestMatchers separately to avoid varargs resolution issues)
                         .requestMatchers("/api/login").permitAll()
+                        // Tomcat forwards a failed request to /error to render it. Left
+                        // behind authentication, that forward carries no JWT and every
+                        // server error reached the browser as a bare 403, hiding the
+                        // real status and message.
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/users/register").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()

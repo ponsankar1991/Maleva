@@ -107,17 +107,22 @@ public class GlobalExceptionHandler {
         String message = String.valueOf(ex.getMessage());
 
         if (message.contains("Unable to rollback") || message.contains("auto-commit")) {
-            logger.error("Rollback failed on {} - the original application exception was discarded."
-                    + " Look for \"Application exception overridden by rollback exception\" just above this"
-                    + " line for the real cause. This happens when the connection is in autocommit mode:"
-                    + " check spring.datasource.hikari.auto-commit is false.", path, ex);
+            // Spring keeps the exception that failed the request on the rollback
+            // exception; report it instead of saying it was lost.
+            Throwable original = ex instanceof TransactionSystemException tse ? tse.getApplicationException() : null;
+            logger.error("Rollback failed on {}. Original failure: {}. A rollback that fails usually means the"
+                    + " connection was already dead (socket timeout, network drop) or in autocommit mode.",
+                    path, original == null ? "not recorded" : rootMessage(original), ex);
 
+            String userMessage = original == null
+                    ? "The request failed and the transaction could not be rolled back. The server log records"
+                            + " the cause as \"Application exception overridden by rollback exception\"."
+                    : "The request failed: " + rootMessage(original);
+            List<String> details = original == null
+                    ? List.of("rollback failed: " + message)
+                    : List.of("cause: " + rootMessage(original), "rollback failed: " + message);
             ApiError err = new ApiError(Instant.now(), HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                    "Internal Server Error",
-                    "The request failed and the transaction could not be rolled back, so the original error"
-                            + " was lost. The server log records it as \"Application exception overridden by"
-                            + " rollback exception\".",
-                    path, List.of("rollback failed: " + message));
+                    "Internal Server Error", userMessage, path, details);
             return new ResponseEntity<>(err, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 

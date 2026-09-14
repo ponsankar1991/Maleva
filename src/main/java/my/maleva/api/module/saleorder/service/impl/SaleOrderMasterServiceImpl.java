@@ -93,7 +93,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     private final SaleOrderForwardingMapper saleOrderForwardingMapper;
     private final SaleF5ViewMapper saleF5ViewMapper;
     private final SaleOrderFilterHelper filterHelper;
-    private final SequenceNoMasterRepository sequenceNoMasterRepository;
+    private final my.maleva.api.module.saleorder.service.SaleOrderNumberAllocator numberAllocator;
+    private final my.maleva.api.module.saleorder.service.SaleOrderCreateGuard createGuard;
     private final JobStatusMasterRepository jobStatusMasterRepository;
     private final BoardingEventSyncService boardingEventSyncService;
 
@@ -113,7 +114,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
                                       SaleOrderForwardingMapper saleOrderForwardingMapper,
                                       SaleF5ViewMapper saleF5ViewMapper,
                                       SaleOrderFilterHelper filterHelper,
-                                      SequenceNoMasterRepository sequenceNoMasterRepository,
+                                      my.maleva.api.module.saleorder.service.SaleOrderNumberAllocator numberAllocator,
+                                      my.maleva.api.module.saleorder.service.SaleOrderCreateGuard createGuard,
                                       JobStatusMasterRepository jobStatusMasterRepository,
                                       BoardingEventSyncService boardingEventSyncService) {
         this.repository = repository;
@@ -132,7 +134,8 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         this.saleOrderForwardingMapper = saleOrderForwardingMapper;
         this.saleF5ViewMapper = saleF5ViewMapper;
         this.filterHelper = filterHelper;
-        this.sequenceNoMasterRepository = sequenceNoMasterRepository;
+        this.numberAllocator = numberAllocator;
+        this.createGuard = createGuard;
         this.jobStatusMasterRepository = jobStatusMasterRepository;
         this.boardingEventSyncService = boardingEventSyncService;
     }
@@ -147,6 +150,53 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         validateSaleOrderRequest(dto);
 
         boolean createOperation = isCreateOperation(dto.getId());
+        String saveKey = createOperation ? normalizeOptionalValue(dto.getClientRequestId()) : null;
+        if (saveKey == null) {
+            // An update, or a create from a caller that sends no key: nothing
+            // here can tell a repeated request from a new one.
+            return persist(dto, createOperation);
+        }
+
+        Optional<SaleOrderMasterDto> alreadyCreated = createGuard.begin(saveKey);
+        if (alreadyCreated.isPresent()) {
+            // This exact create already finished - usually the page gave up
+            // waiting and the operator pressed Save again. Hand back the order
+            // it made instead of making a second one.
+            return alreadyCreated.get();
+        }
+        try {
+            SaleOrderMasterDto created = persist(dto, true);
+            recordCreateOnCommit(saveKey, created);
+            return created;
+        } catch (RuntimeException failed) {
+            createGuard.abandon(saveKey);
+            throw failed;
+        }
+    }
+
+    /**
+     * Marks the create finished only once the transaction has committed, so a
+     * create that later rolled back is never replayed as a success.
+     */
+    private void recordCreateOnCommit(String saveKey, SaleOrderMasterDto created) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            createGuard.complete(saveKey, created);
+            return;
+        }
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_COMMITTED) {
+                            createGuard.complete(saveKey, created);
+                        } else {
+                            createGuard.abandon(saveKey);
+                        }
+                    }
+                });
+    }
+
+    private SaleOrderMasterDto persist(SaleOrderDTO dto, boolean createOperation) {
         String operation = createOperation
                 ? SaleOrderApiConstants.CREATE_OPERATION
                 : SaleOrderApiConstants.UPDATE_OPERATION;
@@ -456,10 +506,12 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
 
         SaleOrderMaster entity = findActiveSaleOrder(id);
         Integer originalStatusId = entity.getJStatus();
+        Integer storedInvoiceNo = entity.getInvoiceNo();
         validateMasterUpdateRequest(dto, entity);
         calculateOrderTotals(dto);
 
         mapper.updateEntityFromDto(dto, entity);
+        keepInvoiceLink(entity, storedInvoiceNo);
 
         // Apply pickup/delivery dates from DTO directly. When DTO fields are null this will
         // clear the stored values in the database. This matches the client's request to
@@ -784,9 +836,27 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         }
     }
 
+    /**
+     * SaleOrderMaster.InvoiceNo belongs to the invoice, not to this screen.
+     *
+     * <p>The invoice save stamps it when it bills the job and clears it when an
+     * invoice edit drops the job. The sale order edit screen never loads the
+     * column, so its form had nothing there and the page sent {@code invoiceNo: 0}
+     * on every update. The mapper ignores nulls, not zeros, so each update of an
+     * invoiced job set InvoiceNo back to 0: the job then showed as not invoiced,
+     * reappeared in the invoice job picker and the unbilled dashboard counts.
+     * Whatever a caller sends, an update keeps the value already stored.
+     */
+    static void keepInvoiceLink(SaleOrderMaster entity, Integer storedInvoiceNo) {
+        entity.setInvoiceNo(storedInvoiceNo);
+    }
+
     private SaleOrderMaster buildNewSaleOrder(SaleOrderDTO dto) {
         SaleOrderMaster entity = mapper.toEntity(dto);
         entity.setId(null);
+        // A new job is not invoiced, whatever the request says. 0, not NULL:
+        // the invoice job picker and the unbilled counts look for InvoiceNo = 0.
+        entity.setInvoiceNo(0);
         entity.setActive(SaleOrderApiConstants.ACTIVE_STATUS);
         entity.setCreatedDate(LocalDateTime.now());
         entity.setModifiedDate(LocalDateTime.now());
@@ -804,7 +874,9 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
     private SaleOrderMaster buildExistingSaleOrder(SaleOrderDTO dto) {
         SaleOrderMaster entity = findActiveSaleOrder(dto.getId());
         Integer originalStatusId = entity.getJStatus();
+        Integer storedInvoiceNo = entity.getInvoiceNo();
         mapper.updateEntityFromDto(dto, entity);
+        keepInvoiceLink(entity, storedInvoiceNo);
 
         Integer targetStatusId = entity.getJStatus();
         if (!Objects.equals(originalStatusId, targetStatusId)) {
@@ -1011,41 +1083,23 @@ public class SaleOrderMasterServiceImpl implements SaleOrderMasterService {
         entity.setCNumberDisplay(buildDisplayNumber(entity.getBillType(), entity.getCNumber()));
     }
 
+    /**
+     * The next job number for this company and bill type, taken atomically.
+     * See {@link my.maleva.api.module.saleorder.service.SaleOrderNumberAllocator}
+     * for why the old read-add-save could give two orders the same number.
+     */
     private Integer generateCNumber(Integer companyRefId, String billType) {
+        String sequenceName = buildSequenceName(billType);
         try {
-            String sequenceName = buildSequenceName(billType);
-            Optional<SequenceNoMaster> existingSequence = sequenceNoMasterRepository
-                    .findByCompanyRefIdAndSequenceName(companyRefId, sequenceName);
-
-            int currentSequence = existingSequence
-                    .map(SequenceNoMaster::getSequenceNo)
-                    .orElseGet(() -> Optional.ofNullable(
-                            sequenceNoMasterRepository.findMaxSequenceNoByCompanyAndSequenceName(companyRefId, sequenceName)
-                    ).orElse(0));
-
-            int nextSequence = currentSequence + 1;
-            SequenceNoMaster sequenceEntity = existingSequence.orElseGet(() -> createSequenceEntity(companyRefId, sequenceName));
-            sequenceEntity.setSequenceNo(nextSequence);
-            sequenceEntity.setSequenceDate(LocalDateTime.now());
-
-            sequenceNoMasterRepository.save(sequenceEntity);
+            int nextSequence = numberAllocator.next(companyRefId, sequenceName,
+                    normalizeRequiredValue(billType, SaleOrderApiConstants.DEFAULT_BILL_TYPE));
             logger.debug("Generated sale order sequence - company: {}, sequenceName: {}, value: {}",
                     companyRefId, sequenceName, nextSequence);
-
             return nextSequence;
-        } catch (Exception exception) {
+        } catch (RuntimeException exception) {
             logger.error("Unable to generate sale order sequence for company: {}", companyRefId, exception);
             throw new InvalidRequestException(SaleOrderApiConstants.MESSAGE_SEQUENCE_GENERATION_FAILED, exception);
         }
-    }
-
-    private SequenceNoMaster createSequenceEntity(Integer companyRefId, String sequenceName) {
-        return SequenceNoMaster.builder()
-                .companyRefId(companyRefId)
-                .sequenceName(sequenceName)
-                .sequenceNo(0)
-                .sequenceDate(LocalDateTime.now())
-                .build();
     }
 
     private String buildSequenceName(String billType) {

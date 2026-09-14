@@ -69,7 +69,11 @@ spring:
   datasource:
     # Default JDBC URL includes encrypt=true and trustServerCertificate=true to MalevanewDemo ,LiveMaleva2, avoid SSL certificate path errors
     # For production, prefer to set trustServerCertificate=false and import the DemoMaleva server certificate into the JVM truststore
-    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=MalevanewDemo;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=30000}
+    # socketTimeout is only the dead-network backstop and must outlast the query
+    # timeouts (JPA 120 s here, JdbcTemplate in DataSourceConfig). At 30 s it closed the
+    # socket under any slower query, the rollback then failed on the dead connection,
+    # and the real error was replaced by "Unable to rollback against JDBC Connection".
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://103.215.139.8:1433;databaseName=MalevanewDemo;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=180000}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
     password: ${SPRING_DATASOURCE_PASSWORD:Kassamy@123}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
@@ -102,6 +106,13 @@ spring:
       physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     # Also provide the direct property (redundant but explicit)
     properties:
+      # Every JPA/Criteria query is cancelled after 120 s. A statement timeout
+      # cancels only that statement: the connection stays usable, the rollback
+      # succeeds, and the caller gets a clear timeout instead of a lost error.
+      jakarta:
+        persistence:
+          query:
+            timeout: ${DB_QUERY_TIMEOUT_MS:120000}
       hibernate:
         dialect: org.hibernate.dialect.SQLServerDialect
         physical_naming_strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
