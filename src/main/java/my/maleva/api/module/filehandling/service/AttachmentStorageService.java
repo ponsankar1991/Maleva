@@ -36,6 +36,13 @@ public interface AttachmentStorageService {
     java.util.Set<Integer> recordsWithFiles(Integer companyRefId, String folderName);
 
     /**
+     * How many files each record under a folder holds, keyed by record id.
+     * Records with an empty folder are absent. One directory scan; what the
+     * list screens use to mark rows with and without documents.
+     */
+    java.util.Map<Integer, Integer> fileCountsByRecord(Integer companyRefId, String folderName);
+
+    /**
      * Removes {@code paths} from {@code scope} and reports what remains.
      *
      * @param filePathTable optional table whose {@code FilePath} column is resynced; may be null

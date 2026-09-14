@@ -85,7 +85,19 @@ public class StatementMailLogRepository {
             List<String> sentTo, List<String> cc, String subject, String reminder,
             LocalDate statementDate, BigDecimal overdueAmount, String currency, String attachmentName,
             String status, String error, String jobId, String sentBy, LocalDateTime sentAt,
-            String kind, String messageId, String inReplyTo, Long replyToRefId) {
+            String kind, String messageId, String inReplyTo, Long replyToRefId,
+            String bodyText) {
+
+        public Entry(
+                int companyId, int customerId, String customerName,
+                List<String> sentTo, List<String> cc, String subject, String reminder,
+                LocalDate statementDate, BigDecimal overdueAmount, String currency, String attachmentName,
+                String status, String error, String jobId, String sentBy, LocalDateTime sentAt,
+                String kind, String messageId, String inReplyTo, Long replyToRefId) {
+            this(companyId, customerId, customerName, sentTo, cc, subject, reminder, statementDate,
+                    overdueAmount, currency, attachmentName, status, error, jobId, sentBy, sentAt,
+                    kind, messageId, inReplyTo, replyToRefId, null);
+        }
     }
 
     /** One logged mail, as the conversation view and the reply matcher read it. */
@@ -93,7 +105,8 @@ public class StatementMailLogRepository {
             long id, int companyId, int customerId, String customerName,
             String sentTo, String cc, String subject, String reminder, String attachmentName,
             String status, String error, String sentBy, LocalDateTime sentAt,
-            String kind, String messageId, String inReplyTo, Long replyToRefId) {
+            String kind, String messageId, String inReplyTo, Long replyToRefId,
+            String bodyText) {
     }
 
     private static final RowMapper<Row> ROW = (rs, i) -> new Row(
@@ -101,10 +114,11 @@ public class StatementMailLogRepository {
             rs.getString("SentTo"), rs.getString("Cc"), rs.getString("Subject"), rs.getString("Reminder"),
             rs.getString("AttachmentName"), rs.getString("Status"), rs.getString("Error"), rs.getString("SentBy"),
             rs.getObject("SentAt", LocalDateTime.class), rs.getString("Kind"), rs.getString("MessageId"),
-            rs.getString("InReplyTo"), rs.getObject("ReplyToRefId", Long.class));
+            rs.getString("InReplyTo"), rs.getObject("ReplyToRefId", Long.class),
+            rs.getString("BodyText"));
 
     private static final String ROW_COLUMNS = "Id, CompanyRefId, CustomerRefId, CustomerName, SentTo, Cc, Subject, Reminder, "
-            + "AttachmentName, Status, Error, SentBy, SentAt, Kind, MessageId, InReplyTo, ReplyToRefId";
+            + "AttachmentName, Status, Error, SentBy, SentAt, Kind, MessageId, InReplyTo, ReplyToRefId, BodyText";
 
     public boolean isAvailable() {
         return available;
@@ -156,14 +170,15 @@ public class StatementMailLogRepository {
                     .addValue("kind", e.kind() == null ? KIND_STATEMENT : e.kind())
                     .addValue("messageId", cut(e.messageId(), 255))
                     .addValue("inReplyTo", cut(e.inReplyTo(), 255))
-                    .addValue("replyToRefId", e.replyToRefId(), Types.BIGINT);
+                    .addValue("replyToRefId", e.replyToRefId(), Types.BIGINT)
+                    .addValue("bodyText", e.bodyText());
             String sql = """
                     INSERT INTO %s (CompanyRefId, CustomerRefId, CustomerName, SentTo, Cc, Subject, Reminder,
                                     StatementDate, OverdueAmount, Currency, AttachmentName, Status, Error, JobId, SentBy, SentAt,
-                                    Kind, MessageId, InReplyTo, ReplyToRefId)
+                                    Kind, MessageId, InReplyTo, ReplyToRefId, BodyText)
                     VALUES (:companyId, :customerId, :customerName, :sentTo, :cc, :subject, :reminder,
                             :statementDate, :overdueAmount, :currency, :attachmentName, :status, :error, :jobId, :sentBy, :sentAt,
-                            :kind, :messageId, :inReplyTo, :replyToRefId)
+                            :kind, :messageId, :inReplyTo, :replyToRefId, :bodyText)
                     """.formatted(TABLE);
             tx.executeWithoutResult(status -> jdbc.update(sql, p));
             return true;

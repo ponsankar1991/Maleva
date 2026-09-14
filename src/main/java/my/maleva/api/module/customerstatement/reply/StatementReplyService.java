@@ -117,7 +117,7 @@ public class StatementReplyService {
         List<StatementConversation.Entry> entries = new ArrayList<>();
         for (StatementMailLogRepository.Row r : sent) {
             entries.add(new StatementConversation.Entry("SENT", r.id(), r.sentAt(), null, r.sentTo(), r.cc(), r.subject(),
-                    null, r.status(), r.error(), r.sentBy(), r.attachmentName(), false, List.of(), List.of()));
+                    r.bodyText(), r.status(), r.error(), r.sentBy(), r.attachmentName(), false, List.of(), List.of()));
         }
         for (Reply r : received) {
             List<StatementConversation.Attachment> files = attachments.getOrDefault(r.id(), List.of()).stream()
@@ -296,7 +296,8 @@ public class StatementReplyService {
                 null, null, null, attachmentName,
                 error == null ? "SENT" : "FAILED", error, null, user, LocalDateTime.now(),
                 StatementMailLogRepository.KIND_REPLY, messageId,
-                original == null ? null : original.messageId(), original == null ? null : original.id()));
+                original == null ? null : original.messageId(), original == null ? null : original.id(),
+                request.getBody()));
         if (error != null) {
             throw new IllegalStateException("The mail server refused the message: " + error);
         }

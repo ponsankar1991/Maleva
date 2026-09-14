@@ -41,7 +41,7 @@ class StatementReplyImporterMatchTest {
             "mttsmgrfin@mttshipmanager.com.my, karthick123svks@gmail.com", "receivable@maleva.com.my",
             "Statement of Account & Payment Request - MTT SHIPPING SDN BHD", "", "CustomerStatement_MTT.pdf",
             "SENT", null, "mages", LocalDateTime.of(2026, 9, 11, 16, 27), "STATEMENT",
-            "<statement-9f3c@maleva.com.my>", null, null);
+            "<statement-9f3c@maleva.com.my>", null, null, null);
 
     private static InboundMail mail(String inReplyTo, String subject, String from) {
         return new InboundMail(1, "<x@y>", inReplyTo, List.of(), from, "Someone", "account@maleva.com.my", null, subject,

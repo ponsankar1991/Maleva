@@ -19,9 +19,25 @@ import java.nio.file.Paths;
 @ConfigurationProperties(prefix = "file.upload")
 public class FileUploadConfig {
 
-    private String uploadDir = "uploads";
-    private String publicUrlPrefix = "/uploads";
-    private Long maxFileSize = 10485760L; // 10MB default
+    /**
+     * Defaults are the legacy names, so a Spring upload lands in the same
+     * {@code Upload/<company>/<folder>/<id>/} tree the .NET screens wrote and
+     * is served on the same {@code /Upload/...} path they stored in
+     * {@code FilePath} columns. Set {@code FILE_UPLOAD_DIR} to the IIS folder in
+     * production so both applications read one disk.
+     */
+    private String uploadDir = "Upload";
+    private String publicUrlPrefix = "/Upload";
+    /**
+     * Per-file cap. 25 MB: the legacy IIS host accepted roughly 30 MB per
+     * request, and scanned supplier documents regularly land just over the
+     * old 10 MB Spring default, which rejected a file that IIS had taken.
+     */
+    private Long maxFileSize = 26214400L;
+
+    /** Per-request cap across every part; must hold {@link #maxFiles} files of {@link #maxFileSize}. */
+    private Long maxRequestSize = 104857600L;
+
     private Integer maxFiles = 10;
 
     /** Longest edge, in pixels, an image is downscaled to before storage. */
@@ -60,6 +76,14 @@ public class FileUploadConfig {
 
     public void setMaxFileSize(Long maxFileSize) {
         this.maxFileSize = maxFileSize;
+    }
+
+    public Long getMaxRequestSize() {
+        return maxRequestSize;
+    }
+
+    public void setMaxRequestSize(Long maxRequestSize) {
+        this.maxRequestSize = maxRequestSize;
     }
 
     public Integer getMaxFiles() {

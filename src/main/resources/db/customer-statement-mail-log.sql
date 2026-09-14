@@ -28,7 +28,8 @@ BEGIN
         Kind           VARCHAR(10)    NOT NULL CONSTRAINT DF_CSML_Kind DEFAULT 'STATEMENT',  -- STATEMENT | REPLY
         MessageId      NVARCHAR(255)  NULL,          -- our Message-ID; what a customer's reply points back to
         InReplyTo      NVARCHAR(255)  NULL,          -- for a reply we send: the customer mail it answers
-        ReplyToRefId   BIGINT         NULL           -- for a reply we send: the CustomerStatementMailReply row
+        ReplyToRefId   BIGINT         NULL,          -- for a reply we send: the CustomerStatementMailReply row
+        BodyText       NVARCHAR(MAX)  NULL           -- the message content sent
     );
     CREATE INDEX IX_CustomerStatementMailLog_Customer
         ON dbo.CustomerStatementMailLog (CompanyRefId, CustomerRefId, SentAt DESC);
@@ -36,7 +37,7 @@ BEGIN
         ON dbo.CustomerStatementMailLog (MessageId);
 END
 
--- Tables created before the reply feature: add the four columns.
+-- Tables created before the reply feature: add the five columns.
 IF COL_LENGTH('dbo.CustomerStatementMailLog', 'Kind') IS NULL
     ALTER TABLE dbo.CustomerStatementMailLog ADD Kind VARCHAR(10) NOT NULL CONSTRAINT DF_CSML_Kind DEFAULT 'STATEMENT';
 IF COL_LENGTH('dbo.CustomerStatementMailLog', 'MessageId') IS NULL
@@ -45,5 +46,7 @@ IF COL_LENGTH('dbo.CustomerStatementMailLog', 'InReplyTo') IS NULL
     ALTER TABLE dbo.CustomerStatementMailLog ADD InReplyTo NVARCHAR(255) NULL;
 IF COL_LENGTH('dbo.CustomerStatementMailLog', 'ReplyToRefId') IS NULL
     ALTER TABLE dbo.CustomerStatementMailLog ADD ReplyToRefId BIGINT NULL;
+IF COL_LENGTH('dbo.CustomerStatementMailLog', 'BodyText') IS NULL
+    ALTER TABLE dbo.CustomerStatementMailLog ADD BodyText NVARCHAR(MAX) NULL;
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CustomerStatementMailLog_MessageId')
     CREATE INDEX IX_CustomerStatementMailLog_MessageId ON dbo.CustomerStatementMailLog (MessageId);

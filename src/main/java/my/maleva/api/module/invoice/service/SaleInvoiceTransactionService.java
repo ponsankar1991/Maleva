@@ -80,15 +80,18 @@ public class SaleInvoiceTransactionService {
     private final SequenceNoMasterRepository sequences;
     private final SaleInvoiceWriter writer;
     private final InvoiceSaveGuard saveGuard;
+    private final InvoiceJobBillingGuard jobGuard;
 
     public SaleInvoiceTransactionService(NamedParameterJdbcTemplate jdbc,
                                          SequenceNoMasterRepository sequences,
                                          SaleInvoiceWriter writer,
-                                         InvoiceSaveGuard saveGuard) {
+                                         InvoiceSaveGuard saveGuard,
+                                         InvoiceJobBillingGuard jobGuard) {
         this.jdbc = jdbc;
         this.sequences = sequences;
         this.writer = writer;
         this.saveGuard = saveGuard;
+        this.jobGuard = jobGuard;
     }
 
     // ─────────────────────────────────────────────────────────────── save ──
@@ -186,6 +189,11 @@ public class SaleInvoiceTransactionService {
                                                List<SaleInvoiceDetailRequestDTO> lines,
                                                Integer companyId,
                                                boolean creating) {
+        // Before the write, for two reasons: the job rows it locks must stay
+        // locked through the write until commit, and an edit's write clears the
+        // very links this check reads. A refusal throws, so the transaction
+        // rolls back and the save key is released for a genuine retry.
+        jobGuard.lockAndRequireUnbilled(request, lines, companyId);
         Integer savedId = writer.write(request, lines);
 
         String billNo;

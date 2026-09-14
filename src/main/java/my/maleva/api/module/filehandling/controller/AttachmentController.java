@@ -1,5 +1,6 @@
 package my.maleva.api.module.filehandling.controller;
 
+import my.maleva.api.common.config.FileUploadConfig;
 import my.maleva.api.common.dto.ApiResponse;
 import my.maleva.api.module.filehandling.dto.AttachmentDto;
 import my.maleva.api.module.filehandling.dto.AttachmentUploadCommand;
@@ -18,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Attachments of a business record, addressed by company, folder and record id.
@@ -32,9 +35,25 @@ import java.util.List;
 public class AttachmentController {
 
     private final AttachmentStorageService attachmentStorageService;
+    private final FileUploadConfig fileUploadConfig;
 
-    public AttachmentController(AttachmentStorageService attachmentStorageService) {
+    public AttachmentController(AttachmentStorageService attachmentStorageService,
+                                FileUploadConfig fileUploadConfig) {
         this.attachmentStorageService = attachmentStorageService;
+        this.fileUploadConfig = fileUploadConfig;
+    }
+
+    /**
+     * The upload limits, so a screen can refuse a file before sending it
+     * rather than learning the numbers from a 413.
+     */
+    @GetMapping("/limits")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> limits() {
+        Map<String, Object> limits = new LinkedHashMap<>();
+        limits.put("maxFileSize", fileUploadConfig.getMaxFileSize());
+        limits.put("maxRequestSize", fileUploadConfig.getMaxRequestSize());
+        limits.put("maxFiles", fileUploadConfig.getMaxFiles());
+        return ResponseEntity.ok(ApiResponse.success(limits, "Attachment limits"));
     }
 
     /**
@@ -68,6 +87,18 @@ public class AttachmentController {
 
         AttachmentUploadResultDto result = attachmentStorageService.upload(command);
         return ResponseEntity.ok(ApiResponse.success(result, "Attachments saved"));
+    }
+
+    /**
+     * File count per record under one folder, keyed by record id - what a list
+     * screen needs to mark every row with or without documents in one call.
+     */
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<Map<Integer, Integer>>> summary(
+            @RequestParam Integer companyRefId,
+            @RequestParam String folderName) {
+        return ResponseEntity.ok(ApiResponse.success(
+                attachmentStorageService.fileCountsByRecord(companyRefId, folderName), "Attachment summary"));
     }
 
     /** Files currently attached to a record. */

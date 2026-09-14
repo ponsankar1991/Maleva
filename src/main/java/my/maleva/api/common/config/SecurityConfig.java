@@ -37,7 +37,11 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "https://mydriverszone.com",
-                "https://maleva.mydriverszone.com"
+                "https://maleva.mydriverszone.com",
+                // Spring trims a trailing slash, but an Origin header never
+                // carries one, so the list is written the way browsers send it.
+                "https://maleva.my",
+                "https://www.maleva.my"
         ));
 
         config.setAllowedMethods(java.util.List.of(
@@ -106,7 +110,9 @@ public class SecurityConfig {
 
     // Security filter chain: register JWT filter and secure endpoints
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, TokenStore tokenStore,CorsConfigurationSource corsConfigurationSource) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, TokenStore tokenStore,
+                                                   CorsConfigurationSource corsConfigurationSource,
+                                                   FileUploadConfig fileUploadConfig) {
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, tokenStore);
 
         http
@@ -126,7 +132,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/ws/**").permitAll()
                         // Stored attachments are fetched by <img>/<a> and by new
                         // tabs, neither of which carries the bearer token.
-                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers(attachmentUrlPattern(fileUploadConfig)).permitAll()
                         // A report window is a new tab and carries no bearer
                         // token either. It opens a ticket minted by the
                         // authenticated /print-ticket call: a random UUID, valid
@@ -145,5 +151,22 @@ public class SecurityConfig {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to build SecurityFilterChain", e);
         }
+    }
+
+    /**
+     * {@code <file.upload.public-url-prefix>/**}, so the open rule for stored
+     * attachments moves with the prefix instead of silently pointing at a
+     * path nothing is served on.
+     */
+    private static String attachmentUrlPattern(FileUploadConfig fileUploadConfig) {
+        String prefix = fileUploadConfig.getPublicUrlPrefix();
+        String value = (prefix == null || prefix.isBlank()) ? "/Upload" : prefix.trim();
+        if (!value.startsWith("/")) {
+            value = "/" + value;
+        }
+        while (value.length() > 1 && value.endsWith("/")) {
+            value = value.substring(0, value.length() - 1);
+        }
+        return value + "/**";
     }
 }

@@ -1,5 +1,6 @@
 package my.maleva.api.module.common.service;
 
+import my.maleva.api.common.config.FileUploadConfig;
 import my.maleva.api.common.dto.ResponseViewModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +29,41 @@ public class CommonServiceImpl implements ICommonService {
     private final JdbcTemplate jdbcTemplate;
     private final PlatformTransactionManager transactionManager;
 
-    public CommonServiceImpl(JdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
+    private final FileUploadConfig fileUploadConfig;
+
+    public CommonServiceImpl(JdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager,
+                             FileUploadConfig fileUploadConfig) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
+        this.fileUploadConfig = fileUploadConfig;
+    }
+
+    /**
+     * The legacy callers name a directory by its public path
+     * ({@code /Upload/6/PayBills}). That used to be glued onto
+     * {@code user.dir/uploads}, which is a folder nothing writes to; it is now
+     * the configured storage root with the public prefix stripped, and can only
+     * name a directory below that root.
+     */
+    private String resolveUnderStorageRoot(String imageDirectory) {
+        Path root = fileUploadConfig.getStorageRoot();
+        String relative = imageDirectory == null ? "" : imageDirectory.trim().replace('\\', '/');
+        String prefix = fileUploadConfig.getPublicUrlPrefix();
+        if (prefix != null && !prefix.isBlank()) {
+            String p = prefix.trim();
+            if (relative.regionMatches(true, 0, p, 0, p.length())
+                    && (relative.length() == p.length() || relative.charAt(p.length()) == '/')) {
+                relative = relative.substring(p.length());
+            }
+        }
+        while (relative.startsWith("/")) {
+            relative = relative.substring(1);
+        }
+        Path resolved = root.resolve(relative).normalize();
+        if (!resolved.startsWith(root)) {
+            throw new IllegalArgumentException("Directory resolves outside the upload root: " + imageDirectory);
+        }
+        return resolved.toString();
     }
 
     /**
@@ -59,7 +92,7 @@ public class CommonServiceImpl implements ICommonService {
     public ResponseViewModel fetchFiles(String imageDirectory) {
         try {
             // Assuming imageDirectory is like "/Upload/1/folder/1/sub/"
-            String basePath = System.getProperty("user.dir") + "/uploads" + imageDirectory; // Adjust path as needed
+            String basePath = resolveUnderStorageRoot(imageDirectory);
             Path dir = Paths.get(basePath);
             List<String> imageNames = new ArrayList<>();
 
@@ -81,7 +114,7 @@ public class CommonServiceImpl implements ICommonService {
     @Override
     public ResponseViewModel checkFiles(String imageDirectory) {
         try {
-            String basePath = System.getProperty("user.dir") + "/uploads" + imageDirectory;
+            String basePath = resolveUnderStorageRoot(imageDirectory);
             Path dir = Paths.get(basePath);
             List<Integer> folderNames = new ArrayList<>();
 

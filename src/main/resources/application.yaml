@@ -120,19 +120,31 @@ server:
   port: 8082
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 50MB
+      # Plain byte counts, shared with file.upload.* below so the servlet
+      # container and the attachment service enforce the same numbers. The
+      # container rejects first (413); the service check is the message the
+      # screen shows.
+      max-file-size: ${FILE_MAX_SIZE:26214400}
+      max-request-size: ${FILE_MAX_REQUEST_SIZE:104857600}
+  tomcat:
+    # Tomcat stops reading a rejected upload after this many bytes and drops
+    # the connection, which the browser reports as a network error instead of
+    # the 413 body. Reading the whole request lets the JSON error reach it.
+    max-swallow-size: ${FILE_MAX_REQUEST_SIZE:104857600}
 
 
 file:
   upload:
-    upload-dir: ${FILE_UPLOAD_DIR:uploads}
+    # Same tree the legacy .NET screens wrote: Upload/<company>/<folder>/<id>/.
+    # In production point FILE_UPLOAD_DIR at the IIS site's Upload folder so
+    # both applications read and write one disk.
+    upload-dir: ${FILE_UPLOAD_DIR:Upload}
     # URL the stored files are served on, and the prefix baked into every path
-    # returned by the attachment API. Point this at /Upload alongside an
-    # upload-dir of the old IIS folder to keep serving paths already saved in
-    # the legacy FilePath columns.
-    public-url-prefix: ${FILE_PUBLIC_URL_PREFIX:/uploads}
-    max-file-size: ${FILE_MAX_SIZE:10485760}
+    # returned by the attachment API. /Upload is what the legacy FilePath
+    # columns already hold, so old and new rows resolve alike.
+    public-url-prefix: ${FILE_PUBLIC_URL_PREFIX:/Upload}
+    max-file-size: ${FILE_MAX_SIZE:26214400}
+    max-request-size: ${FILE_MAX_REQUEST_SIZE:104857600}
     max-files: ${FILE_MAX_FILES:10}
     image-max-dimension: ${FILE_IMAGE_MAX_DIMENSION:900}
     jpeg-quality: ${FILE_JPEG_QUALITY:0.5}

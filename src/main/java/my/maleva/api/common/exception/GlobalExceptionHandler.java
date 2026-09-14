@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import my.maleva.api.common.config.FileUploadConfig;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,6 +30,29 @@ import my.maleva.api.common.exception.RtiJobWiseQueryException;
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final FileUploadConfig fileUploadConfig;
+
+    public GlobalExceptionHandler(FileUploadConfig fileUploadConfig) {
+        this.fileUploadConfig = fileUploadConfig;
+    }
+
+    /**
+     * An upload the servlet container refused before any controller ran.
+     * Without this the screen got a 500 with Tomcat's own sentence in it; the
+     * limits are configuration, so the message names them.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleUploadTooLarge(MaxUploadSizeExceededException ex, WebRequest request) {
+        String path = ((ServletWebRequest) request).getRequest().getRequestURI();
+        long perFileMb = fileUploadConfig.getMaxFileSize() / (1024 * 1024);
+        long perRequestMb = fileUploadConfig.getMaxRequestSize() / (1024 * 1024);
+        logger.warn("Upload rejected on {} as too large: {}", path, rootMessage(ex));
+        ApiError err = new ApiError(Instant.now(), 413, "Upload Too Large",
+                "The upload is too large. The limit is " + perFileMb + " MB per file and "
+                        + perRequestMb + " MB per request.", path, null);
+        return new ResponseEntity<>(err, HttpStatus.valueOf(413));
+    }
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(EntityNotFoundException ex, WebRequest request) {

@@ -108,8 +108,17 @@ server:
   port: 8083
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 50MB
+      # Plain byte counts, shared with file.upload.* below so the servlet
+      # container and the attachment service enforce the same numbers. The
+      # container rejects first (413); the service check is the message the
+      # screen shows.
+      max-file-size: ${FILE_MAX_SIZE:26214400}
+      max-request-size: ${FILE_MAX_REQUEST_SIZE:104857600}
+  tomcat:
+    # Tomcat stops reading a rejected upload after this many bytes and drops
+    # the connection, which the browser reports as a network error instead of
+    # the 413 body. Reading the whole request lets the JSON error reach it.
+    max-swallow-size: ${FILE_MAX_REQUEST_SIZE:104857600}
 
 logging:
   level:
@@ -119,8 +128,10 @@ logging:
 
 file:
   upload:
-    upload-dir: ${FILE_UPLOAD_DIR:uploads}
-    max-file-size: ${FILE_MAX_SIZE:10485760}
+    upload-dir: ${FILE_UPLOAD_DIR:Upload}
+    public-url-prefix: ${FILE_PUBLIC_URL_PREFIX:/Upload}
+    max-file-size: ${FILE_MAX_SIZE:26214400}
+    max-request-size: ${FILE_MAX_REQUEST_SIZE:104857600}
     max-files: ${FILE_MAX_FILES:10}
 
 jwt:

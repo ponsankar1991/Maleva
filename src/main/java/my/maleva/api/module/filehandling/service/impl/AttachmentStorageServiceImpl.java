@@ -115,12 +115,17 @@ public class AttachmentStorageServiceImpl implements AttachmentStorageService {
 
     @Override
     public java.util.Set<Integer> recordsWithFiles(Integer companyRefId, String folderName) {
+        return fileCountsByRecord(companyRefId, folderName).keySet();
+    }
+
+    @Override
+    public java.util.Map<Integer, Integer> fileCountsByRecord(Integer companyRefId, String folderName) {
         // validated the same way a scope is, so the folder name cannot escape the root
         Path parent = AttachmentScope.of(companyRefId, folderName, 0, null)
                 .resolveDirectory(config.getStorageRoot()).getParent();
-        java.util.Set<Integer> ids = new java.util.HashSet<>();
+        java.util.Map<Integer, Integer> counts = new java.util.HashMap<>();
         if (parent == null || !Files.isDirectory(parent)) {
-            return ids;
+            return counts;
         }
         try (Stream<Path> records = Files.list(parent)) {
             records.filter(Files::isDirectory).forEach(dir -> {
@@ -131,8 +136,9 @@ public class AttachmentStorageServiceImpl implements AttachmentStorageService {
                     return;
                 }
                 try (Stream<Path> files = Files.list(dir)) {
-                    if (files.anyMatch(Files::isRegularFile)) {
-                        ids.add(id);
+                    int count = (int) files.filter(Files::isRegularFile).count();
+                    if (count > 0) {
+                        counts.put(id, count);
                     }
                 } catch (IOException ex) {
                     logger.debug("Could not read attachment folder {}: {}", dir, ex.getMessage());
@@ -141,7 +147,7 @@ public class AttachmentStorageServiceImpl implements AttachmentStorageService {
         } catch (IOException ex) {
             throw new UncheckedIOException("Failed to scan attachment folder " + parent, ex);
         }
-        return ids;
+        return counts;
     }
 
     @Override
