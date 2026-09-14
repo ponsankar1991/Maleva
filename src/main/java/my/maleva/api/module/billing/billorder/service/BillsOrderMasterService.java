@@ -784,7 +784,8 @@ public class BillsOrderMasterService {
             if (filterModel.getVessalNameSearch() != null && !filterModel.getVessalNameSearch().trim().isEmpty()) {
                 String vessel = filterModel.getVessalNameSearch().trim();
                 whereClause.setLength(0); // Clear all previous filters (including dates) - vessel search takes absolute priority
-                whereClause.append(" AND (A.OffVessal LIKE :vessel OR A.LodingVessal LIKE :vessel OR A.Remarks LIKE :vessel)");
+                whereClause.append(" AND (A.OffVessal LIKE :vessel OR A.LodingVessal LIKE :vessel OR A.Remarks LIKE :vessel")
+                        .append(" OR SA.Offvesselname LIKE :vessel OR SA.Loadingvesselname LIKE :vessel)");
                 params.addValue("vessel", "%" + escapeLike(vessel) + "%");
             }
 
@@ -798,7 +799,10 @@ public class BillsOrderMasterService {
                     "ISNULL(J.TruckName, '') AS TruckName, ISNULL(K.DriverName, '') AS DriverName, " +
                     "ISNULL(SA.CNumberDisplay, '') AS BillNoDisplay1, A.BillStatus, A.PayTo, " +
                     "A.Description, A.Fileupload, " +
-                    "ISNULL(A.OffVessal, '') AS OffVessal, ISNULL(A.LodingVessal, '') AS LodingVessal " +
+                    // The PO's own typed vessel wins; a PO raised against a job with the field left
+                    // blank shows the job's vessel instead, the same source the invoice view reads.
+                    "COALESCE(NULLIF(A.OffVessal, ''), SA.Offvesselname, '') AS OffVessal, " +
+                    "COALESCE(NULLIF(A.LodingVessal, ''), SA.Loadingvesselname, '') AS LodingVessal " +
                     "FROM BillsOrderMaster A WITH(NOLOCK) " +
                     "INNER JOIN Supplier S WITH(NOLOCK) ON A.SupplierRefId = S.Id " +
                     "LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id = A.EmployeeRefId " +
