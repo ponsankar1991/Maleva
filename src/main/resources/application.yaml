@@ -305,6 +305,22 @@ credit-note-print:
   generated-note-line1: "This is an computer generated invoice."
   generated-note-line2: "No signatory is required"
 
+# The printed delivery order (Crystal CRDoReport.rpt). Shares the letterhead and
+# logo above. The terms are the Crystal wording VERBATIM, typos included - they
+# are contract terms, so reword them here only on the company's say-so.
+delivery-order-print:
+  heading: "Delivery Report"
+  captain-email-label: "CAPTAIN EMAIL ADDRESS:"
+  delivery-term-label: "Delivery Term :"
+  terms-title: "TERMS AND CONDITIONS:"
+  terms:
+    - "1. MALEVA (M) SDN BHD will not be liable or held responsible for any loss, damage and delay of any goods conveyed by its lorries to holdups, robbery, accidents and unforeseen circumstances beyond the control of the Company."
+    - "2. Consignee is required to appoint their own surveyor at place of loading to inspect all their goods before loading into our lorry. All goods loaded into our lorry shall be considered as being accepted by the consignee in its original conditions, not with standing whether surveyed or not. (Contents unknown & unchecked)"
+    - "3, All goods transported from the place of loading to destination are at consignee's task and insurance covered only upon receipt of written Instructions."
+    - "4. Kindly note that we have received the cargo on behalf of the customer and delivered it to the vessel. Please be informed that we were not aware of the specific contents inside the cargo, as it was sealed upon receipt.\nIf any items are missing or not received, kindly indicate this in the delivery order (DO) remarks. We will then inform the customer immediately for further action."
+  issuer-signature-label: "Boarding Officer"
+  recipient-signature-label: "Recipient's Chop and Signature"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LHDN MyInvois e-invoicing (legacy EInvoiceapilist.cs). Credentials are user-
 # scope environment variables (setx), never YAML defaults. The environment

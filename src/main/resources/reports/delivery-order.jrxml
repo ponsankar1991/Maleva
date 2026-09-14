@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Printed delivery order: the Jasper port of the legacy Crystal CRDoReport.rpt
+  (ReportViewer.aspx?ReportName=DoReport), laid out against a real legacy print
+  (DOReport2605324.pdf, A4, Verdana) measured point for point:
+
+    top right: the JOB NO box
+    MALEVA wordmark + six letterhead lines, centred "Delivery Report"
+    left: Customer / name / address / Attn
+    right: one bordered panel - job type, loading vessel, off vessel, then
+           DO NO, Date, AWB NO, BL COPY, No. Of PKGS, Weight
+    "#  Description" rule-bounded table, one row per DO line with a description
+    last-page footer pinned to the bottom: CAPTAIN EMAIL ADDRESS, Delivery Term,
+      TERMS AND CONDITIONS on the left, two Date / Start Loading / End Loading
+      boxes on the right, Boarding Officer and recipient signature lines
+
+  Deliberate improvements over the Crystal print, all presentational:
+    - the two vessel rows carry labels (Crystal printed them bare)
+    - the job number box carries a "JOB NO" caption
+    - the logo is the sharp wordmark, not a 200 px bitmap on a grey square
+    - long addresses shrink to fit instead of running under "Attn"
+    - "Page X of Y" at the foot of every page
+
+  Every printed value arrives as a parameter or the doDescription field; the
+  template does no arithmetic and no data lookups.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="delivery-order" pageWidth="595" pageHeight="842" columnWidth="547"
+              leftMargin="24" rightMargin="24" topMargin="20" bottomMargin="20"
+              whenNoDataType="AllSectionsNoDetail">
+
+    <style name="Base" isDefault="true" fontName="Verdana" fontSize="7" isBlankWhenNull="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+    <style name="Label" style="Base" isBold="true"/>
+    <style name="Body8" style="Base" fontSize="8"/>
+    <style name="Value8" style="Base" fontSize="8" isBold="true"/>
+    <style name="Value9" style="Base" fontSize="9" isBold="true"/>
+    <style name="Fine" style="Base" fontSize="6"/>
+
+    <parameter name="LOGO" class="java.io.InputStream"/>
+    <parameter name="HEADER_LINES" class="java.util.List"/>
+    <parameter name="HEADING" class="java.lang.String"/>
+    <parameter name="JOB_NO" class="java.lang.String"/>
+    <parameter name="JOB_TYPE" class="java.lang.String"/>
+    <parameter name="LOADING_VESSEL" class="java.lang.String"/>
+    <parameter name="OFF_VESSEL" class="java.lang.String"/>
+    <parameter name="DO_NO" class="java.lang.String"/>
+    <parameter name="DO_DATE" class="java.lang.String"/>
+    <parameter name="CUSTOMER" class="java.lang.String"/>
+    <parameter name="ADDRESS" class="java.lang.String"/>
+    <parameter name="ATTN" class="java.lang.String"/>
+    <parameter name="AWB_NO" class="java.lang.String"/>
+    <parameter name="BL_COPY" class="java.lang.String"/>
+    <parameter name="PACKAGES" class="java.lang.String"/>
+    <parameter name="WEIGHT" class="java.lang.String"/>
+    <parameter name="CAPTAIN_EMAIL_LABEL" class="java.lang.String"/>
+    <parameter name="DELIVERY_TERM_LABEL" class="java.lang.String"/>
+    <parameter name="TERMS_TITLE" class="java.lang.String"/>
+    <parameter name="TERMS_TEXT" class="java.lang.String"/>
+    <parameter name="ISSUER_SIGNATURE_LABEL" class="java.lang.String"/>
+    <parameter name="RECIPIENT_SIGNATURE_LABEL" class="java.lang.String"/>
+
+    <field name="doDescription" class="java.lang.String"/>
+
+    <variable name="H" class="java.util.List" calculation="System">
+        <initialValueExpression><![CDATA[$P{HEADER_LINES} == null ? java.util.List.of() : $P{HEADER_LINES}]]></initialValueExpression>
+    </variable>
+
+    <!-- ============ letterhead, customer, DO panel and the description header ============ -->
+    <title>
+        <band height="352">
+            <!-- job number, top right -->
+            <staticText>
+                <reportElement style="Label" x="330" y="5" width="66" height="12"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[JOB NO :]]></text>
+            </staticText>
+            <rectangle>
+                <reportElement x="400" y="2" width="147" height="18"/>
+                <graphicElement><pen lineWidth="1.0"/></graphicElement>
+            </rectangle>
+            <textField>
+                <reportElement style="Value9" x="400" y="2" width="147" height="18"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{JOB_NO}]]></textFieldExpression>
+            </textField>
+
+            <!-- wordmark and letterhead -->
+            <image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" isUsingCache="false" onErrorType="Blank">
+                <reportElement x="0" y="24" width="122" height="84"/>
+                <imageExpression><![CDATA[$P{LOGO}]]></imageExpression>
+            </image>
+            <textField>
+                <reportElement style="Label" x="132" y="32" width="415" height="20"/>
+                <textElement verticalAlignment="Middle"><font size="14"/></textElement>
+                <textFieldExpression><![CDATA[$V{H}.size() > 0 ? $V{H}.get(0) : ""]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Body8" x="132" y="56" width="415" height="12"/>
+                <textFieldExpression><![CDATA[$V{H}.size() > 1 ? $V{H}.get(1) : ""]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Body8" x="132" y="68" width="415" height="12"/>
+                <textFieldExpression><![CDATA[$V{H}.size() > 2 ? $V{H}.get(2) : ""]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Body8" x="132" y="80" width="415" height="12"/>
+                <textFieldExpression><![CDATA[$V{H}.size() > 3 ? $V{H}.get(3) : ""]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Body8" x="132" y="92" width="415" height="12"/>
+                <textFieldExpression><![CDATA[$V{H}.size() > 4 ? $V{H}.get(4) : ""]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Body8" x="132" y="104" width="415" height="12"/>
+                <textFieldExpression><![CDATA[$V{H}.size() > 5 ? $V{H}.get(5) : ""]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement style="Label" x="0" y="122" width="547" height="16"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font size="11"/></textElement>
+                <textFieldExpression><![CDATA[$P{HEADING}]]></textFieldExpression>
+            </textField>
+
+            <!-- customer, left -->
+            <staticText>
+                <reportElement style="Label" x="0" y="146" width="120" height="10"/>
+                <text><![CDATA[Customer :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value9" x="0" y="164" width="290" height="14"/>
+                <textFieldExpression><![CDATA[$P{CUSTOMER}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Body8" x="0" y="184" width="290" height="50"/>
+                <textElement><paragraph lineSpacing="Proportional" lineSpacingSize="1.25"/></textElement>
+                <textFieldExpression><![CDATA[$P{ADDRESS}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Label" x="0" y="239" width="36" height="12"/>
+                <textElement verticalAlignment="Middle"/>
+                <text><![CDATA[Attn :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value9" x="36" y="238" width="254" height="14"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{ATTN}]]></textFieldExpression>
+            </textField>
+
+            <!-- DO panel, right: outline, three full-width rows, then label / value rows -->
+            <rectangle>
+                <reportElement x="300" y="140" width="247" height="180"/>
+                <graphicElement><pen lineWidth="1.0"/></graphicElement>
+            </rectangle>
+            <line><reportElement x="300" y="164" width="247" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <line><reportElement x="300" y="188" width="247" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <line><reportElement x="300" y="212" width="247" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <line><reportElement x="381" y="164" width="1" height="156"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value8" x="304" y="140" width="239" height="24"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{JOB_TYPE}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement style="Label" x="302" y="164" width="75" height="24"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[Loading Vessel :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value8" x="386" y="164" width="157" height="24"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{LOADING_VESSEL}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Label" x="302" y="188" width="75" height="24"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[Off Vessel :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value8" x="386" y="188" width="157" height="24"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{OFF_VESSEL}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement style="Label" x="302" y="214" width="75" height="18"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[DO NO :]]></text>
+            </staticText>
+            <textField>
+                <reportElement style="Value9" x="386" y="214" width="157" height="18"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{DO_NO}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Label" x="302" y="232" width="75" height="18"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[Date :]]></text>
+            </staticText>
+            <textField>
+                <reportElement style="Value8" x="386" y="232" width="157" height="18"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{DO_DATE}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Label" x="302" y="250" width="75" height="18"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[AWB NO :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value8" x="386" y="250" width="157" height="18"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{AWB_NO}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Label" x="302" y="268" width="75" height="18"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[BL COPY :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value8" x="386" y="268" width="157" height="18"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{BL_COPY}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Label" x="302" y="286" width="75" height="18"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[No. Of PKGS :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value8" x="386" y="286" width="157" height="18"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{PACKAGES}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement style="Label" x="302" y="302" width="75" height="18"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"/>
+                <text><![CDATA[Weight :]]></text>
+            </staticText>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Value8" x="386" y="302" width="157" height="18"/>
+                <textElement verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$P{WEIGHT}]]></textFieldExpression>
+            </textField>
+
+            <!-- description table header, between two rules -->
+            <line><reportElement x="0" y="330" width="547" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <staticText>
+                <reportElement style="Base" x="0" y="331" width="24" height="20"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <text><![CDATA[#]]></text>
+            </staticText>
+            <staticText>
+                <reportElement style="Label" x="30" y="331" width="300" height="20"/>
+                <textElement verticalAlignment="Middle"/>
+                <text><![CDATA[Description]]></text>
+            </staticText>
+            <line><reportElement x="0" y="351" width="547" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+        </band>
+    </title>
+
+    <!-- ============ one row per DO line that has a description ============ -->
+    <detail>
+        <band height="22">
+            <textField>
+                <reportElement style="Base" x="0" y="4" width="24" height="14"/>
+                <textElement textAlignment="Center" verticalAlignment="Top"/>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="StretchHeight">
+                <reportElement style="Base" x="30" y="4" width="517" height="14"/>
+                <textElement><font size="9"/></textElement>
+                <textFieldExpression><![CDATA[$F{doDescription}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <!-- ============ page number on pages before the last ============ -->
+    <pageFooter>
+        <band height="14">
+            <textField>
+                <reportElement style="Fine" x="0" y="2" width="271" height="10"/>
+                <textElement textAlignment="Right"/>
+                <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER} + " of"]]></textFieldExpression>
+            </textField>
+            <textField evaluationTime="Report">
+                <reportElement style="Fine" x="273" y="2" width="272" height="10"/>
+                <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <!-- ============ captain, terms, loading boxes and signatures, pinned to the bottom ============ -->
+    <lastPageFooter>
+        <band height="332">
+            <textField>
+                <reportElement style="Label" x="0" y="0" width="360" height="17"/>
+                <textElement verticalAlignment="Middle"><font size="11"/></textElement>
+                <textFieldExpression><![CDATA[$P{CAPTAIN_EMAIL_LABEL}]]></textFieldExpression>
+            </textField>
+            <line><reportElement x="0" y="19" width="547" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+
+            <textField>
+                <reportElement style="Label" x="0" y="26" width="300" height="10"/>
+                <textElement><font isUnderline="true"/></textElement>
+                <textFieldExpression><![CDATA[$P{DELIVERY_TERM_LABEL}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement style="Label" x="0" y="44" width="300" height="10"/>
+                <textElement><font isUnderline="true"/></textElement>
+                <textFieldExpression><![CDATA[$P{TERMS_TITLE}]]></textFieldExpression>
+            </textField>
+            <textField textAdjust="ScaleFont">
+                <reportElement style="Base" x="0" y="60" width="318" height="232"/>
+                <textElement textAlignment="Left"><paragraph lineSpacing="Proportional" lineSpacingSize="1.15"/></textElement>
+                <textFieldExpression><![CDATA[$P{TERMS_TEXT}]]></textFieldExpression>
+            </textField>
+
+            <!-- two loading boxes -->
+            <rectangle><reportElement x="360" y="25" width="187" height="80"/><graphicElement><pen lineWidth="1.0"/></graphicElement></rectangle>
+            <line><reportElement x="440" y="25" width="1" height="80"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <line><reportElement x="360" y="47" width="187" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <line><reportElement x="360" y="73" width="187" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <staticText><reportElement style="Label" x="362" y="25" width="74" height="22"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[Date :]]></text></staticText>
+            <staticText><reportElement style="Label" x="362" y="47" width="74" height="26"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[Start Loading :]]></text></staticText>
+            <staticText><reportElement style="Label" x="362" y="73" width="74" height="32"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[End Loading :]]></text></staticText>
+
+            <rectangle><reportElement x="360" y="115" width="187" height="80"/><graphicElement><pen lineWidth="1.0"/></graphicElement></rectangle>
+            <line><reportElement x="440" y="115" width="1" height="80"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <line><reportElement x="360" y="137" width="187" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <line><reportElement x="360" y="163" width="187" height="1"/><graphicElement><pen lineWidth="1.0"/></graphicElement></line>
+            <staticText><reportElement style="Label" x="362" y="115" width="74" height="22"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[Date :]]></text></staticText>
+            <staticText><reportElement style="Label" x="362" y="137" width="74" height="26"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[Start Loading :]]></text></staticText>
+            <staticText><reportElement style="Label" x="362" y="163" width="74" height="32"/><textElement textAlignment="Right" verticalAlignment="Middle"/><text><![CDATA[End Loading :]]></text></staticText>
+
+            <!-- signatures -->
+            <line><reportElement x="0" y="300" width="190" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+            <textField>
+                <reportElement style="Label" x="0" y="304" width="190" height="11"/>
+                <textElement textAlignment="Center"/>
+                <textFieldExpression><![CDATA[$P{ISSUER_SIGNATURE_LABEL}]]></textFieldExpression>
+            </textField>
+            <line><reportElement x="352" y="300" width="195" height="1"/><graphicElement><pen lineWidth="0.75"/></graphicElement></line>
+            <textField>
+                <reportElement style="Label" x="352" y="304" width="195" height="11"/>
+                <textElement textAlignment="Center"/>
+                <textFieldExpression><![CDATA[$P{RECIPIENT_SIGNATURE_LABEL}]]></textFieldExpression>
+            </textField>
+
+            <textField>
+                <reportElement style="Fine" x="0" y="320" width="271" height="10"/>
+                <textElement textAlignment="Right"/>
+                <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER} + " of"]]></textFieldExpression>
+            </textField>
+            <textField evaluationTime="Report">
+                <reportElement style="Fine" x="273" y="320" width="272" height="10"/>
+                <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </lastPageFooter>
+</jasperReport>
