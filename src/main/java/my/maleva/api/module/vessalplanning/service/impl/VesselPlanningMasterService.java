@@ -446,9 +446,6 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             sql.append(" AND (S.SPort IN (:ports) OR S.OPort IN (:ports))");
             params.addValue("ports", ports);
         }
-        
-
-
         if (etaType == 1) {
             sql.append(" AND CAST(S.OETA as DATE) BETWEEN :fromDate AND :toDate");
         } else if (etaType == 2) {

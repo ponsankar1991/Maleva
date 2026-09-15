@@ -7,6 +7,7 @@ import my.maleva.api.module.saleorder.dto.VesselActivityReportProjection;
 import my.maleva.api.module.saleorder.entity.SaleOrderMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -144,6 +145,59 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
     List<VesselActivityReportProjection> getVesselActivityReport(@Param("companyRefId") Integer companyRefId, @Param("fromDate") String fromDate, @Param("toDate") String toDate, @Param("portName") String portName);
 
     Optional<SaleOrderMaster> findByIdAndCompanyRefId(Integer id, Integer companyRefId);
+
+    /**
+     * The Planning screen's Update window: sets only the columns that window edits (plus the
+     * joined stop lists the grid and other screens read), in one targeted UPDATE. Saving the
+     * whole entity instead writes every column the caller never loaded - that is how the
+     * Planning update used to zero GrossAmount, TaxAmount, Amount and CurrencyValue.
+     * The row count is not returned: SET NOCOUNT ON makes it -1 here, so callers check the
+     * row exists first.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update SaleOrderMaster s
+               set s.pickupDate = :pickupDate,
+                   s.deliveryDate = :deliveryDate,
+                   s.wareHouseEnterDate = :wareHouseEnterDate,
+                   s.wareHouseExitDate = :wareHouseExitDate,
+                   s.wareHouseAddress = :wareHouseAddress,
+                   s.origin = :origin,
+                   s.destination = :destination,
+                   s.originRefId = :originRefId,
+                   s.destinationRefId = :destinationRefId,
+                   s.quantity = :quantity,
+                   s.totalWeight = :totalWeight,
+                   s.pickupAddress = :pickupAddress,
+                   s.deliveryAddress = :deliveryAddress,
+                   s.pickupQuantitylist = :pickupQuantitylist,
+                   s.deliveryQuantitylist = :deliveryQuantitylist,
+                   s.quantityList = :quantityList,
+                   s.lastEmployeeRefId = :lastEmployeeRefId,
+                   s.modifiedDate = :modifiedDate
+             where s.id = :id
+               and s.companyRefId = :companyRefId
+            """)
+    void updatePlanningFields(@Param("id") Integer id,
+                              @Param("companyRefId") Integer companyRefId,
+                              @Param("pickupDate") java.time.LocalDateTime pickupDate,
+                              @Param("deliveryDate") java.time.LocalDateTime deliveryDate,
+                              @Param("wareHouseEnterDate") java.time.LocalDateTime wareHouseEnterDate,
+                              @Param("wareHouseExitDate") java.time.LocalDateTime wareHouseExitDate,
+                              @Param("wareHouseAddress") String wareHouseAddress,
+                              @Param("origin") String origin,
+                              @Param("destination") String destination,
+                              @Param("originRefId") Integer originRefId,
+                              @Param("destinationRefId") Integer destinationRefId,
+                              @Param("quantity") String quantity,
+                              @Param("totalWeight") String totalWeight,
+                              @Param("pickupAddress") String pickupAddress,
+                              @Param("deliveryAddress") String deliveryAddress,
+                              @Param("pickupQuantitylist") String pickupQuantitylist,
+                              @Param("deliveryQuantitylist") String deliveryQuantitylist,
+                              @Param("quantityList") String quantityList,
+                              @Param("lastEmployeeRefId") Integer lastEmployeeRefId,
+                              @Param("modifiedDate") java.time.LocalDateTime modifiedDate);
 
     @Query("""
         SELECT s, c.customerName
