@@ -3,7 +3,6 @@ package my.maleva.api.module.supplier.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +14,12 @@ import java.time.LocalDateTime;
 
 /**
  * SupplierDto - DTO for Supplier
+ *
+ * <p>No {@code @Email} on the email columns, deliberately. The legacy supplier
+ * screen stores other things in them: the boxes labelled TIN NO, MSIC CODE and
+ * SERVICE TAX TYPE save to AEmail1, OEmail and OEmail1, and SP_Supplier never
+ * validated any of them. CNumber, CNumberDisplay and AccountRefid are assigned
+ * by the server on insert and ignored on edit, so a caller does not send them.
  */
 @Data
 @NoArgsConstructor
@@ -31,11 +36,9 @@ public class SupplierDto {
     @Size(max = 500, message = "Supplier Name must not exceed 500 characters")
     private String supplierName;
 
-    @NotBlank(message = "C Number Display is required")
     @Size(max = 300, message = "C Number Display must not exceed 300 characters")
     private String cNumberDisplay;
 
-    @NotNull(message = "C Number is required")
     private Integer cNumber;
 
     @Size(max = 300, message = "Address1 must not exceed 300 characters")
@@ -47,7 +50,8 @@ public class SupplierDto {
     @Size(max = 300, message = "Address3 must not exceed 300 characters")
     private String address3;
 
-    @Size(max = 100, message = "City must not exceed 100 characters")
+    /** The PIC name on the legacy screen. */
+    @Size(max = 100, message = "PIC Name must not exceed 100 characters")
     private String city;
 
     @Size(max = 100, message = "Supplier City must not exceed 100 characters")
@@ -59,6 +63,7 @@ public class SupplierDto {
     @Size(max = 50, message = "Zipcode must not exceed 50 characters")
     private String zipcode;
 
+    /** The LHDN state code, not a country. */
     @Size(max = 50, message = "Country must not exceed 50 characters")
     private String country;
 
@@ -71,23 +76,18 @@ public class SupplierDto {
     @Size(max = 100, message = "GST No must not exceed 100 characters")
     private String gstNo;
 
-    @Email(message = "Email should be valid")
     @Size(max = 100, message = "Email must not exceed 100 characters")
     private String email;
 
-    @Email(message = "OEmail should be valid")
     @Size(max = 100, message = "OEmail must not exceed 100 characters")
     private String oEmail;
 
-    @Email(message = "OEmail1 should be valid")
     @Size(max = 100, message = "OEmail1 must not exceed 100 characters")
     private String oEmail1;
 
-    @Email(message = "AEmail should be valid")
     @Size(max = 100, message = "AEmail must not exceed 100 characters")
     private String aEmail;
 
-    @Email(message = "AEmail1 should be valid")
     @Size(max = 100, message = "AEmail1 must not exceed 100 characters")
     private String aEmail1;
 
@@ -124,7 +124,7 @@ public class SupplierDto {
     @Size(max = 100, message = "Person ID must not exceed 100 characters")
     private String personId;
 
-    @NotNull(message = "Active status is required")
+    /** Ignored on insert (always 1); on edit a missing flag keeps the stored one. */
     private Integer active;
 
     private LocalDateTime createdDate;
@@ -139,7 +139,6 @@ public class SupplierDto {
     @Size(max = 100, message = "Supplier Type must not exceed 100 characters")
     private String supplierType;
 
-    @NotNull(message = "Account Reference ID is required")
     private Integer accountRefid;
 
     @Size(max = 100, message = "TIN No must not exceed 100 characters")
@@ -187,4 +186,3 @@ public class SupplierDto {
     @Size(max = 250, message = "Registration No must not exceed 250 characters")
     private String registrationNo;
 }
-

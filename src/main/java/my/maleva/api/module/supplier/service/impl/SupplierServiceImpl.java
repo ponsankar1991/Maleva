@@ -1,14 +1,23 @@
 package my.maleva.api.module.supplier.service.impl;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.hibernate.Hibernate;
+import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.supplier.dto.SupplierDto;
+import my.maleva.api.module.supplier.dto.SupplierGridPage;
+import my.maleva.api.module.supplier.dto.SupplierGridRequest;
+import my.maleva.api.module.supplier.dto.SupplierLookupOption;
 import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
 import my.maleva.api.module.supplier.dto.SupplierComboList;
 import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.module.supplier.mapper.SupplierMapper;
 import my.maleva.api.module.supplier.entity.Supplier;
+import my.maleva.api.module.supplier.repository.SupplierGridRepository;
+import my.maleva.api.module.supplier.repository.SupplierLookupRepository;
 import my.maleva.api.module.supplier.repository.SupplierRepository;
-import my.maleva.api.module.supplier.service.SupplierQneService;
 import my.maleva.api.module.supplier.service.SupplierService;
+import my.maleva.api.module.supplier.service.SupplierWriter;
 import my.maleva.api.common.dto.ResponseViewModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +47,16 @@ public class SupplierServiceImpl implements SupplierService {
     private SupplierMapper mapper;
 
     @Autowired
-    private SupplierQneService qneService;
+    private SupplierWriter writer;
+
+    @Autowired
+    private SupplierLookupRepository lookups;
+
+    @Autowired
+    private SupplierGridRepository grid;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public List<SupplierDto> getByCompanyRefId(Integer companyRefId) {
@@ -116,64 +133,76 @@ public class SupplierServiceImpl implements SupplierService {
         return repository.findById(id).map(mapper::toDto);
     }
 
+    /**
+     * The {@code @Id = 0} branch of {@code SP_Supplier}, run by
+     * {@link SupplierWriter} without calling the procedure: ledger account row
+     * first, then the supplier pointing at it, numbered SU + 9 digits.
+     *
+     * <p>No QNE push here. Legacy pushed only after the procedure had committed,
+     * so the caller pushes once this transaction has returned — see
+     * {@code SupplierQneService.pushSaved}.
+     *
+     * <p>This used to map the DTO straight onto the entity with
+     * {@code AccountRefid = 1} and {@code CNumber = 1}, so every supplier it
+     * created shared one ledger account and one number.
+     */
     @Override
     @Transactional
     public SupplierDto create(SupplierDto dto) {
-        logger.info("Creating new Supplier");
         validateSupplierData(dto);
-        Supplier entity = mapper.toEntity(dto);
-
-        // Set default values as per table schema
-        LocalDateTime now = LocalDateTime.now();
-        if (entity.getCreatedDate() == null) {
-            entity.setCreatedDate(now);
-        }
-        if (entity.getModifiedDate() == null) {
-            entity.setModifiedDate(now);
-        }
-        if (entity.getModifiedBy() == null) {
-            entity.setModifiedBy("SYSTEM");
-        }
-        if (entity.getActive() == null) {
-            entity.setActive(1);
-        }
-        if (entity.getCNumber() == null) {
-            entity.setCNumber(1);
-        }
-        if (entity.getOpeningBalance() == null) {
-            entity.setOpeningBalance(BigDecimal.ZERO);
-        }
-        if (entity.getSupplierType() == null) {
-            entity.setSupplierType("VENDOR");
-        }
-        if (entity.getAccountRefid() == null) {
-            entity.setAccountRefid(1);
-        }
-
-        Supplier saved = repository.save(entity);
-        logger.info("Supplier created with ID: {}", saved.getId());
-        qneService.pushCreatedAfterCommit(saved);
-        return mapper.toDto(saved);
+        entityManager.flush();
+        int id = writer.insert(dto, dto.getCompanyRefId());
+        logger.info("Supplier created with ID: {}", id);
+        return load(id);
     }
 
+    /**
+     * The procedure's edit branch: update the row, rename its account.
+     *
+     * <p>One deliberate difference: the procedure updates {@code where Id=@Id}
+     * with no company, so another tenant's id would be written. The writer's
+     * pre-check refuses an id that is not this company's.
+     */
     @Override
     @Transactional
     public SupplierDto update(Integer id, SupplierDto dto) {
-        logger.info("Updating Supplier with ID: {}", id);
         validateSupplierData(dto);
+        entityManager.flush();
+        writer.update(id, dto, dto.getCompanyRefId());
+        logger.info("Supplier updated with ID: {}", id);
+        return load(id);
+    }
 
-        Supplier entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Supplier not found: " + id));
+    /**
+     * The row as the database now holds it, in exactly one SELECT.
+     *
+     * <p>{@link SupplierWriter} writes with plain JDBC, which Hibernate's
+     * first-level cache knows nothing about. In a transaction that had already
+     * loaded this supplier, {@code findById} would hand back the stale copy —
+     * the pre-edit name — and a later JPA save of it would write the old values
+     * back over the edit (caught by SupplierServiceIT#updateKeepsIdentity).
+     * {@code getReference} returns that cached copy if there is one, or an
+     * unloaded proxy if not, without touching the database; {@code refresh}
+     * then reads the row once either way. For the same reason callers flush
+     * pending JPA changes BEFORE the JDBC write.
+     */
+    private SupplierDto load(int id) {
+        Supplier supplier = entityManager.getReference(Supplier.class, id);
+        entityManager.refresh(supplier);
+        return mapper.toDto(supplier);
+    }
 
-        // Preserve created date and update modified date
-        LocalDateTime now = LocalDateTime.now();
-        entity.setModifiedDate(now);
-        entity.setModifiedBy("SYSTEM");
-
-        mapper.updateEntityFromDto(dto, entity);
-        Supplier updated = repository.save(entity);
-        logger.info("Supplier updated with ID: {}", updated.getId());
-        return mapper.toDto(updated);
+    /**
+     * After a JDBC write that the caller does not need back: re-read the cached
+     * copy only if this transaction had one, otherwise cost nothing.
+     */
+    private void forgetStaleCopy(int id) {
+        Supplier supplier = entityManager.getReference(Supplier.class, id);
+        if (Hibernate.isInitialized(supplier)) {
+            entityManager.refresh(supplier);
+        } else {
+            entityManager.detach(supplier);
+        }
     }
 
     @Override
@@ -188,6 +217,54 @@ public class SupplierServiceImpl implements SupplierService {
         return false;
     }
 
+    /**
+     * {@code update Supplier set Active=2 where Id=@Id and CompanyRefId=@Comid}.
+     * The row stays for the bills and payments that point at it.
+     *
+     * <p>One statement that changes Active and nothing else. This used to load
+     * the entity and save it back, which cost two calls and rewrote EVERY
+     * column from the copy it had read — an edit saved by someone else in
+     * between was silently undone by the delete.
+     */
+    @Override
+    @Transactional
+    public void softDelete(Integer id, Integer companyRefId) {
+        entityManager.flush();
+        if (!writer.softDelete(id, companyRefId)) {
+            throw new InvalidRequestException("Supplier " + id + " was not found for this company.");
+        }
+        forgetStaleCopy(id);
+        logger.info("Supplier {} soft-deleted for company {}", id, companyRefId);
+    }
+
+    @Override
+    public SupplierGridPage search(SupplierGridRequest request) {
+        if (request == null || request.getCompanyId() == null || request.getCompanyId() <= 0) {
+            throw new InvalidRequestException("Company is required to search suppliers.");
+        }
+        return grid.search(request);
+    }
+
+    @Override
+    @Transactional
+    public int createFromQne(SupplierDto dto, String qneId, String qneCode) {
+        entityManager.flush();
+        int id = writer.insert(dto, dto.getCompanyRefId());
+        writer.linkToQne(id, dto.getCompanyRefId(), qneId, qneCode);
+        logger.info("Supplier {} created from QNE supplier {}", id, qneCode);
+        return id;
+    }
+
+    @Override
+    public List<SupplierLookupOption> msicCodes() {
+        return lookups.msicCodes();
+    }
+
+    @Override
+    public List<SupplierLookupOption> selfBilledTypes() {
+        return lookups.selfBilledTypes();
+    }
+
     @Override
     public long countByCompanyRefId(Integer companyRefId) {
         logger.info("Counting Supplier for company: {}", companyRefId);
@@ -200,31 +277,21 @@ public class SupplierServiceImpl implements SupplierService {
         return repository.countByCompanyRefIdAndActive(companyRefId, 1);
     }
 
+    /**
+     * What a save needs from the caller. Number, display code and account are
+     * server-assigned now, so they are no longer demanded here. Supplier type
+     * is: the column is NOT NULL, and the procedure would fail on a blank one.
+     */
     @Override
     public void validateSupplierData(SupplierDto dto) {
-        if (dto.getCompanyRefId() == null) {
-            throw new RuntimeException("Company Reference ID is required");
+        if (dto.getCompanyRefId() == null || dto.getCompanyRefId() <= 0) {
+            throw new InvalidRequestException("Company is required to save a supplier.");
         }
         if (dto.getSupplierName() == null || dto.getSupplierName().trim().isEmpty()) {
-            throw new RuntimeException("Supplier Name is required");
-        }
-        if (dto.getCNumberDisplay() == null || dto.getCNumberDisplay().trim().isEmpty()) {
-            throw new RuntimeException("C Number Display is required");
-        }
-        if (dto.getCNumber() == null) {
-            throw new RuntimeException("C Number is required");
-        }
-        if (dto.getSymbolRefid() == null) {
-            throw new RuntimeException("Symbol Reference ID is required");
-        }
-        if (dto.getPaymentTermsRefid() == null) {
-            throw new RuntimeException("Payment Terms Reference ID is required");
+            throw new InvalidRequestException("Enter the supplier name.");
         }
         if (dto.getSupplierType() == null || dto.getSupplierType().trim().isEmpty()) {
-            throw new RuntimeException("Supplier Type is required");
-        }
-        if (dto.getAccountRefid() == null) {
-            throw new RuntimeException("Account Reference ID is required");
+            throw new InvalidRequestException("Select a supplier type.");
         }
     }
 
@@ -275,11 +342,9 @@ public class SupplierServiceImpl implements SupplierService {
         logger.info("Processing Supplier with SP_Supplier logic");
 
         if (dto.getId() == null || dto.getId() == 0) {
-            // New record - INSERT with default values
             logger.info("Processing INSERT operation");
             return create(dto);
         } else {
-            // Existing record - UPDATE with modified date
             logger.info("Processing UPDATE operation for ID: {}", dto.getId());
             return update(dto.getId(), dto);
         }

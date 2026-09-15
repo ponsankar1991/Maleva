@@ -232,6 +232,14 @@ public interface SupplierRepository extends JpaRepository<Supplier, Integer> {
                          @Param("qneId") String qneId,
                          @Param("qneCode") String qneCode);
 
+    /**
+     * {@code isnull(Max(CNumber),0)} for the company — SP_Supplier's numbering.
+     * An explicit query, not a derived name: Hibernate rejects the JPQL it
+     * derives from a {@code cNumber} property on first call.
+     */
+    @Query("SELECT COALESCE(MAX(s.cNumber), 0) FROM Supplier s WHERE s.companyRefId = :companyRefId")
+    Integer findMaxCNumber(@Param("companyRefId") Integer companyRefId);
+
     /** Suppliers that exist in QNE (QNECode set) but whose GUID was never stored. */
     @Query("SELECT s FROM Supplier s WHERE s.companyRefId = :companyRefId " +
            "AND s.qneCode IS NOT NULL AND s.qneCode <> '' " +

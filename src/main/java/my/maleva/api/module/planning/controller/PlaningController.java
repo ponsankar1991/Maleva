@@ -4,13 +4,16 @@ import jakarta.annotation.security.PermitAll;
 import my.maleva.api.module.planning.dto.PlaningNumberResponseDTO;
 import my.maleva.api.module.planning.dto.PlanningEditResponseDto;
 import my.maleva.api.module.planning.dto.PlanningRequest;
+import my.maleva.api.module.planning.dto.PlanningSaleOrderUpdateResponse;
 import my.maleva.api.module.planning.dto.PlanningSaveResponseDto;
+import my.maleva.api.module.planning.dto.request.PlanningSaleOrderUpdateRequest;
 import my.maleva.api.module.master.service.SequenceNoMasterService;
 import my.maleva.api.module.planning.dto.PlanningF5View;
 import my.maleva.api.module.planning.dto.request.PlanningF5RequestDto;
 import my.maleva.api.module.planning.dto.request.PLANINGSearchRequestDto;
 import my.maleva.api.module.planning.dto.PlanningDetailsModel;
 import my.maleva.api.module.planning.service.PlanningMasterService;
+import my.maleva.api.module.planning.service.PlanningSaleOrderUpdateService;
 import my.maleva.api.module.planning.service.PlanningSaveService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,15 +48,18 @@ public class PlaningController {
     private final PlanningMasterService planningMasterService;
     private final PlanningSaveService planningSaveService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PlanningSaleOrderUpdateService planningSaleOrderUpdateService;
 
     public PlaningController(SequenceNoMasterService sequenceNoMasterService,
                             PlanningMasterService planningMasterService,
                             PlanningSaveService planningSaveService,
-                            SimpMessagingTemplate messagingTemplate) {
+                            SimpMessagingTemplate messagingTemplate,
+                            PlanningSaleOrderUpdateService planningSaleOrderUpdateService) {
         this.sequenceNoMasterService = sequenceNoMasterService;
         this.planningMasterService = planningMasterService;
         this.planningSaveService = planningSaveService;
         this.messagingTemplate = messagingTemplate;
+        this.planningSaleOrderUpdateService = planningSaleOrderUpdateService;
     }
 
     /**
@@ -250,6 +256,22 @@ public class PlaningController {
 
         PlanningSaveResponseDto result = planningSaveService.delete(id, companyId);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Planning → Update window: saves one job's pickup/delivery dates, origin/destination,
+     * quantity and total weight, warehouse details, and its pickup/delivery stops - nothing
+     * else on the sale order. Successor of .NET SaleOrder/UpdateSaleorder.
+     *
+     * Endpoint: POST /api/planing/update-dates
+     * Errors: 400 for an invalid date, a stop without an address or a stop no longer on the
+     * job; 404 for a missing job.
+     */
+    @PostMapping("/update-dates")
+    @PermitAll
+    public ResponseEntity<PlanningSaleOrderUpdateResponse> updateSaleOrderDates(
+            @RequestBody @Valid PlanningSaleOrderUpdateRequest request) {
+        return ResponseEntity.ok(planningSaleOrderUpdateService.update(request));
     }
 }
 

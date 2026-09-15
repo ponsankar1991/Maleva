@@ -91,6 +91,16 @@ public class QneGateway {
         return parseList(client.get(urls.supplierApi() + "?top=" + top), QneSupplierResponse.class);
     }
 
+    /**
+     * One page of the QNE supplier list. Ordered by company code so that
+     * consecutive pages neither overlap nor skip a supplier — legacy
+     * UpdateSupplierId asked only for {@code ?top=1000} and never saw the rest.
+     */
+    public QneCall<List<QneSupplierResponse>> listSuppliers(int skip, int top) {
+        QneODataQuery query = QneODataQuery.create().orderBy("companyCode").skip(skip).top(top);
+        return parseList(client.get(urls.withQuery(urls.supplierApi(), query)), QneSupplierResponse.class);
+    }
+
     /* ── Stocks ────────────────────────────────────────────────────── */
 
     /** Create a stock item; ids persist to {@code ItemMaster.QNEId} / {@code QNECode}. */

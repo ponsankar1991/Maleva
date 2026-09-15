@@ -223,17 +223,57 @@ class SaleCreditEntryServiceImplTest {
     }
 
     @Test
-    void aNoteAlreadyInQneCannotBeDeleted() {
+    void aNoteAlreadyInQneAndLhdnCanStillBeEdited() {
+        // Legacy SP_SaleCreditMaster saved a pushed note again; the screen relies on it.
+        SaleCreditMaster note = new SaleCreditMaster();
+        note.setId(77);
+        note.setCompanyRefId(COMPANY);
+        note.setCNumberDisplay("CN000008519");
+        note.setQneCode("CN00008517");
+        note.setEInvoiceUid("UUID-1");
+        when(creditNotes.findById(77)).thenReturn(Optional.of(note));
+
+        SaleCreditSaveRequest request = request(line(2d, 100d, 6d), knockOff("212.00"));
+        request.setId(77);
+        SaleCreditSaveResponse response = service.save(request, COMPANY);
+
+        assertThat(response.getOk()).isTrue();
+        assertThat(response.getMessage()).contains("CN000008519 Updated");
+        assertThat(note.getAmount()).isEqualByComparingTo("212.00");
+        // Kept, so the note is never pushed to QNE or LHDN a second time.
+        assertThat(note.getQneCode()).isEqualTo("CN00008517");
+        assertThat(note.getEInvoiceUid()).isEqualTo("UUID-1");
+        verify(creditDetails).deleteBySaleCreditMasterRefId(77);
+        verify(sequences, never()).save(any());
+    }
+
+    @Test
+    void aNoteAlreadyInQneAndLhdnCanStillBeDeleted() {
+        // Legacy deleted any note; the port had refused pushed ones.
         SaleCreditMaster note = new SaleCreditMaster();
         note.setId(77);
         note.setCompanyRefId(COMPANY);
         note.setCNumberDisplay("CN000000042");
         note.setQneCode("CN-0001");
+        note.setEInvoiceUid("UUID-1");
+        when(creditNotes.findById(77)).thenReturn(Optional.of(note));
+
+        assertThat(service.delete(77, COMPANY)).contains("CN000000042");
+        verify(creditDetails).deleteBySaleCreditMasterRefId(77);
+        verify(knockOffs).deleteBySaleCreditMasterRefId(77);
+        verify(creditNotes).delete(note);
+    }
+
+    @Test
+    void aNoteOfAnotherCompanyIsNotDeleted() {
+        SaleCreditMaster note = new SaleCreditMaster();
+        note.setId(77);
+        note.setCompanyRefId(COMPANY + 1);
         when(creditNotes.findById(77)).thenReturn(Optional.of(note));
 
         assertThatThrownBy(() -> service.delete(77, COMPANY))
                 .isInstanceOf(InvalidRequestException.class)
-                .hasMessageContaining("already in QNE");
+                .hasMessageContaining("was not found for this company");
         verify(creditNotes, never()).delete(any());
     }
 

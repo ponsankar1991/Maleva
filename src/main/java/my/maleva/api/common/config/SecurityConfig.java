@@ -36,6 +36,8 @@ public class SecurityConfig {
         config.setAllowedOrigins(java.util.List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
+                "https://maleva.my",
+                "https://www.maleva.my",
                 "https://mydriverszone.com",
                 "https://www.mydriverszone.com",
                 "https://maleva.mydriverszone.com"

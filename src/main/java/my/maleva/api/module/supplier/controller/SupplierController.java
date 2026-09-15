@@ -1,8 +1,15 @@
 package my.maleva.api.module.supplier.controller;
 
+import my.maleva.api.module.agentcompany.common.ApiResponse;
 import my.maleva.api.module.supplier.dto.SupplierDto;
+import my.maleva.api.module.supplier.dto.SupplierGridPage;
+import my.maleva.api.module.supplier.dto.SupplierGridRequest;
+import my.maleva.api.module.supplier.dto.SupplierLookupOption;
+import my.maleva.api.module.supplier.dto.SupplierQneSyncResult;
+import my.maleva.api.module.supplier.service.SupplierQneSyncService;
+import my.maleva.api.module.supplier.dto.SupplierQneOutcome;
+import my.maleva.api.module.supplier.dto.SupplierSaveResponse;
 import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
-import my.maleva.api.module.supplier.dto.SupplierComboList;
 import my.maleva.api.integration.qne.QnePushResponses;
 import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
 import my.maleva.api.module.supplier.service.SupplierQneService;
@@ -12,12 +19,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 
 import my.maleva.api.common.dto.ResponseViewModel;
+
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,6 +45,9 @@ public class SupplierController {
     @Autowired
     private SupplierQneService qneService;
 
+    @Autowired
+    private SupplierQneSyncService syncService;
+
     /**
      * Repair suppliers whose QNE code is set but whose QNE id was never
      * stored — the Java port of legacy UpdateSupplierId1.
@@ -45,6 +56,45 @@ public class SupplierController {
     @PostMapping("/qne/backfill")
     public ResponseEntity<?> qneBackfill(@RequestParam Integer companyId) {
         return QnePushResponses.toResponse(qneService.backfill(companyId));
+    }
+
+    /* ================= SupplierView grid ================= */
+
+    /**
+     * The SupplierView grid's search — legacy {@code SelectSupplier} and the
+     * grid's filter row, run on the server against every supplier.
+     * GET /api/suppliers/search?companyId=6&type=VENDOR&keyword=petron&city=klang&sortBy=supplierName&sortDir=asc&page=0&size=50
+     */
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<SupplierGridPage>> search(@ModelAttribute SupplierGridRequest request) {
+        SupplierGridPage page = service.search(request);
+        return ResponseEntity.ok(ApiResponse.success(page.total() + " supplier(s)", page));
+    }
+
+    /**
+     * "Update from QNE" — legacy {@code UpdateSupplierId}: pull QNE's supplier
+     * list, repair stored QNE ids, create the suppliers missing here. Always
+     * 200 with the outcome in the body; a QNE refusal is a status, not a crash.
+     * POST /api/suppliers/qne/sync?companyId=6
+     */
+    @PostMapping("/qne/sync")
+    public ResponseEntity<ApiResponse<SupplierQneSyncResult>> syncFromQne(@RequestParam Integer companyId) {
+        SupplierQneSyncResult result = syncService.syncFromQne(companyId);
+        return ResponseEntity.ok(ApiResponse.success(result.message(), result));
+    }
+
+    /** MSIC code combo — legacy {@code GetMSICCode}. GET /api/suppliers/msic-codes */
+    @GetMapping("/msic-codes")
+    public ResponseEntity<ApiResponse<List<SupplierLookupOption>>> msicCodes() {
+        List<SupplierLookupOption> options = service.msicCodes();
+        return ResponseEntity.ok(ApiResponse.success(options.size() + " MSIC code(s)", options));
+    }
+
+    /** Self Billed Type combo — legacy {@code GetSelfbilled}. GET /api/suppliers/self-billed-types */
+    @GetMapping("/self-billed-types")
+    public ResponseEntity<ApiResponse<List<SupplierLookupOption>>> selfBilledTypes() {
+        List<SupplierLookupOption> options = service.selfBilledTypes();
+        return ResponseEntity.ok(ApiResponse.success(options.size() + " self-billed type(s)", options));
     }
 
     /**
@@ -158,35 +208,73 @@ public class SupplierController {
     }
 
     /**
-     * Create new Supplier
+     * Legacy {@code InsertSupplier} for a new supplier, in its order: the save
+     * (SP_Supplier's statements, committed when {@code service.create}
+     * returns), THEN the QNE push, then the answer.
+     *
+     * <p>The answer carries the stored row and the QNE outcome side by side.
+     * Legacy answered a QNE refusal with {@code ok = false} for a supplier it
+     * had already committed; the screen kept EditId at 0 and a second Save made
+     * a second supplier. Here the save is reported as done, QNE's message is
+     * shown, and the screen switches to the saved supplier so UPDATE retries
+     * the push.
+     *
+     * <p>Validation failures ({@code InvalidRequestException}) go to the global
+     * handler: 400 with the message, nothing saved.
      * POST /api/suppliers
      */
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody SupplierDto dto) {
+    public ResponseEntity<ApiResponse<SupplierSaveResponse>> create(@Valid @RequestBody SupplierDto dto) {
         logger.info("Creating new Supplier");
-        try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
-        }
+        SupplierDto created = service.create(dto);
+        SupplierSaveResponse body = pushToQne(created, dto);
+        return ResponseEntity
+                .created(URI.create("/api/suppliers/" + created.getId()))
+                .body(ApiResponse.success("Supplier created successfully", body));
     }
 
     /**
-     * Update Supplier
+     * Legacy {@code InsertSupplier} for an existing supplier. The push still
+     * runs: legacy's condition was {@code Id == 0 || QNECode blank}, so an edit
+     * of a supplier QNE never received is created there now. One QNE already
+     * has is left alone — the update payload legacy built was never sent.
      * PUT /api/suppliers/{id}
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody SupplierDto dto) {
+    public ResponseEntity<ApiResponse<SupplierSaveResponse>> update(@PathVariable Integer id,
+                                                                    @Valid @RequestBody SupplierDto dto) {
         logger.info("Updating Supplier with ID: {}", id);
-        try {
-            return ResponseEntity.ok(service.update(id, dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
-        }
+        SupplierDto updated = service.update(id, dto);
+        return ResponseEntity.ok(ApiResponse.success("Supplier updated successfully", pushToQne(updated, dto)));
     }
 
     /**
-     * Delete Supplier
+     * Push with the values as typed, handing over the row the save already
+     * loaded. When the push writes QNEId/QNECode back, the same two values are
+     * set on that row here instead of reading it from the database a third time.
+     */
+    private SupplierSaveResponse pushToQne(SupplierDto saved, SupplierDto typed) {
+        SupplierQneOutcome qne = qneService.pushSaved(saved, typed);
+        if (qne.status() == SupplierQneOutcome.Status.PUSHED) {
+            saved.setQneId(qne.qneId());
+            saved.setQneCode(qne.qneCode());
+        }
+        return new SupplierSaveResponse(saved, qne);
+    }
+
+    /**
+     * The screen's DELETE — legacy {@code DeleteSupplier}, which sets Active = 2.
+     * PUT /api/suppliers/{id}/soft-delete?companyId=6
+     */
+    @PutMapping("/{id}/soft-delete")
+    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable Integer id,
+                                                        @RequestParam Integer companyId) {
+        service.softDelete(id, companyId);
+        return ResponseEntity.ok(ApiResponse.success("Supplier deleted", null));
+    }
+
+    /**
+     * Delete Supplier (hard delete — the screens use soft-delete)
      * DELETE /api/suppliers/{id}
      */
     @DeleteMapping("/{id}")
@@ -264,12 +352,8 @@ public class SupplierController {
     @PostMapping("/process")
     public ResponseEntity<?> processSupplierBatch(@Valid @RequestBody SupplierDto dto) {
         logger.info("Processing Supplier batch with SP_Supplier logic");
-        try {
-            SupplierDto result = service.processSupplierBatch(dto);
-            return ResponseEntity.status(HttpStatus.CREATED).body(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
-        }
+        SupplierDto result = service.processSupplierBatch(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(pushToQne(result, dto));
     }
 
     /**
@@ -296,143 +380,100 @@ public class SupplierController {
                    comid, startindex, pageCount, keyword, column, type);
         try {
             SupplierSearchResponse response = service.selectSupplier(comid, startindex, pageCount, keyword, column, type);
-             return ResponseEntity.ok(response);
-         } catch (Exception ex) {
-             logger.error("Error in selectSupplier", ex);
-             return ResponseEntity.ok(SupplierSearchResponse.builder()
-                     .ok(false)
-                     .message("Error: " + ex.getMessage())
-                     .build());
-         }
-     }
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            logger.error("Error in selectSupplier", ex);
+            return ResponseEntity.ok(SupplierSearchResponse.builder()
+                    .ok(false)
+                    .message("Error: " + ex.getMessage())
+                    .build());
+        }
+    }
 
-     /**
-      * Get Supplier combo list for dropdowns/comboboxes
-      * Equivalent to .NET GetSupplier(int Comid, string type) method
-      *
-      * GET /api/suppliers/combo?comid=1
-      * GET /api/suppliers/combo?comid=1&type=LOCAL
-      *
-      * Response:
-      * {
-      *   "isSuccess": true,
-      *   "statusCode": 200,
-      *   "message": "Success",
-      *   "data1": [
-      *     { "id": 1, "supplierName": "ABC Supplier", "accountName": "ABC Supplier-9876543210" },
-      *     { "id": 2, "supplierName": "XYZ Supplier", "accountName": "XYZ Supplier-8765432109" }
-      *   ]
-      * }
-      *
-      * @param comid Company ID (required)
-      * @param type Supplier Type filter (optional - null/""/ALL for no type filter)
-      * @return ResponseEntity with ResponseViewModel containing List<SupplierComboList>
-      */
-      @GetMapping("/combo")
-      public ResponseEntity<?> getSupplier(
-              @RequestParam(value = "comid", required = false) Integer comid,
-              @RequestParam(value = "type", required = false) String type) {
-          logger.info("Get Supplier combo list - comid: {}, type: {}", comid, type);
+    /**
+     * Get Supplier combo list for dropdowns/comboboxes
+     * Equivalent to .NET GetSupplier(int Comid, string type) method
+     *
+     * GET /api/suppliers/combo?comid=1
+     * GET /api/suppliers/combo?comid=1&type=LOCAL
+     *
+     * @param comid Company ID (required)
+     * @param type Supplier Type filter (optional - null/""/ALL for no type filter)
+     * @return ResponseEntity with ResponseViewModel containing List<SupplierComboList>
+     */
+    @GetMapping("/combo")
+    public ResponseEntity<?> getSupplier(
+            @RequestParam(value = "comid", required = false) Integer comid,
+            @RequestParam(value = "type", required = false) String type) {
+        logger.info("Get Supplier combo list - comid: {}, type: {}", comid, type);
 
-          try {
-              // Validate required parameter
-              if (comid == null || comid <= 0) {
-                  logger.warn("Invalid request: comid is missing or invalid");
-                  return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                          .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
-              }
+        try {
+            if (comid == null || comid <= 0) {
+                logger.warn("Invalid request: comid is missing or invalid");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
+            }
 
-              // Call service to fetch supplier combo list
-              ResponseViewModel response = service.getSupplier(comid, type);
+            ResponseViewModel response = service.getSupplier(comid, type);
 
-              // Return appropriate HTTP status
-              if (response.isSuccess()) {
-                  return ResponseEntity.ok(response);
-              } else {
-                  int statusCode = response.getStatusCode() != null ? response.getStatusCode() : 400;
-                  return ResponseEntity.status(statusCode).body(response);
-              }
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                int statusCode = response.getStatusCode() != null ? response.getStatusCode() : 400;
+                return ResponseEntity.status(statusCode).body(response);
+            }
 
-          } catch (Exception ex) {
-              logger.error("Error in getSupplier endpoint", ex);
-              ResponseViewModel errorResponse = ResponseViewModel.error(
-                      "Internal server error: " + ex.getMessage(),
-                      500
-              );
-              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-          }
-      }
+        } catch (Exception ex) {
+            logger.error("Error in getSupplier endpoint", ex);
+            ResponseViewModel errorResponse = ResponseViewModel.error(
+                    "Internal server error: " + ex.getMessage(),
+                    500
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 
-      /**
-       * Select All Suppliers with joined master data
-       * Equivalent to .NET SelectSupplierAll(int Comid) method
-       *
-       * GET /api/suppliers/select-all?comid=1
-       *
-       * Returns all suppliers for a company with joined master data:
-       * - SymbolMaster.SName
-       * - PaymentTermsMaster.TermsName
-       * - AccountsGroupMaster.AccountCode
-       *
-       * Filters:
-       * - CompanyRefId = comid
-       * - Active != 2
-       *
-       * Sorted by SupplierName
-       *
-       * Response Format:
-       * [
-       *   {
-       *     "id": 1,
-       *     "supplierName": "ABC Supplier",
-       *     "email": "abc@example.com",
-       *     "mobileNo": "9876543210",
-       *     "sName": "ACTIVE",
-       *     "termsName": "Net 30",
-       *     "accountCode": "SUPP001",
-       *     ... (all other supplier fields)
-       *   }
-       * ]
-       *
-       * @param comid Company Reference ID (required)
-       * @return ResponseEntity with List of SupplierExtendedResponse
-       */
-      @GetMapping("/select-all")
-      public ResponseEntity<?> selectSupplierAll(
-              @RequestParam(value = "comid", required = false) Integer comid) {
-          logger.info("Select All Suppliers - comid: {}", comid);
+    /**
+     * Select All Suppliers with joined master data
+     * Equivalent to .NET SelectSupplierAll(int Comid) method
+     *
+     * GET /api/suppliers/select-all?comid=1
+     *
+     * @param comid Company Reference ID (required)
+     * @return ResponseEntity with List of SupplierExtendedResponse
+     */
+    @GetMapping("/select-all")
+    public ResponseEntity<?> selectSupplierAll(
+            @RequestParam(value = "comid", required = false) Integer comid) {
+        logger.info("Select All Suppliers - comid: {}", comid);
 
-          try {
-              // Validate required parameter
-              if (comid == null || comid <= 0) {
-                  logger.warn("Invalid request: comid is missing or invalid");
-                  return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                          .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
-              }
+        try {
+            if (comid == null || comid <= 0) {
+                logger.warn("Invalid request: comid is missing or invalid");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ResponseViewModel.error("Company ID is required and must be greater than 0", 400));
+            }
 
-              // Call service to fetch all suppliers with master data
-              List<SupplierExtendedResponse> suppliers = service.selectSupplierAll(comid);
+            List<SupplierExtendedResponse> suppliers = service.selectSupplierAll(comid);
 
-              logger.info("Successfully fetched {} suppliers for company: {}", suppliers.size(), comid);
+            logger.info("Successfully fetched {} suppliers for company: {}", suppliers.size(), comid);
 
-              // Wrap in ApiResponse for consistent API response format
-              return ResponseEntity.ok(
-                  ResponseViewModel.success(
-                      suppliers,
-                      "Successfully retrieved " + suppliers.size() + " supplier records",
-                      200
-                  )
-              );
+            return ResponseEntity.ok(
+                ResponseViewModel.success(
+                    suppliers,
+                    "Successfully retrieved " + suppliers.size() + " supplier records",
+                    200
+                )
+            );
 
-          } catch (Exception ex) {
-              logger.error("Error in selectSupplierAll endpoint", ex);
-              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                      .body(ResponseViewModel.error(
-                          "Internal server error: " + ex.getMessage(),
-                          500
-                      ));
-          }
-      }
+        } catch (Exception ex) {
+            logger.error("Error in selectSupplierAll endpoint", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseViewModel.error(
+                        "Internal server error: " + ex.getMessage(),
+                        500
+                    ));
+        }
+    }
 
 }
-

@@ -3,7 +3,6 @@ package my.maleva.api.module.supplier.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.common.config.QneProperties;
-import my.maleva.api.integration.qne.QneAfterCommit;
 import my.maleva.api.integration.qne.QneCall;
 import my.maleva.api.integration.qne.QneGateway;
 import my.maleva.api.integration.qne.QnePayloads;
@@ -12,6 +11,8 @@ import my.maleva.api.integration.qne.dto.QneSupplierRequest;
 import my.maleva.api.integration.qne.dto.QneSupplierResponse;
 import my.maleva.api.module.master.entity.SymbolMaster;
 import my.maleva.api.module.master.repository.SymbolMasterRepository;
+import my.maleva.api.module.supplier.dto.SupplierDto;
+import my.maleva.api.module.supplier.dto.SupplierQneOutcome;
 import my.maleva.api.module.supplier.entity.Supplier;
 import my.maleva.api.module.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
@@ -19,9 +20,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * QNE sync for suppliers — the Java port of the QNE side of legacy
- * {@code SupplierServices} (InsertSupplier's push and UpdateSupplierId1's
- * backfill). Mirror image of the customer sync, but on QNEId/QNECode.
+ * QNE sync for suppliers — the Java port of the QNE half of legacy
+ * {@code SupplierServices.InsertSupplier}, and of {@code UpdateSupplierId1}'s backfill.
  */
 @Slf4j
 @Service
@@ -33,33 +33,64 @@ public class SupplierQneService {
     private final SupplierRepository suppliers;
     private final SymbolMasterRepository symbols;
 
-    /** Pushes a newly created supplier once its insert commits (see CustomerQneService). */
-    public void pushCreatedAfterCommit(Supplier saved) {
-        QneAfterCommit.run(() -> {
-            QnePushResult result = pushCreated(saved);
-            if (!result.success()) {
-                log.warn("QNE push for new supplier {} did not complete: {}",
-                        saved.getId(), result.message());
+    /**
+     * The push {@code InsertSupplier} ran once {@code SP_Supplier} returned
+     * Result = 1. Call it after the save has COMMITTED and outside any
+     * transaction, as legacy did — the supplier stays saved whatever QNE says.
+     *
+     * <ol>
+     *   <li>{@code if (qneapilist.qneapi == true)} — {@code qne.enabled} here.</li>
+     *   <li>{@code if (Id == 0 || QNECode == "" || QNECode == null)} → create,
+     *       judged on the row as just saved. The else branch built a
+     *       {@code Type = 3} update payload that was never dispatched, so an
+     *       existing QNE supplier gets nothing, exactly as before.</li>
+     *   <li>Currency = {@code SymbolMaster.SName} for the company, {@code ?? ""}.</li>
+     *   <li>Payload from the values AS TYPED ({@code objcustomer[0]}), not the
+     *       upper-cased stored row — see {@link #buildRequest}.</li>
+     *   <li>On success {@code update Supplier set QNEId, QNECode}; on a refusal,
+     *       QNE's message back to the screen.</li>
+     * </ol>
+     *
+     * <p>Takes the saved row from the caller rather than reading it again: the
+     * save has just loaded it, and every read is a trip to a remote database.
+     *
+     * <p>One difference: legacy's catch around the push logged an exception and
+     * still answered "Supplier created". That is reported as FAILED here.
+     *
+     * @param saved the supplier as stored by the save that just committed
+     * @param typed the payload the operator submitted
+     */
+    public SupplierQneOutcome pushSaved(SupplierDto saved, SupplierDto typed) {
+        if (!properties.isEnabled()) {
+            return SupplierQneOutcome.disabled();
+        }
+        if (!QnePayloads.isBlank(saved.getQneCode())) {
+            return SupplierQneOutcome.alreadyInQne(saved.getQneId(), saved.getQneCode());
+        }
+
+        try {
+            QneSupplierRequest request = buildRequest(typed,
+                    currencyName(typed.getSymbolRefid(), saved.getCompanyRefId()),
+                    properties.getControlCodes().getSupplier());
+
+            QneCall<QneSupplierResponse> call = gateway.createSupplier(request);
+            if (!call.success()) {
+                // _logErrors.WriteDirectLog(ro1.Message, "InsertSupplier-QNE")
+                log.warn("InsertSupplier-QNE: QNE refused supplier {}: {}", saved.getId(), call.message());
+                return SupplierQneOutcome.failed(call.message());
             }
-        });
-    }
 
-    public QnePushResult pushCreated(Supplier supplier) {
-        if (!QnePayloads.isBlank(supplier.getQneCode())) {
-            return QnePushResult.alreadyPushed(supplier.getQneId(), supplier.getQneCode(),
-                    "Supplier already exists in QNE as " + supplier.getQneCode());
+            QneSupplierResponse created = call.data();
+            // if (result1 != null) — only then is the identity written back.
+            if (created == null) {
+                return SupplierQneOutcome.pushed(null, null);
+            }
+            suppliers.claimQneIdentity(saved.getId(), created.getId(), created.getCompanyCode());
+            return SupplierQneOutcome.pushed(created.getId(), created.getCompanyCode());
+        } catch (RuntimeException ex) {
+            log.error("InsertSupplier-QNE: push for supplier {} failed", saved.getId(), ex);
+            return SupplierQneOutcome.failed("The QNE push could not be completed: " + ex.getMessage());
         }
-
-        QneSupplierRequest request = buildRequest(
-                supplier, currencyName(supplier), properties.getControlCodes().getSupplier());
-        QneCall<QneSupplierResponse> call = gateway.createSupplier(request);
-        if (!call.success()) {
-            return QnePushResult.rejected(call.message());
-        }
-
-        suppliers.claimQneIdentity(supplier.getId(), call.data().getId(), call.data().getCompanyCode());
-        return QnePushResult.ok(call.data().getId(), call.data().getCompanyCode(), null,
-                "Supplier pushed to QNE as " + call.data().getCompanyCode());
     }
 
     /** Repairs suppliers whose QNE code is known but whose QNE GUID was never stored. */
@@ -86,25 +117,33 @@ public class SupplierQneService {
                 "Backfilled QNE ids for " + repaired + " of " + pending.size() + " suppliers");
     }
 
-    private String currencyName(Supplier supplier) {
-        if (supplier.getSymbolRefid() == null) {
+    /**
+     * {@code SELECT S.SName FROM SymbolMaster S WHERE S.CompanyRefId = Comid AND S.Id = SymbolRefid}, {@code ?? ""}.
+     */
+    private String currencyName(Integer symbolId, Integer companyId) {
+        if (symbolId == null || symbolId == 0) {
             return "";
         }
-        return symbols.findById(supplier.getSymbolRefid())
+        return symbols.findByIdAndCompanyRefId(symbolId, companyId)
                 .map(SymbolMaster::getSName)
                 .orElse("");
     }
 
     /**
-     * Field mapping pinned by legacy {@code SupplierServices.InsertSupplier}:
-     * same shape as the customer push (City as contact person, OEmail/OPhone
-     * as the contact points) with the four Is* flags hardcoded false.
+     * {@code SupplierQNEInsertModel}, field for field. Built from the payload
+     * as typed, as legacy built it from {@code objcustomer[0]}: SP_Supplier
+     * upper-cases the stored copy, but QNE was always sent the operator's own
+     * casing, and years of QNE suppliers look like that.
+     *
+     * <p>ContactPerson is {@code City}. On this screen City is the PIC Name box
+     * (the legacy page posted its city box there by mistake — see
+     * supplier.contract.ts), so QNE now receives the person in charge.
      */
-    static QneSupplierRequest buildRequest(Supplier supplier, String currency, String controlAccount) {
-        String[] address = QnePayloads.addressChunks(supplier.getAddress1());
+    static QneSupplierRequest buildRequest(SupplierDto typed, String currency, String controlAccount) {
+        String[] address = QnePayloads.addressChunks(typed.getAddress1());
         return QneSupplierRequest.builder()
-                .companyName(supplier.getSupplierName())
-                .companyName2(supplier.getSupplierName())
+                .companyName(typed.getSupplierName())
+                .companyName2(typed.getSupplierName())
                 .controlAccount(controlAccount)
                 .currency(currency)
                 .address1(address[0])
@@ -115,9 +154,9 @@ public class SupplierQneService {
                 .isSuspended(false)
                 .isExceedCreditAllowed(false)
                 .isTaxExempted(false)
-                .contactPerson(supplier.getCity())
-                .email(supplier.getOEmail())
-                .phoneNo1(supplier.getOPhone())
+                .contactPerson(typed.getCity())
+                .email(typed.getOEmail())
+                .phoneNo1(typed.getOPhone())
                 .build();
     }
 }

@@ -4,6 +4,9 @@ import my.maleva.api.module.supplier.dto.SupplierDto;
 import my.maleva.api.module.supplier.dto.SupplierSearchResponse;
 import my.maleva.api.module.supplier.dto.SupplierComboList;
 import my.maleva.api.module.supplier.dto.SupplierExtendedResponse;
+import my.maleva.api.module.supplier.dto.SupplierGridPage;
+import my.maleva.api.module.supplier.dto.SupplierGridRequest;
+import my.maleva.api.module.supplier.dto.SupplierLookupOption;
 import my.maleva.api.common.dto.ResponseViewModel;
 import java.util.List;
 import java.util.Optional;
@@ -96,5 +99,23 @@ public interface SupplierService {
      * @return List of SupplierExtendedResponse with all supplier details and joined master data
      */
     List<SupplierExtendedResponse> selectSupplierAll(Integer comid);
+
+    /** Legacy DeleteSupplier: {@code Active = 2}, scoped to the company. */
+    void softDelete(Integer id, Integer companyRefId);
+
+    /** The SupplierView grid: keyword, column filters, type, active flag, sort and paging, on the server. */
+    SupplierGridPage search(SupplierGridRequest request);
+
+    /**
+     * Creates a supplier pulled from QNE and links it to its QNE identity, in
+     * one transaction — so a sync never leaves a local copy without its code.
+     *
+     * @return the new supplier id
+     */
+    int createFromQne(SupplierDto dto, String qneId, String qneCode);
+
+    List<SupplierLookupOption> msicCodes();
+
+    List<SupplierLookupOption> selfBilledTypes();
 
 }

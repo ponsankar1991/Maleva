@@ -245,20 +245,13 @@ public class SaleCreditEntryServiceImpl implements SaleCreditEntryService {
     }
 
     private SaleCreditMaster loadForEdit(Integer companyId, Integer id) {
-        SaleCreditMaster note = creditNotes.findById(id)
+        // Legacy saved any note again, pushed or not (SP_SaleCreditMaster had no
+        // QNECode / EInvoiceUid check), and the business relies on it. The save
+        // touches only this app's rows: the QNE document and the LHDN submission
+        // keep what was sent, and QNECode / EInvoiceUid stay so neither is pushed twice.
+        return creditNotes.findById(id)
                 .filter(row -> Objects.equals(row.getCompanyRefId(), companyId))
                 .orElseThrow(() -> new InvalidRequestException("SaleCredit " + id + " was not found for this company"));
-        // A note QNE already holds cannot be corrected from here: the two
-        // ledgers would silently diverge. Legacy allowed the edit.
-        if (note.getQneCode() != null && !note.getQneCode().isBlank()) {
-            throw new InvalidRequestException("SaleCredit " + note.getCNumberDisplay() + " is already in QNE as "
-                    + note.getQneCode() + " and cannot be changed here. Correct it in QNE instead.");
-        }
-        if (note.getEInvoiceUid() != null && !note.getEInvoiceUid().isBlank()) {
-            throw new InvalidRequestException("SaleCredit " + note.getCNumberDisplay()
-                    + " has been submitted to LHDN and cannot be changed. Cancel it with LHDN first.");
-        }
-        return note;
     }
 
     /**
@@ -585,18 +578,13 @@ public class SaleCreditEntryServiceImpl implements SaleCreditEntryService {
                 .filter(row -> Objects.equals(row.getCompanyRefId(), companyId))
                 .orElseThrow(() -> new InvalidRequestException("SaleCredit " + id + " was not found for this company"));
 
-        // Legacy ran a bare "Delete SaleCreditMaster where Id=" — with no
-        // company check, on notes QNE or LHDN already held, and leaving the
-        // detail and knock-off rows behind. Those orphaned knock-offs kept
+        // Legacy ran a bare "Delete SaleCreditMaster where Id=" on any note,
+        // pushed to QNE / LHDN or not, and the business relies on that — so no
+        // QNECode / EInvoiceUid check here. The QNE document and the LHDN
+        // submission are not touched; cancel them there if needed.
+        // Kept from the port: the company check, and removing the detail and
+        // knock-off rows legacy left behind, whose orphaned knock-offs kept
         // reducing the balance of invoices whose credit note no longer existed.
-        if (note.getQneCode() != null && !note.getQneCode().isBlank()) {
-            throw new InvalidRequestException("SaleCredit " + note.getCNumberDisplay() + " is already in QNE as "
-                    + note.getQneCode() + " and cannot be deleted here. Cancel it in QNE first.");
-        }
-        if (note.getEInvoiceUid() != null && !note.getEInvoiceUid().isBlank()) {
-            throw new InvalidRequestException("SaleCredit " + note.getCNumberDisplay()
-                    + " has been submitted to LHDN and cannot be deleted. Cancel it with LHDN first.");
-        }
 
         creditDetails.deleteBySaleCreditMasterRefId(note.getId());
         knockOffs.deleteBySaleCreditMasterRefId(note.getId());
