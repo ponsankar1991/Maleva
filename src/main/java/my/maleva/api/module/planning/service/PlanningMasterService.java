@@ -876,9 +876,17 @@ public class PlanningMasterService {
         }
 
         if (planningNo != null && planningNo > 0) {
-            return planningMasterRepository.findByCompanyRefIdAndCNumber(companyId, planningNo)
-                    .map(PlanningMaster::getId)
-                    .orElseThrow(() -> new EntityNotFoundException("Planning not found for number: " + planningNo));
+            // Never a single-row lookup: a deleted plan keeps its number, and two plans saved at
+            // the same moment can share one - that made "Plan No" fail for such a number.
+            List<PlanningMaster> plans = planningMasterRepository.findLivePlansByNumber(companyId, planningNo);
+            if (plans.isEmpty()) {
+                throw new EntityNotFoundException("Planning No " + planningNo + " not found");
+            }
+            if (plans.size() > 1) {
+                logger.warn("Planning No {} is used by {} live plans (ids {}) in company {} - opening the newest",
+                        planningNo, plans.size(), plans.stream().map(PlanningMaster::getId).toList(), companyId);
+            }
+            return plans.get(0).getId();
         }
 
         throw new InvalidRequestException("Either id or planningNo is required");

@@ -47,6 +47,15 @@ public interface PlanningMasterRepository extends JpaRepository<PlanningMaster, 
     Optional<PlanningMaster> findByCompanyRefIdAndCNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);
 
     /**
+     * Live (not deleted) plans carrying a plan number, newest first. A list on purpose: deleted
+     * plans keep their number, and the read-MAX-then-add numbering can give two plans saved
+     * together the same number - a single-row lookup fails outright for such a number.
+     */
+    @Query("SELECT p FROM PlanningMaster p WHERE p.companyRefId = :companyRefId AND p.cNumber = :cNumber " +
+            "AND p.active <> 2 ORDER BY p.id DESC")
+    List<PlanningMaster> findLivePlansByNumber(@Param("companyRefId") Integer companyRefId, @Param("cNumber") Integer cNumber);
+
+    /**
      * Find planning record by CNumberDisplay
      */
     Optional<PlanningMaster> findByCompanyRefIdAndCNumberDisplay(Integer companyRefId, String cNumberDisplay);
