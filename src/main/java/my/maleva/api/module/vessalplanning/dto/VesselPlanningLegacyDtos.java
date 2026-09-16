@@ -180,7 +180,6 @@ public final class VesselPlanningLegacyDtos {
         @JsonProperty("Search")
         private String search;
 
-
         @JsonProperty("SFDate")
         private String sFDate;
 
@@ -364,18 +363,6 @@ public final class VesselPlanningLegacyDtos {
         @JsonProperty("OAgentPhone")
         private String oAgentPhone;
 
-        @JsonProperty("BoardingOfficerRefid")
-        private Integer boardingOfficerRefid;
-
-        @JsonProperty("BoardingOfficerName")
-        private String boardingOfficerName;
-
-        @JsonProperty("BoardingOfficer1Refid")
-        private Integer boardingOfficer1Refid;
-
-        @JsonProperty("BoardingOfficerName1")
-        private String boardingOfficerName1;
-
         @JsonProperty("LBoardingOfficerRefid")
         private Integer lBoardingOfficerRefid;
 
@@ -400,11 +387,35 @@ public final class VesselPlanningLegacyDtos {
         @JsonProperty("OBoardingOfficerName1")
         private String oBoardingOfficerName1;
 
-        @JsonProperty("BoardingAmount")
-        private Double boardingAmount;
+        @JsonProperty("LBoardingOfficer2Refid")
+        private Integer lBoardingOfficer2Refid;
 
-        @JsonProperty("BoardingAmount1")
-        private Double boardingAmount1;
+        @JsonProperty("LBoardingOfficerName2")
+        private String lBoardingOfficerName2;
+
+        @JsonProperty("OBoardingOfficer2Refid")
+        private Integer oBoardingOfficer2Refid;
+
+        @JsonProperty("OBoardingOfficerName2")
+        private String oBoardingOfficerName2;
+
+        @JsonProperty("LBoardingAmount")
+        private Double lBoardingAmount;
+
+        @JsonProperty("LBoardingAmount1")
+        private Double lBoardingAmount1;
+
+        @JsonProperty("LBoardingAmount2")
+        private Double lBoardingAmount2;
+
+        @JsonProperty("OBoardingAmount")
+        private Double oBoardingAmount;
+
+        @JsonProperty("OBoardingAmount1")
+        private Double oBoardingAmount1;
+
+        @JsonProperty("OBoardingAmount2")
+        private Double oBoardingAmount2;
 
         @JsonProperty("CustomerName")
         private String customerName;
@@ -672,18 +683,6 @@ public final class VesselPlanningLegacyDtos {
 
         @JsonProperty("OAgentPhone")
         private String oAgentPhone;
-
-        @JsonProperty("BoardingOfficerName")
-        private String boardingOfficerName;
-
-        @JsonProperty("BoardingOfficerName1")
-        private String boardingOfficerName1;
-
-        @JsonProperty("BoardingAmount")
-        private Double boardingAmount;
-
-        @JsonProperty("BoardingAmount1")
-        private Double boardingAmount1;
 
         @JsonProperty("CustomerName")
         private String customerName;

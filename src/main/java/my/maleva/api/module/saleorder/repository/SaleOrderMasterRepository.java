@@ -199,6 +199,67 @@ public interface SaleOrderMasterRepository extends JpaRepository<SaleOrderMaster
                               @Param("lastEmployeeRefId") Integer lastEmployeeRefId,
                               @Param("modifiedDate") java.time.LocalDateTime modifiedDate);
 
+    /**
+     * The Vessel Planning screen's Update window: sets only the columns that window edits, in
+     * one targeted UPDATE. It replaced a full PUT of the sale order built from a form that never
+     * loaded the totals, which set GrossAmount, TaxAmount and Amount to 0.
+     * The caller passes the stored value for anything the window leaves unchanged. The row count
+     * is not returned (SET NOCOUNT ON makes it -1 here), so callers check the row exists first.
+     * Clears the persistence context so a reload afterwards sees the new values.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update SaleOrderMaster s
+               set s.jStatus = :jStatus,
+                   s.cargo = :cargo,
+                   s.ptw = :ptw,
+                   s.eta = :eta,
+                   s.etb = :etb,
+                   s.etd = :etd,
+                   s.oeta = :oeta,
+                   s.oetb = :oetb,
+                   s.oetd = :oetd,
+                   s.lBoardingOfficerRefid = :loadingOfficer1,
+                   s.lBoardingOfficer1Refid = :loadingOfficer2,
+                   s.lBoardingOfficer2Refid = :loadingOfficer3,
+                   s.lBoardingAmount = :loadingAmount1,
+                   s.lBoardingAmount1 = :loadingAmount2,
+                   s.lBoardingAmount2 = :loadingAmount3,
+                   s.oBoardingOfficerRefid = :offOfficer1,
+                   s.oBoardingOfficer1Refid = :offOfficer2,
+                   s.oBoardingOfficer2Refid = :offOfficer3,
+                   s.oBoardingAmount = :offAmount1,
+                   s.oBoardingAmount1 = :offAmount2,
+                   s.oBoardingAmount2 = :offAmount3,
+                   s.modifiedDate = :modifiedDate
+             where s.id = :id
+               and s.companyRefId = :companyRefId
+            """)
+    void updateVesselPlanningFields(@Param("id") Integer id,
+                                    @Param("companyRefId") Integer companyRefId,
+                                    @Param("jStatus") Integer jStatus,
+                                    @Param("cargo") String cargo,
+                                    @Param("ptw") String ptw,
+                                    @Param("eta") java.time.LocalDateTime eta,
+                                    @Param("etb") java.time.LocalDateTime etb,
+                                    @Param("etd") java.time.LocalDateTime etd,
+                                    @Param("oeta") java.time.LocalDateTime oeta,
+                                    @Param("oetb") java.time.LocalDateTime oetb,
+                                    @Param("oetd") java.time.LocalDateTime oetd,
+                                    @Param("loadingOfficer1") Integer loadingOfficer1,
+                                    @Param("loadingOfficer2") Integer loadingOfficer2,
+                                    @Param("loadingOfficer3") Integer loadingOfficer3,
+                                    @Param("loadingAmount1") Double loadingAmount1,
+                                    @Param("loadingAmount2") Double loadingAmount2,
+                                    @Param("loadingAmount3") String loadingAmount3,
+                                    @Param("offOfficer1") Integer offOfficer1,
+                                    @Param("offOfficer2") Integer offOfficer2,
+                                    @Param("offOfficer3") Integer offOfficer3,
+                                    @Param("offAmount1") Double offAmount1,
+                                    @Param("offAmount2") Double offAmount2,
+                                    @Param("offAmount3") String offAmount3,
+                                    @Param("modifiedDate") java.time.LocalDateTime modifiedDate);
+
     @Query("""
         SELECT s, c.customerName
         FROM SaleOrderMaster s

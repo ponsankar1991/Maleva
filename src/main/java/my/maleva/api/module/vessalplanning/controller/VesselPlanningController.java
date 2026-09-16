@@ -6,9 +6,12 @@ import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.vessalplanning.dto.VesselPlanningDetailsDto;
 import my.maleva.api.module.vessalplanning.dto.VesselPlanningLegacyDtos;
 import my.maleva.api.module.vessalplanning.dto.VesselPlanningMasterDto;
+import my.maleva.api.module.vessalplanning.dto.VesselPlanningSaleOrderUpdateRequest;
+import my.maleva.api.module.vessalplanning.dto.VesselPlanningSaleOrderUpdateResponse;
 import my.maleva.api.module.vessalplanning.service.IVesselPlanningMasterService;
 import my.maleva.api.module.vessalplanning.service.IVesselPlanningSaveService;
 import my.maleva.api.module.vessalplanning.service.VesselPlanningService;
+import my.maleva.api.module.vessalplanning.service.impl.VesselPlanningSaleOrderUpdateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -30,14 +33,17 @@ public class VesselPlanningController {
     private final VesselPlanningService crudService;
     private final IVesselPlanningMasterService vesselPlanningMasterService;
     private final IVesselPlanningSaveService vesselPlanningSaveService;
+    private final VesselPlanningSaleOrderUpdateService saleOrderUpdateService;
 
     public VesselPlanningController(
             VesselPlanningService crudService,
             IVesselPlanningMasterService vesselPlanningMasterService,
-            IVesselPlanningSaveService vesselPlanningSaveService) {
+            IVesselPlanningSaveService vesselPlanningSaveService,
+            VesselPlanningSaleOrderUpdateService saleOrderUpdateService) {
         this.crudService = crudService;
         this.vesselPlanningMasterService = vesselPlanningMasterService;
         this.vesselPlanningSaveService = vesselPlanningSaveService;
+        this.saleOrderUpdateService = saleOrderUpdateService;
     }
 
     @GetMapping("/company/{companyRefId}")
@@ -129,6 +135,16 @@ public class VesselPlanningController {
 
     @PostMapping("/view")
     public ResponseEntity<List<VesselPlanningLegacyDtos.ViewModel>> view(@RequestBody @Valid VesselPlanningLegacyDtos.ViewRequest request) { return ResponseEntity.ok(vesselPlanningMasterService.vesselPlanningView(request.getSoId(), request.getComid())); }
+
+    /**
+     * The Update window: writes only its own fields on one job (status, cargo, PTW, loading/off
+     * ETA-ETB-ETD, loading/off boarding officers). 400 for a bad date or status, 404 for a
+     * missing job.
+     */
+    @PostMapping("/sale-order-update")
+    public ResponseEntity<VesselPlanningSaleOrderUpdateResponse> updateSaleOrder(@RequestBody @Valid VesselPlanningSaleOrderUpdateRequest request) {
+        return ResponseEntity.ok(saleOrderUpdateService.update(request));
+    }
 
     private Integer resolveCompanyId(List<VesselPlanningLegacyDtos.SaveRequest> requests, Integer companyIdHeader) {
         if (companyIdHeader != null && companyIdHeader > 0) return companyIdHeader;

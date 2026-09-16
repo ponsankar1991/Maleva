@@ -93,12 +93,6 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                    ISNULL(Ag.MobileNo,'') as AgentPhone,
                    ISNULL(OAg.AgentName,'') as OAgentName,
                    ISNULL(OAg.MobileNo,'') as OAgentPhone,
-                   ISNULL(S.BoardingOfficerRefid,0) as BoardingOfficerRefid,
-                   ISNULL(EB.EmployeeName,'') as BoardingOfficerName,
-                   ISNULL(S.BoardingOfficer1Refid,0) as BoardingOfficer1Refid,
-                   ISNULL(EB1.EmployeeName,'') as BoardingOfficerName1,
-                   ISNULL(S.BoardingAmount,0) as BoardingAmount,
-                   ISNULL(S.BoardingAmount1,0) as BoardingAmount1,
                    ISNULL(C.CustomerName,'') as CustomerName,
                    ISNULL(E.EmployeeName,'') as EmployeeName,
                    ISNULL(B.Remarks,'') as Remarks,
@@ -112,8 +106,6 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id=ISNULL(S.LastEmployeeRefid,S.EmployeeRefId)
             LEFT JOIN Agent Ag WITH(NOLOCK) ON Ag.Id=S.AgentMasterRefid
             LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
-            LEFT JOIN EmployeeMaster EB WITH(NOLOCK) ON EB.Id=S.BoardingOfficerRefid
-            LEFT JOIN EmployeeMaster EB1 WITH(NOLOCK) ON EB1.Id=S.BoardingOfficer1Refid
             """;
 
     private static final String EDIT_MASTER_SQL = """
@@ -188,10 +180,6 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                    ISNULL(Ag.MobileNo,'') as AgentPhone,
                    ISNULL(OAg.AgentName,'') as OAgentName,
                    ISNULL(OAg.MobileNo,'') as OAgentPhone,
-                   ISNULL(S.BoardingOfficerRefid,0) as BoardingOfficerRefid,
-                   ISNULL(EB.EmployeeName,'') as BoardingOfficerName,
-                   ISNULL(S.BoardingOfficer1Refid,0) as BoardingOfficer1Refid,
-                   ISNULL(EB1.EmployeeName,'') as BoardingOfficerName1,
                    ISNULL(S.LBoardingOfficerRefid, 0) as LBoardingOfficerRefid,
                    ISNULL(LEB.EmployeeName, '') as LBoardingOfficerName,
                    ISNULL(S.LBoardingOfficer1Refid, 0) as LBoardingOfficer1Refid,
@@ -200,8 +188,16 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                    ISNULL(OEB.EmployeeName, '') as OBoardingOfficerName,
                    ISNULL(S.OBoardingOfficer1Refid, 0) as OBoardingOfficer1Refid,
                    ISNULL(OEB1.EmployeeName, '') as OBoardingOfficerName1,
-                   ISNULL(S.BoardingAmount,0) as BoardingAmount,
-                   ISNULL(S.BoardingAmount1,0) as BoardingAmount1,
+                   ISNULL(S.LBoardingOfficer2Refid,0) as LBoardingOfficer2Refid,
+                   ISNULL(LEB2.EmployeeName,'') as LBoardingOfficerName2,
+                   ISNULL(S.OBoardingOfficer2Refid,0) as OBoardingOfficer2Refid,
+                   ISNULL(OEB2.EmployeeName,'') as OBoardingOfficerName2,
+                   ISNULL(S.LBoardingAmount,0) as LBoardingAmount,
+                   ISNULL(S.LBoardingAmount1,0) as LBoardingAmount1,
+                   ISNULL(NULLIF(S.LBoardingAmount2,''),'0') as LBoardingAmount2,
+                   ISNULL(S.OBoardingAmount,0) as OBoardingAmount,
+                   ISNULL(S.OBoardingAmount1,0) as OBoardingAmount1,
+                   ISNULL(NULLIF(S.OBoardingAmount2,''),'0') as OBoardingAmount2,
                    ISNULL(C.CustomerName,'') as CustomerName,
                    ISNULL(E.EmployeeName,'') as EmployeeName,
                    ISNULL(B.Remarks,'') as Remarks,
@@ -215,12 +211,12 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id=ISNULL(S.LastEmployeeRefid,S.EmployeeRefId)
             LEFT JOIN Agent Ag WITH(NOLOCK) ON Ag.Id=S.AgentMasterRefid
             LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
-            LEFT JOIN EmployeeMaster EB WITH(NOLOCK) ON EB.Id=S.BoardingOfficerRefid
-            LEFT JOIN EmployeeMaster EB1 WITH(NOLOCK) ON EB1.Id=S.BoardingOfficer1Refid
             LEFT JOIN EmployeeMaster LEB WITH(NOLOCK) ON LEB.Id=S.LBoardingOfficerRefid
             LEFT JOIN EmployeeMaster LEB1 WITH(NOLOCK) ON LEB1.Id=S.LBoardingOfficer1Refid
             LEFT JOIN EmployeeMaster OEB WITH(NOLOCK) ON OEB.Id=S.OBoardingOfficerRefid
             LEFT JOIN EmployeeMaster OEB1 WITH(NOLOCK) ON OEB1.Id=S.OBoardingOfficer1Refid
+            LEFT JOIN EmployeeMaster LEB2 WITH(NOLOCK) ON LEB2.Id=S.LBoardingOfficer2Refid
+            LEFT JOIN EmployeeMaster OEB2 WITH(NOLOCK) ON OEB2.Id=S.OBoardingOfficer2Refid
             WHERE A.Id=:planningId AND A.CompanyRefId=:companyId
             ORDER BY B.Id ASC
             """;
@@ -389,10 +385,6 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                        ISNULL(Ag.MobileNo,'') as AgentPhone,
                        ISNULL(OAg.AgentName,'') as OAgentName,
                        ISNULL(OAg.MobileNo,'') as OAgentPhone,
-                       ISNULL(S.BoardingOfficerRefid,0) as BoardingOfficerRefid,
-                       ISNULL(EB.EmployeeName,'') as BoardingOfficerName,
-                       ISNULL(S.BoardingOfficer1Refid,0) as BoardingOfficer1Refid,
-                       ISNULL(EB1.EmployeeName,'') as BoardingOfficerName1,
                        ISNULL(S.LBoardingOfficerRefid,0) as LBoardingOfficerRefid,
                        ISNULL(LEB.EmployeeName,'') as LBoardingOfficerName,
                        ISNULL(S.LBoardingOfficer1Refid,0) as LBoardingOfficer1Refid,
@@ -401,8 +393,16 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                        ISNULL(OEB.EmployeeName,'') as OBoardingOfficerName,
                        ISNULL(S.OBoardingOfficer1Refid,0) as OBoardingOfficer1Refid,
                        ISNULL(OEB1.EmployeeName,'') as OBoardingOfficerName1,
-                       ISNULL(S.BoardingAmount,0) as BoardingAmount,
-                       ISNULL(S.BoardingAmount1,0) as BoardingAmount1,
+                       ISNULL(S.LBoardingOfficer2Refid,0) as LBoardingOfficer2Refid,
+                       ISNULL(LEB2.EmployeeName,'') as LBoardingOfficerName2,
+                       ISNULL(S.OBoardingOfficer2Refid,0) as OBoardingOfficer2Refid,
+                       ISNULL(OEB2.EmployeeName,'') as OBoardingOfficerName2,
+                       ISNULL(S.LBoardingAmount,0) as LBoardingAmount,
+                       ISNULL(S.LBoardingAmount1,0) as LBoardingAmount1,
+                       ISNULL(NULLIF(S.LBoardingAmount2,''),'0') as LBoardingAmount2,
+                       ISNULL(S.OBoardingAmount,0) as OBoardingAmount,
+                       ISNULL(S.OBoardingAmount1,0) as OBoardingAmount1,
+                       ISNULL(NULLIF(S.OBoardingAmount2,''),'0') as OBoardingAmount2,
                        ISNULL(C.CustomerName,'') as CustomerName,
                        ISNULL(E.EmployeeName,'') as EmployeeName,
                        CAST('' AS VARCHAR(300)) as Remarks,
@@ -415,12 +415,12 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                 LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id=ISNULL(S.LastEmployeeRefid,S.EmployeeRefId)
                 LEFT JOIN Agent Ag WITH(NOLOCK) ON Ag.Id=S.AgentMasterRefid
                 LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
-                LEFT JOIN EmployeeMaster EB WITH(NOLOCK) ON EB.Id=S.BoardingOfficerRefid
-                LEFT JOIN EmployeeMaster EB1 WITH(NOLOCK) ON EB1.Id=S.BoardingOfficer1Refid
                 LEFT JOIN EmployeeMaster LEB WITH(NOLOCK) ON LEB.Id=S.LBoardingOfficerRefid
                 LEFT JOIN EmployeeMaster LEB1 WITH(NOLOCK) ON LEB1.Id=S.LBoardingOfficer1Refid
                 LEFT JOIN EmployeeMaster OEB WITH(NOLOCK) ON OEB.Id=S.OBoardingOfficerRefid
                 LEFT JOIN EmployeeMaster OEB1 WITH(NOLOCK) ON OEB1.Id=S.OBoardingOfficer1Refid
+                LEFT JOIN EmployeeMaster LEB2 WITH(NOLOCK) ON LEB2.Id=S.LBoardingOfficer2Refid
+                LEFT JOIN EmployeeMaster OEB2 WITH(NOLOCK) ON OEB2.Id=S.OBoardingOfficer2Refid
                 WHERE S.CompanyRefId=:companyId AND S.Active!=2
                 """);
 
@@ -551,10 +551,6 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                     .agentPhone(getString(rs, "AgentPhone"))
                     .oAgentName(getString(rs, "OAgentName"))
                     .oAgentPhone(getString(rs, "OAgentPhone"))
-                    .boardingOfficerRefid(getInt(rs, "BoardingOfficerRefid"))
-                    .boardingOfficerName(getString(rs, "BoardingOfficerName"))
-                    .boardingOfficer1Refid(getInt(rs, "BoardingOfficer1Refid"))
-                    .boardingOfficerName1(getString(rs, "BoardingOfficerName1"))
                     .lBoardingOfficerRefid(getInt(rs, "LBoardingOfficerRefid"))
                     .lBoardingOfficerName(getString(rs, "LBoardingOfficerName"))
                     .lBoardingOfficer1Refid(getInt(rs, "LBoardingOfficer1Refid"))
@@ -563,8 +559,16 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                     .oBoardingOfficerName(getString(rs, "OBoardingOfficerName"))
                     .oBoardingOfficer1Refid(getInt(rs, "OBoardingOfficer1Refid"))
                     .oBoardingOfficerName1(getString(rs, "OBoardingOfficerName1"))
-                    .boardingAmount(getDouble(rs, "BoardingAmount"))
-                    .boardingAmount1(getDouble(rs, "BoardingAmount1"))
+                    .lBoardingOfficer2Refid(getInt(rs, "LBoardingOfficer2Refid"))
+                    .lBoardingOfficerName2(getString(rs, "LBoardingOfficerName2"))
+                    .oBoardingOfficer2Refid(getInt(rs, "OBoardingOfficer2Refid"))
+                    .oBoardingOfficerName2(getString(rs, "OBoardingOfficerName2"))
+                    .lBoardingAmount(getDouble(rs, "LBoardingAmount"))
+                    .lBoardingAmount1(getDouble(rs, "LBoardingAmount1"))
+                    .lBoardingAmount2(getDouble(rs, "LBoardingAmount2"))
+                    .oBoardingAmount(getDouble(rs, "OBoardingAmount"))
+                    .oBoardingAmount1(getDouble(rs, "OBoardingAmount1"))
+                    .oBoardingAmount2(getDouble(rs, "OBoardingAmount2"))
                     .customerName(getString(rs, "CustomerName"))
                     .employeeName(getString(rs, "EmployeeName"))
                     .remarks(getString(rs, "Remarks"))
