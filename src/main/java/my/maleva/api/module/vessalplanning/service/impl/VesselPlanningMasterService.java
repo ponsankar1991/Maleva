@@ -32,7 +32,6 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                     CONVERT(VARCHAR(10),A.FDate,23) as SFDate,
                    CONVERT(VARCHAR(10),A.TDate,23) as STDate,
                    ISNULL(A.Remarks,'') as Remarks, ISNULL(A.Search,'') as Search
-
             FROM VESSELPLANINGMaster A WITH(NOLOCK)
             """;
 

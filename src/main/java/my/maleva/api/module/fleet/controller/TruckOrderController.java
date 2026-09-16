@@ -4,6 +4,7 @@ import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import my.maleva.api.common.dto.ApiResponse;
 import my.maleva.api.module.fleet.dto.OrderableTruckDto;
+import my.maleva.api.module.fleet.dto.TruckAvailabilityDto;
 import my.maleva.api.module.fleet.dto.TruckOrderCalendarResponse;
 import my.maleva.api.module.fleet.dto.TruckOrderDto;
 import my.maleva.api.module.fleet.dto.request.TruckOrderSaveRequest;
@@ -124,10 +125,34 @@ public class TruckOrderController {
     }
 
     /**
+     * Which of our trucks are free on a day, optionally for one size class.
+     *
+     * <p>Asked by the order dialog every time its date or size changes. A
+     * {@code freeCount} of 0 is the "no truck available" answer. Pass
+     * {@code excludeId} when editing, so the order does not make its own truck
+     * look taken. Legacy counterpart: TruckServices.GetunorderedTruck, which
+     * existed but no screen ever called.
+     */
+    @GetMapping("/availability")
+    public ResponseEntity<ApiResponse<TruckAvailabilityDto>> availability(
+            @RequestParam Integer companyRefId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate orderDate,
+            @RequestParam(required = false) String sizeClass,
+            @RequestParam(required = false) Integer excludeId) {
+
+        return ResponseEntity.ok(ApiResponse.success(
+                service.availability(companyRefId, orderDate, sizeClass, excludeId),
+                "Truck availability"));
+    }
+
+    /**
      * One order, for the edit dialog.
      * Legacy equivalent: POST /TruckMaster/GetTruckOrderById
      */
-    @GetMapping("/{id}")
+    // Digits only: a non-numeric path is not this route. Before that constraint,
+    // GET /api/truck-orders/availability was matched here on a build without the
+    // availability endpoint and failed as "For input string: availability".
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<ApiResponse<TruckOrderDto>> getForEdit(
             @PathVariable Integer id,
             @RequestParam Integer companyRefId) {
@@ -160,7 +185,7 @@ public class TruckOrderController {
      * serves, and its delete button was disabled by a hardcoded permission flag
      * before it could find out.
      */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Integer id,
             @RequestParam Integer companyRefId,

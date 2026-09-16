@@ -28,4 +28,12 @@ public class TruckOrderCalendarResponse {
 
     /** Legacy {@code lblBookedCount}: how many distinct trucks are booked in it. */
     private Integer bookedTrucks;
+
+    /**
+     * Trucks / taken / free for every date of the range, all sizes, ignoring the
+     * truck and status filters (a filter changes what is listed, not how many
+     * trucks are free). Empty when the range is open-ended or longer than the
+     * two-month cap the service applies.
+     */
+    private List<TruckDayCapacityDto> days;
 }

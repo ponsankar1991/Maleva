@@ -122,9 +122,15 @@ public interface TruckMasterRepository extends JpaRepository<TruckMaster, Intege
      * <p>Active only. The legacy screen asked for {@code Active != 2} and matched
      * plates in the browser, so a deleted truck sharing a plate with a live one
      * showed up twice.
+     *
+     * <p>Own trucks only ({@code MalevaTruck = 1}): the calendar counts free and
+     * taken trucks, and a subcontractor's vehicle is not one of ours to count.
+     * Hired trucks are booked as OUTSIDE orders instead. Size filtering is done by
+     * the caller - the fleet is a couple of dozen rows.
      */
     @Query("select t from TruckMaster t "
             + "where t.companyRefId = :companyRefId and t.active = 1 and t.orderableTruck = 1 "
+            + "and t.malevaTruck = 1 "
             + "order by t.truckName asc")
     List<TruckMaster> findOrderableTrucks(@Param("companyRefId") Integer companyRefId);
 }

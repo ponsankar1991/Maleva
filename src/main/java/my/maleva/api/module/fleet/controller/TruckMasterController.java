@@ -165,6 +165,62 @@ public class TruckMasterController {
      * Update TruckMaster
      * PUT /api/truck-masters/{id}
      */
+    /**
+     * The bookable fleet with each truck's driver and phone number.
+     *
+     * <p>Behind the header's truck/driver window: everyone opens it to find a
+     * number, so it returns eight fields rather than the whole truck record.
+     */
+    @GetMapping("/fleet-drivers")
+    public ResponseEntity<?> getFleetDrivers(@RequestParam Integer companyRefId) {
+        try {
+            return ResponseEntity.ok(service.getFleetDrivers(companyRefId));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Puts a truck on the road, in the workshop, or marks it sold.
+     *
+     * <p>Changes two fields and nothing else - no order, plan or report is
+     * touched. {@code workshopUntil} is kept only for WORKSHOP; for the other
+     * statuses it is cleared, so an old date cannot bring a sold truck back.
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Integer id,
+            @RequestParam String truckStatus,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate workshopUntil) {
+        try {
+            return ResponseEntity.ok(service.updateStatus(id, truckStatus, workshopUntil));
+        } catch (IllegalArgumentException | my.maleva.api.common.exception.InvalidRequestException ex) {
+            logger.warn("Status change refused for truck {}: {}", id, ex.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Sets, moves or clears the driver who normally drives this truck.
+     *
+     * <p>The pairing is stored once, on {@code DriverMaster.TruckRefId}, so the
+     * truck screen and the driver screen always show the same thing. Send no
+     * {@code driverRefId} (or 0) to leave the truck without a driver.
+     */
+    @PutMapping("/{id}/driver")
+    public ResponseEntity<?> assignDriver(@PathVariable Integer id,
+                                          @RequestParam(required = false) Integer driverRefId) {
+        try {
+            return ResponseEntity.ok(service.assignDriver(id, driverRefId));
+        } catch (IllegalArgumentException ex) {
+            logger.warn("Driver assignment refused for truck {}: {}", id, ex.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage()));
+        }
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody TruckMasterDto dto) {
         logger.info("Updating TruckMaster with ID: {}", id);

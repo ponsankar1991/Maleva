@@ -1,5 +1,6 @@
 package my.maleva.api.module.fleet.service;
 
+import my.maleva.api.module.fleet.dto.TruckDriverContactDto;
 import my.maleva.api.module.fleet.dto.TruckMasterDto;
 import my.maleva.api.common.dto.ComboListModel;
 import java.util.List;
@@ -58,6 +59,40 @@ public interface TruckMasterService {
     boolean existsByTruckNumber(String truckNumber, Integer companyRefId);
 
     TruckMasterDto processTruck(TruckMasterDto dto, Integer companyId);
+
+    /**
+     * Sets, moves or clears the driver who normally drives this truck.
+     *
+     * <p>Writes {@code DriverMaster.TruckRefId} - the one place the pairing is
+     * kept - so the truck screen and the driver screen can never disagree. Any
+     * other driver still pointing at this truck is released, because one truck
+     * has one default driver.
+     *
+     * @param driverRefId the driver, or null / 0 to leave the truck without one
+     */
+    TruckMasterDto assignDriver(Integer truckId, Integer driverRefId);
+
+    /**
+     * Puts a truck on the road, in the workshop, or marks it sold.
+     *
+     * <p>Nothing is deleted: the truck keeps every order, RTI and report it has
+     * ever been on. A WORKSHOP truck is simply not offered by the Truck Order
+     * Calendar until {@code workshopUntil} has passed; SOLD is never offered.
+     *
+     * @param workshopUntil the day it is expected back - kept only for WORKSHOP,
+     *                      and cleared for the other two so a stale date cannot
+     *                      quietly bring a sold truck back
+     */
+    TruckMasterDto updateStatus(Integer truckId, String truckStatus, java.time.LocalDate workshopUntil);
+
+    /**
+     * The bookable fleet with the driver of each truck and their phone number -
+     * what the header's truck/driver window shows.
+     *
+     * <p>Only trucks the calendar books: active, ours, and flagged orderable.
+     * Ordered by plate, so the list reads the same every time it is opened.
+     */
+    List<TruckDriverContactDto> getFleetDrivers(Integer companyRefId);
 
     /**
      * Search trucks with optional keyword, column filter, type and pagination.

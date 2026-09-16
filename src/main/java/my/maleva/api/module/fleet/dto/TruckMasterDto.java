@@ -123,5 +123,19 @@ public class TruckMasterDto {
 
     // Account code from AccountsGroupMaster (optional)
     private String accountCode;
+
+    /** ACTIVE, WORKSHOP or SOLD. Blank means ACTIVE. */
+    private String truckStatus;
+
+    /** The day a WORKSHOP truck is expected back; null means until further notice. */
+    private LocalDate workshopUntil;
+
+    /**
+     * The driver who normally drives this truck. Read-only here: the link is
+     * stored on DriverMaster.TruckRefId, and PUT /api/truck-masters/{id}/driver
+     * is what changes it. Saving a truck never writes these.
+     */
+    private Integer driverRefId;
+    private String driverName;
 }
 

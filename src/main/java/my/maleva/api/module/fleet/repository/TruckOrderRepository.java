@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -27,18 +28,37 @@ public interface TruckOrderRepository extends JpaRepository<TruckOrder, Integer>
     Optional<TruckOrder> findByIdAndCompanyRefIdAndActive(Integer id, Integer companyRefId, Integer active);
 
     /**
-     * The "this truck is already booked on the selected date" rule.
+     * How many other live orders occupy this truck on this date.
+     *
+     * <p>Counts OWN and SHARED orders - both put a job on the truck. An OWN save
+     * needs this to be 0; a SHARED save needs it to be above 0. OUTSIDE orders
+     * carry no truck and never match.
      *
      * <p>{@code excludeId} keeps an edit from colliding with itself; pass 0 when
      * inserting, since no row has that id.
      */
     @Query("select count(o) from TruckOrder o "
             + "where o.companyRefId = :companyRefId and o.truckRefId = :truckRefId "
-            + "and o.orderDate = :orderDate and o.active = 1 and o.id <> :excludeId")
+            + "and o.orderDate = :orderDate and o.active = 1 "
+            + "and o.bookingType in ('OWN', 'SHARED') and o.id <> :excludeId")
     long countClashes(@Param("companyRefId") Integer companyRefId,
                       @Param("truckRefId") Integer truckRefId,
                       @Param("orderDate") LocalDate orderDate,
                       @Param("excludeId") Integer excludeId);
+
+    /**
+     * Every live order of every booking type between two dates, inclusive -
+     * the raw material for the free / taken counts. Deliberately unfiltered by
+     * truck or status: those filters change what the calendar lists, not how
+     * many trucks are free.
+     */
+    @Query("select o from TruckOrder o "
+            + "where o.companyRefId = :companyRefId and o.active = 1 "
+            + "and o.orderDate between :fromDate and :toDate "
+            + "order by o.orderDate asc, o.id asc")
+    List<TruckOrder> findLiveInRange(@Param("companyRefId") Integer companyRefId,
+                                     @Param("fromDate") LocalDate fromDate,
+                                     @Param("toDate") LocalDate toDate);
 
     // No bulk soft-delete query here on purpose. The other fleet documents have
     // one and test its affected-row count against 0, but the pool runs

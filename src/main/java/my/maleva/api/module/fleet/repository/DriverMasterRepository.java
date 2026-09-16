@@ -53,4 +53,17 @@ public interface DriverMasterRepository extends JpaRepository<DriverMaster, Inte
      * Find all drivers by company ID and active status
      */
     List<DriverMaster> findByCompanyRefIdAndActive(Integer companyRefId, Integer active);
+
+    /**
+     * The drivers assigned to one truck.
+     *
+     * <p>The assignment lives on the driver ({@code DriverMaster.TruckRefId}) and
+     * nowhere else - one link, so nothing can disagree with itself. Returns a list
+     * rather than one row because nothing in the database stops two drivers
+     * pointing at the same truck; the assign call cleans that up.
+     */
+    List<DriverMaster> findByCompanyRefIdAndTruckRefId(Integer companyRefId, Integer truckRefId);
+
+    /** Every driver of the company that has a truck, for filling a whole truck list in one query. */
+    List<DriverMaster> findByCompanyRefIdAndTruckRefIdIsNotNull(Integer companyRefId);
 }

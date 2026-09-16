@@ -179,5 +179,37 @@ public class TruckMaster {
      */
     @Column(name = "OrderableTruck")
     private Integer orderableTruck;
+
+    // No size-class column: the Truck Order Calendar reads the size out of
+    // TruckType with TruckSizeClass.fromTruckType, so there is nothing extra to
+    // add to this table and nothing to keep in step with it.
+
+    /**
+     * Pallet spaces this particular truck holds, when it differs from the usual
+     * figure for its size. Null means "use the size's figure"
+     * ({@link TruckSizeClass#getDefaultPalletCapacity()}), which is the normal case.
+     *
+     * <p>Only ever used to warn, never to refuse a booking.
+     */
+    @Column(name = "PalletCapacity")
+    private Integer palletCapacity;
+
+    /**
+     * A {@link TruckStatus} name: ACTIVE, WORKSHOP or SOLD. Rows older than the
+     * column read ACTIVE.
+     *
+     * <p>Separate from {@link #active}, which is the soft-delete flag. A truck in
+     * the workshop is not deleted - it is simply not offered for booking.
+     */
+    @Column(name = "TruckStatus", length = 20)
+    private String truckStatus;
+
+    /**
+     * The day a WORKSHOP truck is expected back. Null means until further notice.
+     * Once the day has passed the truck is bookable again, so nobody has to
+     * remember to switch it back.
+     */
+    @Column(name = "WorkshopUntil")
+    private LocalDate workshopUntil;
 }
 

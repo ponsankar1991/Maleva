@@ -1,6 +1,7 @@
 package my.maleva.api.module.fleet.service;
 
 import my.maleva.api.module.fleet.dto.OrderableTruckDto;
+import my.maleva.api.module.fleet.dto.TruckAvailabilityDto;
 import my.maleva.api.module.fleet.dto.TruckOrderCalendarResponse;
 import my.maleva.api.module.fleet.dto.TruckOrderDto;
 import my.maleva.api.module.fleet.dto.request.TruckOrderSaveRequest;
@@ -64,9 +65,10 @@ public interface TruckOrderService {
     /**
      * Creates or updates an order.
      *
-     * <p>A truck can hold one live order per day; a second one is rejected. On
-     * update the order number is preserved - re-pointing it would rewrite a
-     * document number that has already been quoted.
+     * <p>By booking type: OWN needs a truck with no other live order that day;
+     * SHARED needs a truck that already has one; OUTSIDE needs an outside truck
+     * name and carries no truck. On update the order number is preserved -
+     * re-pointing it would rewrite a document number that has already been quoted.
      */
     TruckOrderDto save(TruckOrderSaveRequest request, String username);
 
@@ -79,6 +81,19 @@ public interface TruckOrderService {
      * @return the clashing order, or null when the day is free
      */
     TruckOrderDto findClash(Integer companyRefId, Integer truckRefId, LocalDate orderDate, Integer excludeId);
+
+    /**
+     * Which orderable own trucks are free on a day, for the order dialog.
+     *
+     * <p>A truck is taken when it holds a live OWN or SHARED order that day;
+     * OUTSIDE orders are listed but never counted.
+     *
+     * @param sizeClass a size class code (e.g. {@code 40FT}), or null for any size;
+     *                  trucks with no size class are offered for any size only
+     * @param excludeId the order being edited, or null when creating
+     */
+    TruckAvailabilityDto availability(Integer companyRefId, LocalDate orderDate,
+                                      String sizeClass, Integer excludeId);
 
     /** Soft delete: {@code Active = 2}, matching the other fleet documents. */
     void delete(Integer id, Integer companyRefId, String username);

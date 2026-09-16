@@ -40,6 +40,8 @@ public final class TruckOrderSpecification {
             if (request.getToDate() != null) {
                 predicates.add(builder.lessThanOrEqualTo(root.get("orderDate"), request.getToDate()));
             }
+            // An equality on TruckRefId never matches NULL, so a truck filter
+            // leaves out OUTSIDE orders by itself; without one they are listed.
             if (request.getTruckRefId() != null && request.getTruckRefId() != 0) {
                 predicates.add(builder.equal(root.get("truckRefId"), request.getTruckRefId()));
             }

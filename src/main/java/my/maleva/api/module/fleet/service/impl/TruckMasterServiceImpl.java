@@ -1,9 +1,14 @@
 package my.maleva.api.module.fleet.service.impl;
 
+import my.maleva.api.module.fleet.dto.TruckDriverContactDto;
 import my.maleva.api.module.fleet.dto.TruckMasterDto;
 import my.maleva.api.common.dto.ComboListModel;
 import my.maleva.api.module.fleet.mapper.TruckMasterMapper;
+import my.maleva.api.module.fleet.entity.DriverMaster;
+import my.maleva.api.module.fleet.entity.TruckSizeClass;
+import my.maleva.api.module.fleet.entity.TruckStatus;
 import my.maleva.api.module.fleet.entity.TruckMaster;
+import my.maleva.api.module.fleet.repository.DriverMasterRepository;
 import my.maleva.api.module.fleet.repository.TruckMasterRepository;
 import my.maleva.api.module.fleet.service.TruckMasterService;
 import org.slf4j.Logger;
@@ -20,7 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -46,22 +53,25 @@ public class TruckMasterServiceImpl implements TruckMasterService {
     @Autowired
     private my.maleva.api.module.accountsgroupmaster.repository.AccountsGroupMasterRepository accountsGroupMasterRepository;
 
+    @Autowired
+    private DriverMasterRepository driverMasterRepository;
+
     @Override
     public List<TruckMasterDto> getByCompanyRefId(Integer companyRefId) {
         logger.info("Fetching TruckMaster for company: {}", companyRefId);
-        return repository.findByCompanyRefId(companyRefId)
+        return withDrivers(companyRefId, repository.findByCompanyRefId(companyRefId)
                 .stream()
                 .map(mapper::toDto)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     @Override
     public List<TruckMasterDto> getActiveByCompanyRefId(Integer companyRefId) {
         logger.info("Fetching active TruckMaster for company: {}", companyRefId);
-        return repository.findByCompanyRefIdAndActive(companyRefId, 1)
+        return withDrivers(companyRefId, repository.findByCompanyRefIdAndActive(companyRefId, 1)
                 .stream()
                 .map(mapper::toDto)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     @Override
@@ -112,7 +122,8 @@ public class TruckMasterServiceImpl implements TruckMasterService {
     @Override
     public Optional<TruckMasterDto> getById(Integer id) {
         logger.info("Fetching TruckMaster by ID: {}", id);
-        return repository.findById(id).map(mapper::toDto);
+        // The edit form reads this, so it carries the driver too.
+        return repository.findById(id).map(mapper::toDto).map(this::withDriver);
     }
 
     @Override
@@ -402,6 +413,8 @@ public class TruckMasterServiceImpl implements TruckMasterService {
             }
         }
 
+        withDrivers(companyId, dtos);
+
         return my.maleva.api.module.fleet.dto.SearchResultDto.builder().items(dtos).totalCount(total).build();
     }
 
@@ -500,4 +513,135 @@ public class TruckMasterServiceImpl implements TruckMasterService {
         return dtos;
     }
 
+
+    @Override
+    public List<TruckDriverContactDto> getFleetDrivers(Integer companyRefId) {
+        if (companyRefId == null) {
+            throw new IllegalArgumentException("Company ID is required");
+        }
+
+        Map<Integer, DriverMaster> byTruck = new HashMap<>();
+        for (DriverMaster driver : driverMasterRepository.findByCompanyRefIdAndTruckRefIdIsNotNull(companyRefId)) {
+            byTruck.putIfAbsent(driver.getTruckRefId(), driver);
+        }
+
+        return repository.findOrderableTrucks(companyRefId).stream()
+                .map(truck -> {
+                    DriverMaster driver = byTruck.get(truck.getId());
+                    TruckSizeClass size = TruckSizeClass.fromTruckType(truck.getTruckType());
+                    return TruckDriverContactDto.builder()
+                            .truckId(truck.getId())
+                            .truckName(truck.getTruckName() == null ? null : truck.getTruckName().trim())
+                            .truckNumber(truck.getTruckNumber() == null ? null : truck.getTruckNumber().trim())
+                            .truckType(truck.getTruckType())
+                            .sizeClass(size == null ? null : size.getCode())
+                            .truckStatus(truck.getTruckStatus() == null ? "ACTIVE" : truck.getTruckStatus())
+                            .workshopUntil(truck.getWorkshopUntil())
+                            .driverRefId(driver == null ? null : driver.getId())
+                            .driverName(driver == null ? null : driver.getDriverName())
+                            .driverMobileNo(driver == null ? null : driver.getMobileNo())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ------------------------------------------------- driver of a truck
+
+    /**
+     * Fills the driver on a whole page of trucks with one query.
+     *
+     * <p>The pairing is stored on the driver, so it is read from there; nothing
+     * is written to TruckMaster. If two drivers point at the same truck - which
+     * the database does not prevent - the first by id wins here, and the next
+     * assign on that truck tidies it.
+     */
+    private List<TruckMasterDto> withDrivers(Integer companyRefId, List<TruckMasterDto> trucks) {
+        if (companyRefId == null || trucks == null || trucks.isEmpty()) {
+            return trucks;
+        }
+        Map<Integer, DriverMaster> byTruck = new HashMap<>();
+        for (DriverMaster driver : driverMasterRepository.findByCompanyRefIdAndTruckRefIdIsNotNull(companyRefId)) {
+            byTruck.putIfAbsent(driver.getTruckRefId(), driver);
+        }
+        for (TruckMasterDto truck : trucks) {
+            DriverMaster driver = byTruck.get(truck.getId());
+            if (driver != null) {
+                truck.setDriverRefId(driver.getId());
+                truck.setDriverName(driver.getDriverName());
+            }
+        }
+        return trucks;
+    }
+
+    /** The same, for one truck. */
+    private TruckMasterDto withDriver(TruckMasterDto truck) {
+        if (truck == null || truck.getId() == null) {
+            return truck;
+        }
+        driverMasterRepository
+                .findByCompanyRefIdAndTruckRefId(truck.getCompanyRefId(), truck.getId())
+                .stream()
+                .findFirst()
+                .ifPresent(driver -> {
+                    truck.setDriverRefId(driver.getId());
+                    truck.setDriverName(driver.getDriverName());
+                });
+        return truck;
+    }
+
+    @Override
+    @Transactional
+    public TruckMasterDto updateStatus(Integer truckId, String truckStatus, java.time.LocalDate workshopUntil) {
+        TruckMaster truck = repository.findById(truckId)
+                .orElseThrow(() -> new IllegalArgumentException("Truck not found: " + truckId));
+
+        // Rejects anything that is not one of the three, so a typo cannot leave a
+        // truck in a state the calendar does not understand.
+        TruckStatus status = TruckStatus.fromCode(truckStatus);
+
+        truck.setTruckStatus(status.name());
+        truck.setWorkshopUntil(status == TruckStatus.WORKSHOP ? workshopUntil : null);
+        truck.setModifiedDate(LocalDateTime.now());
+        TruckMaster saved = repository.save(truck);
+
+        logger.info("Truck {} is now {}{}", truckId, status.name(),
+                status == TruckStatus.WORKSHOP && workshopUntil != null ? " until " + workshopUntil : "");
+        return withDriver(mapper.toDto(saved));
+    }
+
+    @Override
+    @Transactional
+    public TruckMasterDto assignDriver(Integer truckId, Integer driverRefId) {
+        TruckMaster truck = repository.findById(truckId)
+                .orElseThrow(() -> new IllegalArgumentException("Truck not found: " + truckId));
+
+        Integer wanted = driverRefId == null || driverRefId == 0 ? null : driverRefId;
+
+        // One truck, one default driver: release anyone else still holding it.
+        for (DriverMaster holder : driverMasterRepository
+                .findByCompanyRefIdAndTruckRefId(truck.getCompanyRefId(), truckId)) {
+            if (wanted == null || !holder.getId().equals(wanted)) {
+                holder.setTruckRefId(null);
+                holder.setModifiedDate(LocalDateTime.now());
+                driverMasterRepository.save(holder);
+                logger.info("Released truck {} from driver {}", truckId, holder.getId());
+            }
+        }
+
+        if (wanted != null) {
+            DriverMaster driver = driverMasterRepository.findById(wanted)
+                    .orElseThrow(() -> new IllegalArgumentException("Driver not found: " + wanted));
+            if (!driver.getCompanyRefId().equals(truck.getCompanyRefId())) {
+                throw new IllegalArgumentException("That driver belongs to another company.");
+            }
+            // Moving a driver from another truck is allowed and is the normal
+            // way to swap: their row simply re-points.
+            driver.setTruckRefId(truckId);
+            driver.setModifiedDate(LocalDateTime.now());
+            driverMasterRepository.save(driver);
+            logger.info("Truck {} is now driven by driver {}", truckId, wanted);
+        }
+
+        return withDriver(mapper.toDto(truck));
+    }
 }

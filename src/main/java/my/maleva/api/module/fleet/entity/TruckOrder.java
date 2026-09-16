@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -42,8 +43,42 @@ public class TruckOrder {
     @Column(name = "CompanyRefId", nullable = false)
     private Integer companyRefId;
 
-    @Column(name = "TruckRefId", nullable = false)
+    /** Null only for an {@link TruckBookingType#OUTSIDE} order, which uses no truck of ours. */
+    @Column(name = "TruckRefId")
     private Integer truckRefId;
+
+    /** A {@link TruckBookingType} name. Rows older than the column read OWN. */
+    @Column(name = "BookingType", nullable = false, length = 10)
+    private String bookingType;
+
+    /** The hired truck's plate or name. Set for OUTSIDE orders only. */
+    @Column(name = "OutsideTruckName", length = 100)
+    private String outsideTruckName;
+
+    /** Who the outside truck was hired from. Optional, OUTSIDE orders only. */
+    @Column(name = "OutsideSupplierName", length = 200)
+    private String outsideSupplierName;
+
+    /** The {@link TruckSizeClass} code the dispatcher searched for. Reporting only. */
+    @Column(name = "TruckSizeClass", length = 10)
+    private String truckSizeClass;
+
+    /** Who the order is for - {@code Customer.Id}. Null when nobody was named. */
+    @Column(name = "CustomerRefId")
+    private Integer customerRefId;
+
+    /**
+     * How much cargo, counted in {@link #quantityUnit}. Null when not recorded.
+     *
+     * <p>A number, not the free text the sale order keeps ({@code "8 PLT + 1
+     * PIPE"}), so a day's load can actually be added up.
+     */
+    @Column(name = "Quantity", precision = 18, scale = 2)
+    private BigDecimal quantity;
+
+    /** A {@link TruckLoadUnit} code, e.g. {@code PLT}. Set together with the quantity. */
+    @Column(name = "QuantityUnit", length = 20)
+    private String quantityUnit;
 
     /** Null when nobody is recorded: the procedure stored 0 as NULL, and so do we. */
     @Column(name = "EmployeeRefId")

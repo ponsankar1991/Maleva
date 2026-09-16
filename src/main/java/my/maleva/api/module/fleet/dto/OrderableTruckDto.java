@@ -22,4 +22,14 @@ public class OrderableTruckDto {
     private Integer id;
     private String truckName;
     private String truckType;
+
+    /** A size class code such as {@code 40FT}, or null when not yet classified. */
+    private String sizeClass;
+
+    /**
+     * Pallet spaces this truck holds - its own figure if it has one, otherwise
+     * the usual figure for its size. Null for a long loader, which is counted in
+     * jobs rather than spaces.
+     */
+    private Integer palletCapacity;
 }

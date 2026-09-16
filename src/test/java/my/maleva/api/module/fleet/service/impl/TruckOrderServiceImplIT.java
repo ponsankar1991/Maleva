@@ -71,6 +71,7 @@ class TruckOrderServiceImplIT {
         assertTrue(patterns.contains("/api/truck-orders/trucks"), "trucks route missing");
         assertTrue(patterns.contains("/api/truck-orders/next-no"), "next-no route missing");
         assertTrue(patterns.contains("/api/truck-orders/clash"), "clash route missing");
+        assertTrue(patterns.contains("/api/truck-orders/availability"), "availability route missing");
         assertTrue(patterns.contains("/api/truck-orders/{id}"), "get/delete route missing");
     }
 
@@ -250,7 +251,45 @@ class TruckOrderServiceImplIT {
 
         InvalidRequestException error =
                 assertThrows(InvalidRequestException.class, () -> service.save(newOrderOn(day), "tester"));
-        assertEquals("This truck is already booked on the selected date.", error.getMessage());
+        assertTrue(error.getMessage().startsWith("No truck available: "), error.getMessage());
+    }
+
+    /** Requires TRUCK_ORDER_FLEET_FROM_PLANNING.sql STEP 1 on MalevanewDemo. */
+    @Test
+    void aSharedOrderRidesOnABookedTruckAndTheTruckCountsOnce() {
+        LocalDate day = LocalDate.of(2030, 2, 4);
+        TruckOrderDto own = service.save(newOrderOn(day), "tester");
+
+        TruckOrderSaveRequest shared = newOrderOn(day);
+        shared.setBookingType("SHARED");
+        TruckOrderDto saved = service.save(shared, "tester");
+        assertEquals("SHARED", saved.getBookingType());
+
+        var availability = service.availability(COMPANY, day, null, null);
+        assertEquals(1, availability.getTakenCount());
+        assertTrue(availability.getFreeTrucks().stream().noneMatch(t -> t.getId().equals(own.getTruckRefId())));
+    }
+
+    @Test
+    void anOutsideOrderHoldsNoTruckAndIsNotCounted() {
+        LocalDate day = LocalDate.of(2030, 2, 5);
+        int freeBefore = service.availability(COMPANY, day, null, null).getFreeCount();
+
+        TruckOrderSaveRequest outside = newOrderOn(day);
+        outside.setBookingType("OUTSIDE");
+        outside.setOutsideTruckName("ABC 1234");
+        TruckOrderDto saved = service.save(outside, "tester");
+
+        assertNull(saved.getTruckRefId());
+        assertEquals(freeBefore, service.availability(COMPANY, day, null, null).getFreeCount());
+    }
+
+    @Test
+    void orderableTrucksAreOwnTrucksOnly() {
+        for (OrderableTruckDto offered : service.orderableTrucks(COMPANY)) {
+            assertEquals(1, truckMasterRepository.findById(offered.getId()).orElseThrow().getMalevaTruck(),
+                    offered.getTruckName() + " is not a Maleva truck");
+        }
     }
 
     @Test
