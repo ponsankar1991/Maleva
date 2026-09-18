@@ -166,6 +166,58 @@ class StatementMailJobServiceTest {
     }
 
     @Test
+    @DisplayName("a run with PDF + Excel attaches each customer's own PDF and workbook, in that order")
+    @SuppressWarnings("unchecked")
+    void runWithExcel() {
+        ArgumentCaptor<List<EmailService.EmailAttachment>> files = ArgumentCaptor.forClass(List.class);
+        when(mail.prepare(any(CustomerStatement.class), anyList(), anyList(), any(), any())).thenAnswer(inv -> {
+            CustomerStatement s = inv.getArgument(0);
+            List<EmailService.EmailAttachment> attached = inv.getArgument(1);
+            MimeMessage m = new MimeMessage((Session) null);
+            messages.put(s.getCustomerId(), m);
+            String names = String.join(", ", attached.stream().map(EmailService.EmailAttachment::fileName).toList());
+            return new PreparedStatementMail(m, "Subject " + s.getCustomerName(), inv.getArgument(2),
+                    List.of("receivable@maleva.com.my"), names, "<statement-" + s.getCustomerId() + "@maleva.com.my>");
+        });
+        StatementMailJobRequest request = request("", 1, null, 3, null);
+        request.setAttach("BOTH");
+
+        StatementMailJobView view = service.start(request, "mala");
+
+        assertThat(view.status()).isEqualTo("DONE");
+        assertThat(view.attach()).isEqualTo("BOTH");
+        assertThat(view.sent()).isEqualTo(2);
+        verify(mail, times(2)).prepare(any(CustomerStatement.class), files.capture(), anyList(), any(), any());
+        assertThat(files.getAllValues().get(0)).extracting(EmailService.EmailAttachment::fileName)
+                .containsExactly("CustomerStatement_ACS.pdf", "CustomerStatement_ACS_" + LocalDate.now().format(
+                        java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".xlsx");
+        assertThat(files.getAllValues().get(0).get(1).contentType())
+                .isEqualTo("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        assertThat(item(view, 1).attachmentName()).contains(".pdf, ").endsWith(".xlsx");
+        // the PDF-only path is not used
+        verify(mail, never()).prepare(any(), any(RenderedStatement.class), anyList(), any());
+    }
+
+    @Test
+    @DisplayName("a run with Excel only renders no PDF")
+    void runWithExcelOnly() {
+        when(mail.prepare(any(CustomerStatement.class), anyList(), anyList(), any(), any())).thenAnswer(inv -> {
+            CustomerStatement s = inv.getArgument(0);
+            MimeMessage m = new MimeMessage((Session) null);
+            messages.put(s.getCustomerId(), m);
+            return new PreparedStatementMail(m, "Subject", inv.getArgument(2), List.of(), "x.xlsx", "<id>");
+        });
+        StatementMailJobRequest request = request("", 1, null);
+        request.setAttach("excel");
+
+        StatementMailJobView view = service.start(request, "mala");
+
+        assertThat(view.sent()).isEqualTo(1);
+        assertThat(view.attach()).isEqualTo("EXCEL");
+        verify(pdf, never()).renderOne(any(), any());
+    }
+
+    @Test
     @DisplayName("a mail the relay refuses fails that customer alone; the others in the batch are sent")
     void partialRefusal() {
         when(email.sendPrepared(anyList())).thenAnswer(inv ->

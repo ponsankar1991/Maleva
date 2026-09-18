@@ -84,6 +84,18 @@ public interface TruckMasterRepository extends JpaRepository<TruckMaster, Intege
     boolean existsByTruckNumberAndCompanyRefId(String truckNumber, Integer companyRefId);
 
     /**
+     * The highest CNumber this company has handed out, 0 when it has none.
+     *
+     * <p>Answered by the database. The service used to load every truck of the
+     * company and take the maximum in memory, which threw a NullPointerException
+     * the moment one row had a null CNumber - and a row that predates the column
+     * does. Deleted trucks (Active = 2) still count: their number stays theirs,
+     * so the next truck must not be given it again.
+     */
+    @Query("select coalesce(max(t.cNumber), 0) from TruckMaster t where t.companyRefId = :companyRefId")
+    Integer findMaxCNumber(@Param("companyRefId") Integer companyRefId);
+
+    /**
      * Get Trucks as ComboListModel for dropdown/UI
      * Equivalent to .NET GetTruck method
      * SELECT Id, TruckName as AccountName FROM TruckMaster

@@ -33,4 +33,13 @@ public class TruckOrderSearchRequest {
      * Empty means every status.
      */
     private List<String> statuses;
+
+    /**
+     * Part of a pick-up place to match, e.g. {@code seremban}. Case and spaces
+     * are ignored, so {@code WEST PORT} finds {@code WESTPORT}.
+     */
+    private String origin;
+
+    /** Part of a drop place to match. Same rules as {@link #origin}. */
+    private String destination;
 }

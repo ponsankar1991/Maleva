@@ -67,6 +67,14 @@ public class TruckOrderSaveRequest {
     /** PLT, PKG, IBC, BIN, DRUM, CTN, TON, CBM or TRUCK. */
     private String quantityUnit;
 
+    /** Pick-up place, e.g. SINGAPORE. Optional; stored trimmed and in capitals. */
+    @Size(max = 200, message = "Origin must not exceed 200 characters")
+    private String origin;
+
+    /** Drop place, e.g. SEREMBAN. Optional; stored trimmed and in capitals. */
+    @Size(max = 200, message = "Destination must not exceed 200 characters")
+    private String destination;
+
     /** Who entered it. 0 is stored as NULL, as the procedure did. */
     private Integer employeeRefId;
 

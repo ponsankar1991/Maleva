@@ -3,7 +3,6 @@ package my.maleva.api.module.paymentrecept.service;
 import my.maleva.api.module.user.repository.AppUserRepository;
 import my.maleva.api.module.master.repository.BankMasterRepository;
 import my.maleva.api.module.employee.repository.EmployeeMasterRepository;
-import my.maleva.api.module.master.entity.SequenceNoMaster;
 import my.maleva.api.module.master.repository.SequenceNoMasterRepository;
 import my.maleva.api.module.paymentrecept.dto.ReceiptBillDto;
 import my.maleva.api.module.paymentrecept.dto.ReceiptSaveRequest;
@@ -57,6 +56,9 @@ class ReceiptInsertTest {
     private SequenceNoMasterRepository sequenceNoMasterRepository;
 
     @Mock
+    private ReceiptNumberAllocator numberAllocator;
+
+    @Mock
     private JdbcTemplate jdbcTemplate;
 
     @InjectMocks
@@ -94,10 +96,8 @@ class ReceiptInsertTest {
         when(bankMasterRepository.existsByIdAndCompanyRefIdAndActive(5, companyId, 1)).thenReturn(true);
         when(employeeMasterRepository.existsByIdAndCompanyRefIdAndActive(10, companyId, 1)).thenReturn(true);
 
-        when(sequenceNoMasterRepository.findMaxSequenceNoByCompanyAndSequenceName(companyId, "Receipt"))
-                .thenReturn(42);
-        when(sequenceNoMasterRepository.findByCompanyRefIdAndSequenceName(companyId, "Receipt"))
-                .thenReturn(Optional.of(new SequenceNoMaster()));
+        // The number comes from the atomic counter update, not a read of MAX + 1.
+        when(numberAllocator.next(companyId)).thenReturn(43);
 
         Receipt savedReceipt = new Receipt();
         savedReceipt.setId(88);
@@ -113,6 +113,8 @@ class ReceiptInsertTest {
         assertThat(response.getMessage()).isEqualTo("Receipt Created Successfully");
         assertThat(response.getData1()).isEqualTo("RC000000043");
         assertThat(response.getData2()).isEqualTo(88);
+        verify(numberAllocator).next(companyId);
+        verifyNoInteractions(sequenceNoMasterRepository);
 
         ArgumentCaptor<List<ReceiptDetails>> detailsCaptor = ArgumentCaptor.forClass(List.class);
         verify(receiptDetailsRepository).saveAll(detailsCaptor.capture());
@@ -164,6 +166,8 @@ class ReceiptInsertTest {
 
         verify(receiptDetailsRepository).deleteByReceiptRefId(55);
         verify(receiptDetailsRepository).saveAll(anyList());
+        // An edit keeps its number; it must not use one up.
+        verifyNoInteractions(numberAllocator);
     }
 
     @Test

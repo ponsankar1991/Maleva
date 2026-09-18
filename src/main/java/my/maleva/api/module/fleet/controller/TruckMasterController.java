@@ -140,6 +140,9 @@ public class TruckMasterController {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(service.create(dto));
         } catch (RuntimeException e) {
+            // With the message alone, a JPA or SQL failure reached the screen as
+            // one unexplained line and left nothing behind to read afterwards.
+            logger.error("Create TruckMaster failed for truck {}", dto.getTruckNumber(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
         }
     }
@@ -157,6 +160,11 @@ public class TruckMasterController {
             TruckMasterDto result = service.processTruck(dto, companyId);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (RuntimeException e) {
+            // The stack trace is the only thing that says where a save broke;
+            // returning the message and dropping the rest is how the Id 0 insert
+            // stayed a mystery for as long as it did.
+            logger.error("Save failed for truck {} (id {}) of company {}",
+                    dto.getTruckNumber(), dto.getId(), companyId, e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
         }
     }

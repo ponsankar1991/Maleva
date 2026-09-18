@@ -25,4 +25,33 @@ public class StatementSendRequest extends StatementRequest {
      * legacy listed Reminder 3–5 in the dropdown and had no wording for them.
      */
     private String reminder;
+
+    /**
+     * CC as the operator left it, comma or semicolon separated. {@code null}
+     * keeps the configured receivables CC; an empty string sends without CC.
+     */
+    private String cc;
+
+    /** The subject as edited on the preview; blank uses the wording's own subject. */
+    private String subject;
+
+    /**
+     * The HTML body as edited on the preview (it starts from
+     * {@code /mail-preview}); blank uses the wording's own template.
+     */
+    private String body;
+
+    /**
+     * What to attach: {@code PDF} (the default, also for null or anything
+     * unknown), {@code EXCEL} or {@code BOTH}.
+     */
+    private String attach;
+
+    public boolean attachPdf() {
+        return StatementAttach.of(attach).pdf();
+    }
+
+    public boolean attachExcel() {
+        return StatementAttach.of(attach).excel();
+    }
 }

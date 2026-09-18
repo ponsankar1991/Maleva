@@ -56,7 +56,9 @@ public class SecurityConfig {
 
         config.setExposedHeaders(java.util.List.of(
                 "Authorization",
-                "Content-Type", "Comid"
+                "Content-Type", "Comid",
+                // so a page downloading a file by XHR can read its name
+                "Content-Disposition"
         ));
 
         config.setAllowCredentials(true);

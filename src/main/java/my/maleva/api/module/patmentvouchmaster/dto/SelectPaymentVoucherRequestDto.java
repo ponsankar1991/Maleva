@@ -36,6 +36,12 @@ public class SelectPaymentVoucherRequestDto {
 
     private String description;
 
+    /**
+     * Expense account (GLAccounts.RowIndex, the id the Purchase Order product
+     * dropdown also uses): keeps vouchers with at least one line on it.
+     */
+    private Integer productId;
+
     /** Voucher number — overrides the date range when set. */
     private String search;
 }

@@ -127,6 +127,10 @@ public class SupplierGridRepository {
             where.append(" AND s.Active = 0");
         }
 
+        if (Boolean.TRUE.equals(request.getNotInQne())) {
+            where.append(" AND (s.QNECode IS NULL OR s.QNECode = '')");
+        }
+
         String keyword = trimToNull(request.getKeyword());
         if (keyword != null) {
             params.addValue("keyword", containsPattern(keyword), Types.VARCHAR);

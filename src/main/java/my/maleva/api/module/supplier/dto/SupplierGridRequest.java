@@ -39,6 +39,9 @@ public class SupplierGridRequest {
     /** "active" (Active = 1), "inactive" (Active = 0), or blank for both. Deleted rows never show. */
     private String active;
 
+    /** True: only suppliers QNE does not have yet (no QNE code) — the ones "Push to QNE" is for. */
+    private Boolean notInQne;
+
     /** One of the grid's column keys, or "id". Anything else falls back to the default. */
     private String sortBy;
 

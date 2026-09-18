@@ -23,6 +23,8 @@ public record StatementMailJobView(
         int companyId,
         String status,
         String reminder,
+        /** PDF, EXCEL or BOTH: what every customer in the run is sent. */
+        String attach,
         String requestedBy,
         LocalDateTime createdAt,
         LocalDateTime startedAt,

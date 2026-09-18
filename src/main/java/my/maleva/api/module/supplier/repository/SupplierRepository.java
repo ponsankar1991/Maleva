@@ -240,6 +240,9 @@ public interface SupplierRepository extends JpaRepository<Supplier, Integer> {
     @Query("SELECT COALESCE(MAX(s.cNumber), 0) FROM Supplier s WHERE s.companyRefId = :companyRefId")
     Integer findMaxCNumber(@Param("companyRefId") Integer companyRefId);
 
+    /** One supplier, only if it belongs to the company — the list's "Push to QNE" loads through this. */
+    Optional<Supplier> findByIdAndCompanyRefId(Integer id, Integer companyRefId);
+
     /** Suppliers that exist in QNE (QNECode set) but whose GUID was never stored. */
     @Query("SELECT s FROM Supplier s WHERE s.companyRefId = :companyRefId " +
            "AND s.qneCode IS NOT NULL AND s.qneCode <> '' " +

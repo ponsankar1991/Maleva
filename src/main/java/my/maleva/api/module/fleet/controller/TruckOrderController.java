@@ -69,7 +69,9 @@ public class TruckOrderController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) Integer truckRefId,
-            @RequestParam(required = false) List<String> statuses) {
+            @RequestParam(required = false) List<String> statuses,
+            @RequestParam(required = false) String origin,
+            @RequestParam(required = false) String destination) {
 
         TruckOrderCalendarResponse data = service.search(TruckOrderSearchRequest.builder()
                 .companyRefId(companyRefId)
@@ -77,6 +79,8 @@ public class TruckOrderController {
                 .toDate(toDate)
                 .truckRefId(truckRefId)
                 .statuses(statuses)
+                .origin(origin)
+                .destination(destination)
                 .build());
 
         return ResponseEntity.ok(ApiResponse.success(data, "Truck orders retrieved"));
@@ -92,6 +96,16 @@ public class TruckOrderController {
             @RequestParam Integer companyRefId) {
         return ResponseEntity.ok(
                 ApiResponse.success(service.orderableTrucks(companyRefId), "Orderable trucks"));
+    }
+
+    /**
+     * Place names already in use, most used first - the suggestions under the
+     * Origin and Destination boxes, so SINGAPORE is picked rather than retyped
+     * as SINGPORE.
+     */
+    @GetMapping("/places")
+    public ResponseEntity<ApiResponse<List<String>>> places(@RequestParam Integer companyRefId) {
+        return ResponseEntity.ok(ApiResponse.success(service.places(companyRefId), "Places"));
     }
 
     /**

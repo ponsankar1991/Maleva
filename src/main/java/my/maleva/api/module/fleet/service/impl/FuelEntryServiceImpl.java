@@ -384,7 +384,10 @@ public class FuelEntryServiceImpl implements FuelEntryService {
     private Double fuelPaymentVoucherTotal(Integer companyRefId, LocalDate from, LocalDate to) {
         Double total = jdbcTemplate.queryForObject(
                 "SELECT SUM(Amount) FROM PaymentVoucherMaster WITH (NOLOCK) "
-                        + "WHERE CompanyRefId = ? AND Description = 'FUEL' "
+                        // Active = 1 is not in the legacy query, so the legacy header
+                        // counted cancelled vouchers. Every other PaymentVoucherMaster
+                        // read in this codebase filters it; this one now does too.
+                        + "WHERE CompanyRefId = ? AND Active = 1 AND Description = 'FUEL' "
                         + "AND PaymentVoucherDate >= ? AND PaymentVoucherDate < ?",
                 Double.class, companyRefId, from, to.plusDays(1));
         return total == null ? 0d : round2(total);

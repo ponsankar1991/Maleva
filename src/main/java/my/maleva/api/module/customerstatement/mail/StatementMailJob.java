@@ -1,6 +1,7 @@
 package my.maleva.api.module.customerstatement.mail;
 
 import my.maleva.api.module.customerstatement.dto.CustomerStatement;
+import my.maleva.api.module.customerstatement.dto.StatementAttach;
 import my.maleva.api.module.customerstatement.dto.StatementMailJobView;
 import my.maleva.api.module.customerstatement.dto.StatementResult;
 
@@ -80,6 +81,8 @@ final class StatementMailJob {
     private final String id;
     private final int companyId;
     private final String reminder;
+    /** The statement file(s) every customer in the run is sent. */
+    private final StatementAttach attach;
     private final String requestedBy;
     private final LocalDateTime createdAt = LocalDateTime.now();
     private final List<Item> items;
@@ -94,9 +97,15 @@ final class StatementMailJob {
 
     StatementMailJob(String id, int companyId, String reminder, String requestedBy,
                      StatementResult result, List<Item> items) {
+        this(id, companyId, reminder, StatementAttach.PDF, requestedBy, result, items);
+    }
+
+    StatementMailJob(String id, int companyId, String reminder, StatementAttach attach, String requestedBy,
+                     StatementResult result, List<Item> items) {
         this.id = id;
         this.companyId = companyId;
         this.reminder = reminder == null ? "" : reminder;
+        this.attach = attach == null ? StatementAttach.PDF : attach;
         this.requestedBy = requestedBy;
         this.result = result;
         this.items = List.copyOf(items);
@@ -112,6 +121,10 @@ final class StatementMailJob {
 
     String reminder() {
         return reminder;
+    }
+
+    StatementAttach attach() {
+        return attach;
     }
 
     String requestedBy() {
@@ -201,7 +214,7 @@ final class StatementMailJob {
             }
             views.add(item.view());
         }
-        return new StatementMailJobView(id, companyId, status.name(), reminder, requestedBy,
+        return new StatementMailJobView(id, companyId, status.name(), reminder, attach.name(), requestedBy,
                 createdAt, startedAt, finishedAt, error,
                 items.size(), sent, failed, skipped, cancelled, pending, views);
     }

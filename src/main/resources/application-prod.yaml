@@ -1,4 +1,14 @@
 spring:
+  servlet:
+    multipart:
+      # Must sit under spring.servlet - under server.servlet Boot ignored it and
+      # kept its 1 MB default, so any PDF over 1 MB was refused with a 413.
+      # Plain byte counts, shared with file.upload.* below so the servlet
+      # container and the attachment service enforce the same numbers. The
+      # container rejects first (413); the service check is the message the
+      # screen shows.
+      max-file-size: ${FILE_MAX_SIZE:26214400}
+      max-request-size: ${FILE_MAX_REQUEST_SIZE:104857600}
   # Same two secret locations as application.yaml. Repeated here on purpose:
   # this file is the one a server administrator reads, and the absolute-path
   # option is the whole reason live credentials load at all. See the note in
@@ -116,15 +126,7 @@ spring:
           provider_disables_autocommit: true
 
 server:
-  port: 8083
-  servlet:
-    multipart:
-      # Plain byte counts, shared with file.upload.* below so the servlet
-      # container and the attachment service enforce the same numbers. The
-      # container rejects first (413); the service check is the message the
-      # screen shows.
-      max-file-size: ${FILE_MAX_SIZE:26214400}
-      max-request-size: ${FILE_MAX_REQUEST_SIZE:104857600}
+  port: 8082
   tomcat:
     # Tomcat stops reading a rejected upload after this many bytes and drops
     # the connection, which the browser reports as a network error instead of

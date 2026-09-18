@@ -133,6 +133,14 @@ public class TruckMasterServiceImpl implements TruckMasterService {
         validateTruckMasterData(dto);
         TruckMaster entity = mapper.toEntity(dto);
 
+        // The screens send Id 0 for "this truck is new" - the convention the
+        // legacy SP_Truck payload used, and what the Add Truck form still posts.
+        // An Integer 0 is not null, so save() read the row as an existing one and
+        // issued an UPDATE against Id 0, which matches no row: "Row was already
+        // updated or deleted by another transaction ... with id '0'". Clearing it
+        // is what makes this an INSERT and lets IDENTITY hand out the real id.
+        entity.setId(null);
+
         // Set default values as per SP_Truck logic
         LocalDateTime now = LocalDateTime.now();
         if (entity.getCreatedDate() == null) {
@@ -141,17 +149,31 @@ public class TruckMasterServiceImpl implements TruckMasterService {
         if (entity.getModifiedDate() == null) {
             entity.setModifiedDate(now);
         }
-        if (entity.getModifiedBy() == null) {
+        if (entity.getModifiedBy() == null || entity.getModifiedBy().isBlank()) {
             entity.setModifiedBy("SYSTEM");
         }
         if (entity.getActive() == null) {
             entity.setActive(1);
         }
-        if (entity.getCNumber() == null) {
-            entity.setCNumber(1);
-        }
         if (entity.getAccountRefid() == null) {
             entity.setAccountRefid(1);
+        }
+        assignCNumber(entity, dto.getCompanyRefId());
+
+        // Columns the insert has to state itself. Their DB defaults were added
+        // with the columns and only apply when the column is left out of the
+        // INSERT; Hibernate always lists every column, so without these a new
+        // truck arrives with NULLs and quietly drops out of the fleet screens -
+        // the maintenance dashboard reads MalevaTruck = 1 and the Truck Order
+        // Calendar reads OrderableTruck = 1.
+        if (entity.getMalevaTruck() == null) {
+            entity.setMalevaTruck(1);
+        }
+        if (entity.getOrderableTruck() == null) {
+            entity.setOrderableTruck(1);
+        }
+        if (entity.getTruckStatus() == null || entity.getTruckStatus().isBlank()) {
+            entity.setTruckStatus(TruckStatus.ACTIVE.name());
         }
 
         // Convert to uppercase as per SP_Truck
@@ -296,25 +318,64 @@ public class TruckMasterServiceImpl implements TruckMasterService {
         // 1. Set company ID
         dto.setCompanyRefId(companyId);
 
-        // 2. Generate C Number Display if needed
-        if (dto.getCNumber() == null || dto.getCNumber() == 0) {
-            // Get max C Number for company
-            Integer maxCNumber = repository.findByCompanyRefId(companyId).stream()
-                    .map(TruckMaster::getCNumber)
-                    .max(Integer::compareTo)
-                    .orElse(0);
-            dto.setCNumber(maxCNumber + 1);
-            dto.setCNumberDisplay(String.format("T%09d", maxCNumber + 1));
+        // 2. Decide INSERT or UPDATE. The form posts Id 0 for a new truck, so
+        //    anything that is not a real row id means "new" - and it is cleared
+        //    here so nothing downstream can mistake 0 for an existing row.
+        Integer id = dto.getId() == null || dto.getId() <= 0 ? null : dto.getId();
+        dto.setId(id);
+
+        if (id == null) {
+            logger.info("Processing INSERT operation");
+            // create() gives the truck its CNumber, so a truck that is saved
+            // straight through POST /api/truck-masters is numbered the same way.
+            return create(dto);
         }
 
-        // 3. Create or update
-        if (dto.getId() == null || dto.getId() == 0) {
-            logger.info("Processing INSERT operation");
-            return create(dto);
-        } else {
-            logger.info("Processing UPDATE operation for ID: {}", dto.getId());
-            return update(dto.getId(), dto);
+        // 3. An edit must never renumber the truck. The form sends CNumber 0 and
+        //    CNumberDisplay "AUTO" whenever it did not load the stored numbering;
+        //    leaving them null here keeps what is on the row, because the mapper
+        //    ignores nulls. Before this, a save from such a form moved the truck
+        //    to a brand new number on every edit.
+        if (dto.getCNumber() == null || dto.getCNumber() <= 0) {
+            dto.setCNumber(null);
+            dto.setCNumberDisplay(null);
+        } else if (isGeneratedCNumberDisplay(dto.getCNumberDisplay())) {
+            dto.setCNumberDisplay(null);
         }
+
+        logger.info("Processing UPDATE operation for ID: {}", id);
+        return update(id, dto);
+    }
+
+    /**
+     * Gives a new truck its CNumber and the CNumberDisplay that shows it.
+     *
+     * <p>The number is the company's highest so far plus one - asked of the
+     * database rather than counted in memory - and the display is that number as
+     * {@code T000000001}. A caller that already carries a real number keeps it;
+     * only the blank and the {@code AUTO} placeholder the form posts are filled
+     * in.
+     *
+     * <p>Two people adding a truck in the same second can still be handed the
+     * same number: CNumber is not unique in the table and never was, and the
+     * legacy screen read the maximum the same way. It is a display number, not a
+     * key - the row is identified by Id.
+     */
+    private void assignCNumber(TruckMaster entity, Integer companyRefId) {
+        Integer cNumber = entity.getCNumber();
+        if (cNumber == null || cNumber <= 0) {
+            Integer highest = repository.findMaxCNumber(companyRefId);
+            cNumber = (highest == null ? 0 : highest) + 1;
+            entity.setCNumber(cNumber);
+        }
+        if (isGeneratedCNumberDisplay(entity.getCNumberDisplay())) {
+            entity.setCNumberDisplay(String.format("T%09d", cNumber));
+        }
+    }
+
+    /** Blank, or the "AUTO" the form posts when it wants a number generated. */
+    private boolean isGeneratedCNumberDisplay(String display) {
+        return display == null || display.isBlank() || "AUTO".equalsIgnoreCase(display.trim());
     }
 
     @Override

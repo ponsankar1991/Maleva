@@ -3,9 +3,11 @@ package my.maleva.api.module.supplier.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.common.config.QneProperties;
+import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.integration.qne.QneCall;
 import my.maleva.api.integration.qne.QneGateway;
 import my.maleva.api.integration.qne.QnePayloads;
+import my.maleva.api.integration.qne.QnePushLock;
 import my.maleva.api.integration.qne.QnePushResult;
 import my.maleva.api.integration.qne.dto.QneSupplierRequest;
 import my.maleva.api.integration.qne.dto.QneSupplierResponse;
@@ -14,6 +16,7 @@ import my.maleva.api.module.master.repository.SymbolMasterRepository;
 import my.maleva.api.module.supplier.dto.SupplierDto;
 import my.maleva.api.module.supplier.dto.SupplierQneOutcome;
 import my.maleva.api.module.supplier.entity.Supplier;
+import my.maleva.api.module.supplier.mapper.SupplierMapper;
 import my.maleva.api.module.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
 
@@ -21,17 +24,29 @@ import java.util.List;
 
 /**
  * QNE sync for suppliers — the Java port of the QNE half of legacy
- * {@code SupplierServices.InsertSupplier}, and of {@code UpdateSupplierId1}'s backfill.
+ * {@code SupplierServices.InsertSupplier}, of {@code UpdateSupplierId1}'s
+ * backfill, and the supplier list's "Push to QNE" button.
+ *
+ * <p>Both ways of pushing — after a save, and from the list — take the same
+ * per-supplier lock ({@code supplier:<id>}). A QNE call can outlast the
+ * browser's patience; without the shared lock a Save and a list click, or two
+ * list clicks, could each create the supplier in QNE.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SupplierQneService {
 
+    static final String ALREADY_RUNNING =
+            "This supplier is already being sent to QNE and QNE has not answered yet. "
+                    + "Wait for it to finish and refresh — pushing again now could create it in QNE twice.";
+
     private final QneGateway gateway;
     private final QneProperties properties;
     private final SupplierRepository suppliers;
     private final SymbolMasterRepository symbols;
+    private final QnePushLock pushLock;
+    private final SupplierMapper mapper;
 
     /**
      * The push {@code InsertSupplier} ran once {@code SP_Supplier} returned
@@ -51,11 +66,9 @@ public class SupplierQneService {
      *       QNE's message back to the screen.</li>
      * </ol>
      *
-     * <p>Takes the saved row from the caller rather than reading it again: the
-     * save has just loaded it, and every read is a trip to a remote database.
-     *
-     * <p>One difference: legacy's catch around the push logged an exception and
-     * still answered "Supplier created". That is reported as FAILED here.
+     * <p>The save has already committed, so a push that finds the supplier
+     * locked by a list push still in flight is reported as FAILED with the
+     * reason, not thrown.
      *
      * @param saved the supplier as stored by the save that just committed
      * @param typed the payload the operator submitted
@@ -68,6 +81,65 @@ public class SupplierQneService {
             return SupplierQneOutcome.alreadyInQne(saved.getQneId(), saved.getQneCode());
         }
 
+        String lockKey = lockKey(saved.getId());
+        if (!pushLock.tryAcquire(lockKey)) {
+            return SupplierQneOutcome.failed(ALREADY_RUNNING);
+        }
+        try {
+            return send(saved, typed);
+        } finally {
+            pushLock.release(lockKey);
+        }
+    }
+
+    /**
+     * The supplier list's "Push to QNE" — for a supplier the push after Save
+     * did not get into QNE (QNE refused it, was unreachable, or was off then).
+     *
+     * <p>There is no form behind a list click, so the payload is the supplier
+     * as stored. SP_Supplier upper-cases the name and address it stores, so QNE
+     * receives them in capitals where a push after Save sends the operator's
+     * own casing; the data is the same.
+     *
+     * <p>The row is read INSIDE the lock, so a click that waited behind a push
+     * that has just succeeded sees the new QNE code and sends nothing.
+     *
+     * @throws InvalidRequestException when the supplier is not this company's,
+     *         is deleted, or is already being pushed
+     */
+    public SupplierQneOutcome pushOne(Integer supplierId, Integer companyId) {
+        if (supplierId == null || companyId == null || companyId <= 0) {
+            throw new InvalidRequestException("A supplier and a company are required to push to QNE.");
+        }
+        if (!properties.isEnabled()) {
+            return SupplierQneOutcome.disabled();
+        }
+
+        String lockKey = lockKey(supplierId);
+        if (!pushLock.tryAcquire(lockKey)) {
+            throw new InvalidRequestException(ALREADY_RUNNING);
+        }
+        try {
+            Supplier supplier = suppliers.findByIdAndCompanyRefId(supplierId, companyId)
+                    .orElseThrow(() -> new InvalidRequestException(
+                            "Supplier " + supplierId + " was not found for this company."));
+            if (Integer.valueOf(2).equals(supplier.getActive())) {
+                throw new InvalidRequestException(
+                        "Supplier " + supplier.getSupplierName() + " is deleted, so it is not sent to QNE.");
+            }
+
+            SupplierDto stored = mapper.toDto(supplier);
+            if (!QnePayloads.isBlank(stored.getQneCode())) {
+                return SupplierQneOutcome.alreadyInQne(stored.getQneId(), stored.getQneCode());
+            }
+            return send(stored, stored);
+        } finally {
+            pushLock.release(lockKey);
+        }
+    }
+
+    /** The QNE create itself, for a supplier known to have no QNE code. The caller holds the lock. */
+    private SupplierQneOutcome send(SupplierDto saved, SupplierDto typed) {
         try {
             QneSupplierRequest request = buildRequest(typed,
                     currencyName(typed.getSymbolRefid(), saved.getCompanyRefId()),
@@ -88,6 +160,7 @@ public class SupplierQneService {
             suppliers.claimQneIdentity(saved.getId(), created.getId(), created.getCompanyCode());
             return SupplierQneOutcome.pushed(created.getId(), created.getCompanyCode());
         } catch (RuntimeException ex) {
+            // Legacy logged this and still answered "Supplier created"; the screen is told instead.
             log.error("InsertSupplier-QNE: push for supplier {} failed", saved.getId(), ex);
             return SupplierQneOutcome.failed("The QNE push could not be completed: " + ex.getMessage());
         }
@@ -115,6 +188,10 @@ public class SupplierQneService {
         }
         return QnePushResult.ok(null, null, null,
                 "Backfilled QNE ids for " + repaired + " of " + pending.size() + " suppliers");
+    }
+
+    static String lockKey(Integer supplierId) {
+        return "supplier:" + supplierId;
     }
 
     /**

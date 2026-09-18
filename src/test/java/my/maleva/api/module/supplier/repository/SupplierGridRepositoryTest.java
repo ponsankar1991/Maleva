@@ -164,4 +164,16 @@ class SupplierGridRepositoryTest {
 
         assertThat(query.countSql()).endsWith(where);
     }
+
+    @Test
+    @DisplayName("'not in QNE' keeps only suppliers without a QNE code, and is off unless asked for")
+    void notInQneFilter() {
+        SupplierGridRequest request = request();
+        request.setNotInQne(true);
+        assertThat(SupplierGridRepository.build(request).selectSql()).contains("AND (s.QNECode IS NULL OR s.QNECode = '')");
+
+        request.setNotInQne(false);
+        assertThat(SupplierGridRepository.build(request).selectSql()).doesNotContain("s.QNECode IS NULL");
+        assertThat(SupplierGridRepository.build(request()).selectSql()).doesNotContain("s.QNECode IS NULL");
+    }
 }

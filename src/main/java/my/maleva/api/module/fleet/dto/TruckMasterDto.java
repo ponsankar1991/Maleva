@@ -124,6 +124,16 @@ public class TruckMasterDto {
     // Account code from AccountsGroupMaster (optional)
     private String accountCode;
 
+    /**
+     * Pallet spaces this truck holds, when it differs from the usual figure for
+     * its size. Null means "use the size's figure".
+     *
+     * <p>The form has had this box since the Truck Order Calendar work, but the
+     * field was missing here, so what was typed went nowhere and the box was
+     * always blank when the truck was reopened.
+     */
+    private Integer palletCapacity;
+
     /** ACTIVE, WORKSHOP or SOLD. Blank means ACTIVE. */
     private String truckStatus;
 

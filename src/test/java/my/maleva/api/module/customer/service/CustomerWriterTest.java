@@ -245,6 +245,50 @@ class CustomerWriterTest {
         verify(symbols, never()).existsByIdAndCompanyRefIdAndActive(eq(0), anyInt(), anyInt());
     }
 
+    /**
+     * FK_Customer_Country sits on the Country column, which holds the LHDN state
+     * code and is an integer in the database. An empty string converts to 0,
+     * there is no country numbered 0, and SQL Server refuses the whole statement.
+     * So "no state" has to be NULL.
+     */
+    @Test
+    @DisplayName("no state picked is stored as NULL, never as an empty string")
+    void insertStoresNoStateAsNull() {
+        CustomerDto blank = dto();
+        blank.setCountry("");
+        assertThat(insert(blank).getCountry()).isNull();
+
+        CustomerDto spaces = dto();
+        spaces.setCountry("   ");
+        assertThat(insert(spaces).getCountry()).isNull();
+
+        CustomerDto missing = dto();
+        missing.setCountry(null);
+        assertThat(insert(missing).getCountry()).isNull();
+    }
+
+    @Test
+    @DisplayName("a state that was picked is stored as its LHDN code")
+    void insertStoresTheStateCode() {
+        CustomerDto dto = dto();
+        dto.setCountry("10");
+
+        assertThat(insert(dto).getCountry()).isEqualTo("10");
+    }
+
+    /** Nothing is a country 0 either, so the same rule holds for countryId. */
+    @Test
+    @DisplayName("no country chosen is stored as NULL, never as 0")
+    void insertStoresNoCountryAsNull() {
+        CustomerDto dto = dto();
+        dto.setCountryId(0);
+        assertThat(insert(dto).getCountryId()).isNull();
+
+        CustomerDto missing = dto();
+        missing.setCountryId(null);
+        assertThat(insert(missing).getCountryId()).isNull();
+    }
+
     @Test
     @DisplayName("a company with no CUSTOMERS group cannot take a customer")
     void insertRejectsMissingAccountGroup() {
@@ -287,6 +331,51 @@ class CustomerWriterTest {
         assertThat(saved.getLatitude()).isEqualTo("3.05");
         assertThat(saved.getLongitude()).isEqualTo("101.44");
         assertThat(saved.getTokenId()).isEqualTo("device-token");
+    }
+
+    /**
+     * The edit that was failing on live: /CustomerMaster/edit/21, a customer with
+     * a country (158) but no state. The empty string the form posts for the state
+     * cannot go into Country, the column FK_Customer_Country guards — it converts
+     * to 0 on the way into an int column and there is no country 0.
+     */
+    @Test
+    @DisplayName("an edit with no state writes NULL into Country, and keeps a chosen one")
+    void updateStoresNoStateAsNull() {
+        CustomerDto none = dto();
+        none.setId(1245);
+        none.setActive(1);
+        none.setCountry("");
+
+        Customer saved = writer.update(existingRow(), none, COMPANY);
+        assertThat(saved.getCountry()).isNull();
+        // The country itself is a different column and is untouched by this.
+        assertThat(saved.getCountryId()).isEqualTo(158);
+
+        CustomerDto selangor = dto();
+        selangor.setId(1245);
+        selangor.setActive(1);
+        selangor.setCountry("10");
+
+        assertThat(writer.update(existingRow(), selangor, COMPANY).getCountry()).isEqualTo("10");
+    }
+
+    @Test
+    @DisplayName("an edit with no country chosen writes NULL, and a chosen one is kept")
+    void updateStoresNoCountryAsNull() {
+        CustomerDto none = dto();
+        none.setId(1245);
+        none.setActive(1);
+        none.setCountryId(0);
+
+        assertThat(writer.update(existingRow(), none, COMPANY).getCountryId()).isNull();
+
+        CustomerDto malaysia = dto();
+        malaysia.setId(1245);
+        malaysia.setActive(1);
+        malaysia.setCountryId(158);
+
+        assertThat(writer.update(existingRow(), malaysia, COMPANY).getCountryId()).isEqualTo(158);
     }
 
     @Test

@@ -73,17 +73,30 @@ public class SupplierWriter {
             + "WHERE CompanyRefId = :comid AND Id = :paymentTermsRefid AND Active = 1) AS PaymentTermsFound";
 
     /**
-     * The lock, then everything the procedure reads before its inserts:
-     * {@code @Parentid}, the count behind {@code @RowNumber}, {@code @codeNew},
-     * and the two master checks.
+     * {@code @Parentid}, the lock, then everything the procedure reads under
+     * it: the count behind {@code @RowNumber}, {@code @codeNew}, and the two
+     * master checks.
+     *
+     * <p>The parent read comes FIRST on purpose — the procedure's order too: it
+     * declares {@code @Parentid} before its {@code BEGIN TRANSACTION}, and
+     * counts {@code @RowNumber} there as well (that count moves under the lock
+     * here, so two saves cannot both take the same SUP-n). The SQL Server JDBC driver
+     * runs a Spring transaction as {@code IMPLICIT_TRANSACTIONS ON}: the
+     * database opens the transaction only at the first statement that reads or
+     * writes a table, and {@code EXEC} is not one. When the lock was the first
+     * statement of the request, {@code sp_getapplock} found no transaction to
+     * own it and returned -999 — every real Save failed with "Supplier
+     * numbering needs a transaction to own its lock". The ITs never saw it
+     * because their setup SELECTs had already opened the test transaction.
      */
     static final String INSERT_PRECHECK_SQL =
             "SET NOCOUNT ON; "
+            + "DECLARE @parentId int; "
+            + "SELECT TOP 1 @parentId = Id FROM AccountsGroupMaster WITH (NOLOCK) "
+            + "WHERE AccountName = 'SUPPLIERS' AND AccountCode = 'SUP' AND CompanyRefId = :comid AND Active = 1; "
             + "DECLARE @lock int; "
             + "EXEC @lock = sp_getapplock @Resource = :lockKey, @LockMode = 'Exclusive', "
             + "@LockOwner = 'Transaction', @LockTimeout = " + LOCK_TIMEOUT_MS + "; "
-            + "DECLARE @parentId int = (SELECT TOP 1 Id FROM AccountsGroupMaster WITH (NOLOCK) "
-            + "WHERE AccountName = 'SUPPLIERS' AND AccountCode = 'SUP' AND CompanyRefId = :comid AND Active = 1); "
             + "SELECT @lock AS LockStatus, @parentId AS ParentId, "
             + "(SELECT COUNT(*) FROM AccountsGroupMaster WITH (NOLOCK) "
             + "WHERE ParentId = @parentId AND CompanyRefId = :comid) AS Siblings, "

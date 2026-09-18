@@ -80,6 +80,18 @@ public class TruckOrder {
     @Column(name = "QuantityUnit", length = 20)
     private String quantityUnit;
 
+    /**
+     * Where the load is picked up, e.g. {@code SINGAPORE}. Stored trimmed and in
+     * capitals so the same place always reads the same way - the return-load
+     * search compares these.
+     */
+    @Column(name = "Origin", length = 200)
+    private String origin;
+
+    /** Where the load goes, e.g. {@code SEREMBAN}. Same form as {@link #origin}. */
+    @Column(name = "Destination", length = 200)
+    private String destination;
+
     /** Null when nobody is recorded: the procedure stored 0 as NULL, and so do we. */
     @Column(name = "EmployeeRefId")
     private Integer employeeRefId;

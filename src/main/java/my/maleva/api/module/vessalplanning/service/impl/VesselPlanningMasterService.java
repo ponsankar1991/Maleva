@@ -93,8 +93,27 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                    ISNULL(Ag.MobileNo,'') as AgentPhone,
                    ISNULL(OAg.AgentName,'') as OAgentName,
                    ISNULL(OAg.MobileNo,'') as OAgentPhone,
+                   ISNULL(S.LBoardingOfficerRefid,0) as LBoardingOfficerRefid,
+                   ISNULL(LEB.EmployeeName,'') as LBoardingOfficerName,
+                   ISNULL(S.LBoardingOfficer1Refid,0) as LBoardingOfficer1Refid,
+                   ISNULL(LEB1.EmployeeName,'') as LBoardingOfficerName1,
+                   ISNULL(S.LBoardingOfficer2Refid,0) as LBoardingOfficer2Refid,
+                   ISNULL(LEB2.EmployeeName,'') as LBoardingOfficerName2,
+                   ISNULL(S.OBoardingOfficerRefid,0) as OBoardingOfficerRefid,
+                   ISNULL(OEB.EmployeeName,'') as OBoardingOfficerName,
+                   ISNULL(S.OBoardingOfficer1Refid,0) as OBoardingOfficer1Refid,
+                   ISNULL(OEB1.EmployeeName,'') as OBoardingOfficerName1,
+                   ISNULL(S.OBoardingOfficer2Refid,0) as OBoardingOfficer2Refid,
+                   ISNULL(OEB2.EmployeeName,'') as OBoardingOfficerName2,
+                   ISNULL(S.LBoardingAmount,0) as LBoardingAmount,
+                   ISNULL(S.LBoardingAmount1,0) as LBoardingAmount1,
+                   ISNULL(NULLIF(S.LBoardingAmount2,''),'0') as LBoardingAmount2,
+                   ISNULL(S.OBoardingAmount,0) as OBoardingAmount,
+                   ISNULL(S.OBoardingAmount1,0) as OBoardingAmount1,
+                   ISNULL(NULLIF(S.OBoardingAmount2,''),'0') as OBoardingAmount2,
                    ISNULL(C.CustomerName,'') as CustomerName,
                    ISNULL(E.EmployeeName,'') as EmployeeName,
+                   ISNULL(PIC.EmployeeName,'') as PICName,
                    ISNULL(B.Remarks,'') as Remarks,
                    ISNULL(S.ETA,S.OETA) as DETA
             FROM VESSELPLANINGMaster A WITH(NOLOCK)
@@ -104,8 +123,15 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             INNER JOIN JobTypeMaster JT WITH(NOLOCK) ON JT.Id=S.JobMasterRefId
             LEFT JOIN JobStatusMaster J WITH(NOLOCK) ON J.Id=S.JStatus
             LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id=ISNULL(S.LastEmployeeRefid,S.EmployeeRefId)
+            LEFT JOIN EmployeeMaster PIC WITH(NOLOCK) ON PIC.Id=S.EmployeeRefId
             LEFT JOIN Agent Ag WITH(NOLOCK) ON Ag.Id=S.AgentMasterRefid
             LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
+            LEFT JOIN EmployeeMaster LEB WITH(NOLOCK) ON LEB.Id=S.LBoardingOfficerRefid
+            LEFT JOIN EmployeeMaster LEB1 WITH(NOLOCK) ON LEB1.Id=S.LBoardingOfficer1Refid
+            LEFT JOIN EmployeeMaster LEB2 WITH(NOLOCK) ON LEB2.Id=S.LBoardingOfficer2Refid
+            LEFT JOIN EmployeeMaster OEB WITH(NOLOCK) ON OEB.Id=S.OBoardingOfficerRefid
+            LEFT JOIN EmployeeMaster OEB1 WITH(NOLOCK) ON OEB1.Id=S.OBoardingOfficer1Refid
+            LEFT JOIN EmployeeMaster OEB2 WITH(NOLOCK) ON OEB2.Id=S.OBoardingOfficer2Refid
             """;
 
     private static final String EDIT_MASTER_SQL = """
@@ -200,6 +226,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                    ISNULL(NULLIF(S.OBoardingAmount2,''),'0') as OBoardingAmount2,
                    ISNULL(C.CustomerName,'') as CustomerName,
                    ISNULL(E.EmployeeName,'') as EmployeeName,
+                   ISNULL(PIC.EmployeeName,'') as PICName,
                    ISNULL(B.Remarks,'') as Remarks,
                    ISNULL(S.ETA,S.OETA) as DETA
             FROM VESSELPLANINGMaster A WITH(NOLOCK)
@@ -209,6 +236,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             INNER JOIN JobTypeMaster JT WITH(NOLOCK) ON JT.Id=S.JobMasterRefId
             LEFT JOIN JobStatusMaster J WITH(NOLOCK) ON J.Id=S.JStatus
             LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id=ISNULL(S.LastEmployeeRefid,S.EmployeeRefId)
+            LEFT JOIN EmployeeMaster PIC WITH(NOLOCK) ON PIC.Id=S.EmployeeRefId
             LEFT JOIN Agent Ag WITH(NOLOCK) ON Ag.Id=S.AgentMasterRefid
             LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
             LEFT JOIN EmployeeMaster LEB WITH(NOLOCK) ON LEB.Id=S.LBoardingOfficerRefid
@@ -316,13 +344,16 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
         return master;
     }
 
+    /** Job statuses the "Delivery Done" box hides - the job is delivered or closed (legacy VESSELPLANINGSearch). */
+    static final List<String> FINISHED_JOB_STATUSES =
+            List.of("DELIVERY DONE", "WAITING FOR POD", "WAITING FOR BILLING", "JOB COMPLET", "Z-CANCEL");
+
     public List<VesselPlanningLegacyDtos.DetailsModel> vesselPlanningSearch(VesselPlanningLegacyDtos.SearchRequest filter) {
         LocalDate fromDate = parseDate(filter.getFromdate(), "fromdate");
         LocalDate toDate = parseDate(filter.getTodate(), "todate");
         if (fromDate.isAfter(toDate)) {
             throw new InvalidRequestException("fromdate must be less than or equal to todate");
         }
-
 
         int etaType = filter.getEtaType() != null ? filter.getEtaType() : 0;
         String detaExpr = etaType == 1 ? "S.OETA" : etaType == 2 ? "S.ETA" : "ISNULL(S.ETA,S.OETA)";
@@ -405,6 +436,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                        ISNULL(NULLIF(S.OBoardingAmount2,''),'0') as OBoardingAmount2,
                        ISNULL(C.CustomerName,'') as CustomerName,
                        ISNULL(E.EmployeeName,'') as EmployeeName,
+                       ISNULL(PIC.EmployeeName,'') as PICName,
                        CAST('' AS VARCHAR(300)) as Remarks,
                 """).append(detaExpr).append("""
                        as DETA
@@ -413,6 +445,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                 INNER JOIN JobTypeMaster JT WITH(NOLOCK) ON JT.Id=S.JobMasterRefId
                 LEFT JOIN JobStatusMaster J WITH(NOLOCK) ON J.Id=S.JStatus
                 LEFT JOIN EmployeeMaster E WITH(NOLOCK) ON E.Id=ISNULL(S.LastEmployeeRefid,S.EmployeeRefId)
+                LEFT JOIN EmployeeMaster PIC WITH(NOLOCK) ON PIC.Id=S.EmployeeRefId
                 LEFT JOIN Agent Ag WITH(NOLOCK) ON Ag.Id=S.AgentMasterRefid
                 LEFT JOIN Agent OAg WITH(NOLOCK) ON OAg.Id=S.OAgentMasterRefid
                 LEFT JOIN EmployeeMaster LEB WITH(NOLOCK) ON LEB.Id=S.LBoardingOfficerRefid
@@ -434,10 +467,12 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             params.addValue("employeeId", filter.getEmployeeid());
         }
 
-        if (filter.isDeliveryDone()){
-
-            sql.append("AND J.Name NOT IN ('DELIVERY DONE','WAITING FOR POD','WAITING FOR BILLING','JOB COMPLET','Z-CANCEL')" );
-
+        // Ticked = hide jobs already delivered or closed. The leading space matters: without it an
+        // employee filter before this ran into "=:employeeIdAND" and the search failed. A job with no
+        // status yet is not finished, so it stays - NOT IN on its own drops it (NULL NOT IN is unknown).
+        if (filter.isDeliveryDone()) {
+            sql.append(" AND (J.Name IS NULL OR J.Name NOT IN (:finishedStatuses))");
+            params.addValue("finishedStatuses", FINISHED_JOB_STATUSES);
         }
 
         List<String> ports = splitCsv(trimToNull(filter.getSearch()));
@@ -453,7 +488,16 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
             sql.append(" AND (CAST(S.ETA as DATE) BETWEEN :fromDate AND :toDate OR CAST(S.OETA as DATE) BETWEEN :fromDate AND :toDate)");
         }
 
-        sql.append(" ORDER BY CASE WHEN S.ETA IS NOT NULL AND CAST(S.ETA AS DATE) <> '1900-01-01' AND S.OETA IS NOT NULL AND CAST(S.OETA AS DATE) <> '1900-01-01' THEN CASE WHEN S.ETA <= S.OETA THEN S.ETA ELSE S.OETA END WHEN S.ETA IS NOT NULL AND CAST(S.ETA AS DATE) <> '1900-01-01' THEN S.ETA WHEN S.OETA IS NOT NULL AND CAST(S.OETA AS DATE) <> '1900-01-01' THEN S.OETA ELSE '9999-12-31' END ASC, ISNULL(S.Loadingvesselname, S.Offvesselname) ASC");
+        // Sort by the date the search filtered on (legacy ordered by DETA). "All ETA" keeps the earliest of
+        // ETA/OETA; OETA or ETA alone sort by that date, not by the other one, which could lie outside the
+        // chosen range. Blank or 1900-01-01 dates go last; the vessel name skips '' and the id breaks ties.
+        String orderDate = etaType == 1
+                ? "CASE WHEN S.OETA IS NULL OR CAST(S.OETA AS DATE) = '1900-01-01' THEN '9999-12-31' ELSE S.OETA END"
+                : etaType == 2
+                ? "CASE WHEN S.ETA IS NULL OR CAST(S.ETA AS DATE) = '1900-01-01' THEN '9999-12-31' ELSE S.ETA END"
+                : "CASE WHEN S.ETA IS NOT NULL AND CAST(S.ETA AS DATE) <> '1900-01-01' AND S.OETA IS NOT NULL AND CAST(S.OETA AS DATE) <> '1900-01-01' THEN CASE WHEN S.ETA <= S.OETA THEN S.ETA ELSE S.OETA END WHEN S.ETA IS NOT NULL AND CAST(S.ETA AS DATE) <> '1900-01-01' THEN S.ETA WHEN S.OETA IS NOT NULL AND CAST(S.OETA AS DATE) <> '1900-01-01' THEN S.OETA ELSE '9999-12-31' END";
+        sql.append(" ORDER BY ").append(orderDate)
+                .append(" ASC, ISNULL(NULLIF(S.Loadingvesselname,''), S.Offvesselname) ASC, S.Id ASC");
         return jdbcTemplate.query(sql.toString(), params, (rs, rowNum) -> mapDetail(rs));
     }
 
@@ -571,6 +615,7 @@ public class VesselPlanningMasterService implements IVesselPlanningMasterService
                     .oBoardingAmount2(getDouble(rs, "OBoardingAmount2"))
                     .customerName(getString(rs, "CustomerName"))
                     .employeeName(getString(rs, "EmployeeName"))
+                    .picName(getString(rs, "PICName"))
                     .remarks(getString(rs, "Remarks"))
                     .cargo(getString(rs, "Cargo"))
                     .build();

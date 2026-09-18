@@ -526,6 +526,13 @@ public class PaymentVoucherTransactionService {
                 where.append(" AND A.Description = :description ");
                 params.addValue("description", request.getDescription().trim());
             }
+            if (request.getProductId() != null && request.getProductId() > 0) {
+                // EXISTS, not a join: a voucher with two lines on the account must
+                // still come back once, and the SUM below must count it once.
+                where.append(" AND EXISTS (SELECT 1 FROM PaymentVoucherDetails PD WITH(NOLOCK) "
+                        + "WHERE PD.PaymentVoucherMasterRefId = A.Id AND PD.AccountGroupRefId = :productId) ");
+                params.addValue("productId", request.getProductId());
+            }
             where.append(" AND A.PaymentVoucherDate BETWEEN :fromDate AND :toDate ");
             params.addValue("fromDate", startOfDay(request.getFromDate()));
             params.addValue("toDate", endOfDay(request.getToDate()));

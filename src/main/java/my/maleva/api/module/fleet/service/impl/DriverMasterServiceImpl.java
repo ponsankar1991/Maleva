@@ -74,8 +74,32 @@ public class DriverMasterServiceImpl implements DriverMasterService {
         logger.info("Creating new driver");
         LocalDateTime now = LocalDateTime.now();
         DriverMaster ent = mapper.toEntity(dto);
+
+        // The screen sends Id 0 for "this driver is new" - the convention the
+        // legacy SP_Driver payload used. An Integer 0 is not null, so save() read
+        // the row as an existing one and issued an UPDATE against Id 0, which
+        // matches nothing: "Row was already updated or deleted by another
+        // transaction ... with id '0'". Clearing it is what makes this an INSERT
+        // and lets IDENTITY hand out the real id.
+        ent.setId(null);
+
         ent.setCreatedDate(now);
         ent.setModifiedDate(now);
+
+        // Defaults the row cannot go in without. processDriver sets these too,
+        // but a driver created straight through POST /api/driver-masters comes
+        // here without passing that way.
+        assignCNumber(ent, dto.getCompanyRefId());
+        if (ent.getActive() == null) {
+            ent.setActive(1);
+        }
+        if (ent.getAccountRefid() == null) {
+            ent.setAccountRefid(1);
+        }
+        if (ent.getModifiedBy() == null || ent.getModifiedBy().isBlank()) {
+            ent.setModifiedBy("SYSTEM");
+        }
+
         DriverMaster saved = repository.save(ent);
         logger.info("Driver created with ID: {}", saved.getId());
         return mapper.toDto(saved);
@@ -104,20 +128,61 @@ public class DriverMasterServiceImpl implements DriverMasterService {
             dto.setModifiedBy("SYSTEM");
         }
 
-        if (dto.getCNumber() == null || dto.getCNumber() == 0) {
-            Integer maxCNumber = repository.findByCompanyRefId(companyId).stream()
-                    .map(DriverMaster::getCNumber)
-                    .filter(java.util.Objects::nonNull)
-                    .max(Integer::compareTo)
-                    .orElse(0);
-            dto.setCNumber(maxCNumber + 1);
-            dto.setCNumberDisplay(String.format("D%09d", maxCNumber + 1));
-        }
+        // The form posts Id 0 for a new driver, so anything that is not a real
+        // row id means "new" - and it is cleared here so nothing downstream can
+        // mistake 0 for an existing row.
+        Integer id = dto.getId() == null || dto.getId() <= 0 ? null : dto.getId();
+        dto.setId(id);
 
-        if (dto.getId() == null || dto.getId() == 0) {
+        if (id == null) {
+            // create() allocates the driver number, so a driver saved straight
+            // through POST /api/driver-masters is numbered the same way.
             return create(dto);
         }
-        return update(dto.getId(), dto);
+
+        // An edit must never renumber the driver. The form posts CNumber 0 and
+        // CNumberDisplay "AUTO" whenever it did not load the stored numbering;
+        // leaving them null here keeps what is on the row, because the mapper
+        // ignores nulls.
+        if (dto.getCNumber() == null || dto.getCNumber() <= 0) {
+            dto.setCNumber(null);
+            dto.setCNumberDisplay(null);
+        } else if (isGeneratedCNumberDisplay(dto.getCNumberDisplay())) {
+            dto.setCNumberDisplay(null);
+        }
+
+        return update(id, dto);
+    }
+
+    /**
+     * Gives a new driver its CNumber and the CNumberDisplay that shows it.
+     *
+     * <p>The number is the company's highest so far plus one - asked of the
+     * database rather than counted in memory - and the display keeps the
+     * {@code D000000123} shape the reports expect. A caller that already carries
+     * a real number keeps it; only the blank and the {@code AUTO} placeholder the
+     * form posts are filled in.
+     *
+     * <p>Two people adding a driver in the same second can still be handed the
+     * same number: CNumber is not unique in the table and never was, and the
+     * legacy screen read the maximum the same way. It is a display number, not a
+     * key - the row is identified by Id.
+     */
+    private void assignCNumber(DriverMaster entity, Integer companyRefId) {
+        Integer cNumber = entity.getCNumber();
+        if (cNumber == null || cNumber <= 0) {
+            Integer highest = repository.findMaxCNumber(companyRefId);
+            cNumber = (highest == null ? 0 : highest) + 1;
+            entity.setCNumber(cNumber);
+        }
+        if (isGeneratedCNumberDisplay(entity.getCNumberDisplay())) {
+            entity.setCNumberDisplay(String.format("D%09d", cNumber));
+        }
+    }
+
+    /** Blank, or the "AUTO" the form posts when it wants a number generated. */
+    private boolean isGeneratedCNumberDisplay(String display) {
+        return display == null || display.isBlank() || "AUTO".equalsIgnoreCase(display.trim());
     }
 
     @Override

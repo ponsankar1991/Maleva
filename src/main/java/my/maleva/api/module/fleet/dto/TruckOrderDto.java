@@ -52,6 +52,10 @@ public class TruckOrderDto {
     private BigDecimal quantity;
     private String quantityUnit;
 
+    /** Where the load goes from and to, e.g. SINGAPORE -> SEREMBAN. Either may be null. */
+    private String origin;
+    private String destination;
+
     private Integer employeeRefId;
 
     private String status;

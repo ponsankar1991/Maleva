@@ -7,6 +7,7 @@ import my.maleva.api.integration.qne.QneAfterCommit;
 import my.maleva.api.integration.qne.QneCall;
 import my.maleva.api.integration.qne.QneGateway;
 import my.maleva.api.integration.qne.QnePayloads;
+import my.maleva.api.integration.qne.QnePushLock;
 import my.maleva.api.integration.qne.QnePushResult;
 import my.maleva.api.integration.qne.dto.QneCustomerRequest;
 import my.maleva.api.integration.qne.dto.QneCustomerResponse;
@@ -35,6 +36,57 @@ public class CustomerQneService {
     private final QneProperties properties;
     private final CustomerRepository customers;
     private final SymbolMasterRepository symbols;
+    private final QnePushLock pushLock;
+
+    /**
+     * The customer list's "Push to QNE" button, for a customer the automatic
+     * push after Save did not get into QNE (QNE refused it, was unreachable, or
+     * was switched off at the time).
+     *
+     * <p>Same create-once rule as the save: a customer that already has a
+     * CompanyCode answers "already in QNE" and nothing is sent. Around it:
+     * <ul>
+     *   <li><b>One push at a time per customer.</b> A QNE call can outlast the
+     *       browser's patience; a second click while the first is still waiting
+     *       would create the customer in QNE twice (see QnePushLock).</li>
+     *   <li><b>Read inside the lock,</b> so a click that waited behind a push
+     *       that just succeeded sees the new CompanyCode and does not send again.</li>
+     *   <li><b>Scoped to the company,</b> and deleted customers (Active = 2) are refused.</li>
+     *   <li><b>Nothing thrown escapes</b> as a 500: a failure inside the push is
+     *       returned as QNE's refusal, with the reason.</li>
+     * </ul>
+     */
+    public QnePushResult push(Integer customerId, Integer companyId) {
+        if (customerId == null || companyId == null || companyId <= 0) {
+            return QnePushResult.localError(400, "A customer and a company are required to push to QNE.");
+        }
+        if (!properties.isEnabled()) {
+            return QnePushResult.localError(409, "QNE integration is switched off, so nothing was sent to QNE.");
+        }
+
+        String lockKey = "customer:" + customerId;
+        if (!pushLock.tryAcquire(lockKey)) {
+            return QnePushResult.localError(409,
+                    "This customer is already being sent to QNE and QNE has not answered yet. "
+                            + "Wait for it to finish and refresh — pushing again now could create it in QNE twice.");
+        }
+        try {
+            Customer customer = customers.findByIdAndCompanyRefId(customerId, companyId).orElse(null);
+            if (customer == null) {
+                return QnePushResult.localError(404, "Customer " + customerId + " was not found for this company.");
+            }
+            if (Integer.valueOf(2).equals(customer.getActive())) {
+                return QnePushResult.localError(409,
+                        "Customer " + customer.getCustomerName() + " is deleted, so it is not sent to QNE.");
+            }
+            return pushCreated(customer);
+        } catch (RuntimeException ex) {
+            log.error("QNE push for customer {} failed", customerId, ex);
+            return QnePushResult.rejected("The QNE push could not be completed: " + ex.getMessage());
+        } finally {
+            pushLock.release(lockKey);
+        }
+    }
 
     /**
      * Pushes a newly created customer once its insert commits — the legacy

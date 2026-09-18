@@ -1,10 +1,12 @@
 package my.maleva.api.module.invoice.service;
 
+import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.invoice.dto.SaleInvoiceDetailRequestDTO;
 import my.maleva.api.module.invoice.dto.SaleInvoiceRequestDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -71,6 +74,13 @@ class SaleInvoiceWriterTest {
                 .taxRefId(0)
                 .saleOrderMasterRefId(20995)
                 .build();
+    }
+
+    /** The edit guard's lookup: the invoice exists for the company, under this number. */
+    @SuppressWarnings("unchecked")
+    private void invoiceExists(String number) {
+        when(jdbc.query(contains("WITH (UPDLOCK, ROWLOCK)"), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(number == null ? List.of() : List.of(number));
     }
 
     private MapSqlParameterSource capturedInsert() {
@@ -134,6 +144,7 @@ class SaleInvoiceWriterTest {
     void anEditNeverRewritesTheNumberTheDocNoOrTheRaiser() {
         SaleInvoiceRequestDTO request = invoice();
         request.setId(43933);
+        invoiceExists("INV000000001");
         when(jdbc.queryForMap(contains("CNumber"), any(SqlParameterSource.class)))
                 .thenReturn(Map.of("CNumber", 1, "CNumberDisplay", "INV000000001"));
 
@@ -159,6 +170,7 @@ class SaleInvoiceWriterTest {
     void anEditReleasesEverythingTheOldVersionClaimed() {
         SaleInvoiceRequestDTO request = invoice();
         request.setId(43933);
+        invoiceExists("INV000000001");
 
         writer.write(request, List.of(line()));
 
@@ -170,6 +182,56 @@ class SaleInvoiceWriterTest {
         assertThat(statements).anyMatch(s -> s.contains("UPDATE SaleOrderMaster SET InvoiceNo = 0"));
         assertThat(statements).anyMatch(s -> s.startsWith("DELETE FROM SaleMasterReference"));
         assertThat(statements).anyMatch(s -> s.startsWith("DELETE FROM SaleDetails"));
+    }
+
+    @Test
+    void anEditOfAnIdThatIsNoInvoiceIsRefusedBeforeAnythingIsDeleted() {
+        // 2026-09-17: the screen had put a sale order's id (701) in the invoice
+        // id. Under SET NOCOUNT ON the header UPDATE matched nothing silently and
+        // the first objection was the lines' foreign key, as a 500.
+        SaleInvoiceRequestDTO request = invoice();
+        request.setId(701);
+        invoiceExists(null);
+
+        assertThatThrownBy(() -> writer.write(request, List.of(line())))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("701")
+                .hasMessageContaining("Nothing was saved");
+
+        verify(jdbc, never()).update(startsWith("DELETE FROM"), any(SqlParameterSource.class));
+        verify(jdbc, never()).update(startsWith("UPDATE SaleOrderMaster SET InvoiceNo = 0"), any(SqlParameterSource.class));
+        verify(jdbc, never()).update(startsWith("UPDATE SaleMaster SET"), any(SqlParameterSource.class));
+        verify(jdbc, never()).batchUpdate(startsWith("INSERT INTO SaleDetails"), any(MapSqlParameterSource[].class));
+    }
+
+    @Test
+    void anEditWhoseIdPointsAtADifferentInvoiceIsRefused() {
+        // The dangerous version of the same bug: the stray id IS a real invoice.
+        // Without this check the save rewrote it, deleted its lines and
+        // released its jobs.
+        SaleInvoiceRequestDTO request = invoice();
+        request.setId(701);
+        request.setCNumberDisplay("INV000044012");
+        invoiceExists("INV000000650");
+
+        assertThatThrownBy(() -> writer.write(request, List.of(line())))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("INV000044012")
+                .hasMessageContaining("INV000000650");
+
+        verify(jdbc, never()).update(startsWith("DELETE FROM"), any(SqlParameterSource.class));
+        verify(jdbc, never()).update(startsWith("UPDATE SaleMaster SET"), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void anEditOfTheInvoiceItNamesGoesAhead() {
+        SaleInvoiceRequestDTO request = invoice();
+        request.setId(15902);
+        request.setCNumberDisplay(" inv000044011 ");
+        invoiceExists("INV000044011");
+
+        assertThat(writer.write(request, List.of(line()))).isEqualTo(15902);
+        verify(jdbc).update(startsWith("DELETE FROM SaleDetails"), any(SqlParameterSource.class));
     }
 
     @Test

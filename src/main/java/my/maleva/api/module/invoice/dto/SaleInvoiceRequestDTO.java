@@ -277,4 +277,12 @@ public class SaleInvoiceRequestDTO {
      * @see my.maleva.api.module.invoice.service.InvoiceSaveGuard
      */
     private String clientRequestId;
+
+    /**
+     * The invoice number the screen is showing. Never written - numbering is
+     * the server's - but on an edit it must be the number of the invoice
+     * {@link #id} points at, which is how a form carrying the wrong id is
+     * caught before it rewrites someone else's invoice.
+     */
+    private String cNumberDisplay;
 }

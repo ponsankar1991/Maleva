@@ -423,6 +423,10 @@ public final class VesselPlanningLegacyDtos {
         @JsonProperty("EmployeeName")
         private String employeeName;
 
+        /** The job's person in charge - SaleOrderMaster.EmployeeRefId, not the last editor. */
+        @JsonProperty("PICName")
+        private String picName;
+
         @JsonProperty("Remarks")
         private String remarks;
 

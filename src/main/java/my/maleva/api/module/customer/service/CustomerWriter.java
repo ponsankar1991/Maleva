@@ -120,8 +120,8 @@ public class CustomerWriter {
         // Not upper-cased on insert, but upper-cased on update. The procedure
         // really is inconsistent here; both branches are reproduced as written.
         customer.setZipcode(orEmpty(dto.getZipcode()));
-        customer.setCountry(upper(orEmpty(dto.getCountry())));
-        customer.setCountryId(dto.getCountryId());
+        customer.setCountry(stateCode(dto.getCountry()));
+        customer.setCountryId(countryId(dto.getCountryId()));
         customer.setCustomerCity(dto.getCustomerCity());
 
         customer.setSymbolRefid(refId(dto.getSymbolRefid()));
@@ -170,8 +170,8 @@ public class CustomerWriter {
         existing.setState(upper(orEmpty(dto.getState())));
         // Upper-cased here, not on insert. See the class note.
         existing.setZipcode(upper(orEmpty(dto.getZipcode())));
-        existing.setCountry(upper(orEmpty(dto.getCountry())));
-        existing.setCountryId(dto.getCountryId());
+        existing.setCountry(stateCode(dto.getCountry()));
+        existing.setCountryId(countryId(dto.getCountryId()));
         existing.setCustomerCity(dto.getCustomerCity());
 
         existing.setSymbolRefid(refId(dto.getSymbolRefid()));
@@ -381,5 +381,65 @@ public class CustomerWriter {
      */
     private int refId(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    /**
+     * The country id, where "not chosen" must be NULL and never 0.
+     *
+     * <p>{@code Customer.countryId} is nullable and the live database guards it
+     * with {@code FK_Customer_Country} against {@code CountryMaster.Id}. There is
+     * no country numbered 0, so writing the form's "not chosen" zero into the
+     * column - which is what the legacy payload carries, since an unpicked combo
+     * posts {@code ""} and binds to an {@code Int32} default - made SQL Server
+     * refuse the whole statement:
+     *
+     * <pre>The UPDATE statement conflicted with the FOREIGN KEY constraint
+     * "FK_Customer_Country" ... table "dbo.CountryMaster", column 'Id'.</pre>
+     *
+     * <p>It went unnoticed because the development database carries no such
+     * constraint: the same save writes 0 there without complaint. NULL is the
+     * only way to say "no country" that the column will accept, and it is what
+     * the rows written before this screen already hold.
+     *
+     * <p>Zero still means "not chosen" to {@link #validateReferences}; an id that
+     * is given but unknown is refused there, with a message, before any SQL runs.
+     */
+    private Integer countryId(Integer value) {
+        return value == null || value <= 0 ? null : value;
+    }
+
+    /**
+     * The LHDN state code that goes into {@code Customer.Country} — and NULL,
+     * never an empty string, when no state was picked.
+     *
+     * <p>That column is neither what its name says nor what this entity's
+     * {@code String} type suggests. The legacy screen posts
+     * {@code Country: StateCode} (AddCustomer.js), so what it holds is the state
+     * — but the database carries {@code FK_Customer_Country} on it, pointing at
+     * {@code CountryMaster.Id}, which SQL Server only allows between columns of
+     * the same type. The column is therefore an integer one: a state code is
+     * stored as the number it parses to, and the constraint is satisfied purely
+     * by accident, because the codes 01–17 all happen to be real country ids.
+     *
+     * <p>What the constraint does not tolerate is the empty string the procedure
+     * wrote when no state was chosen. SQL Server converts {@code ''} to 0 on the
+     * way into an int column, there is no country numbered 0, and the whole
+     * statement is refused:
+     *
+     * <pre>The UPDATE statement conflicted with the FOREIGN KEY constraint
+     * "FK_Customer_Country" ... table "dbo.CountryMaster", column 'Id'.</pre>
+     *
+     * <p>That is every customer outside Malaysia and every Malaysian one whose
+     * state was never filled in — /CustomerMaster/edit/21 among them. NULL is the
+     * only value the column accepts for "no state".
+     *
+     * <p>The state code is written as the form sends it ({@code '01'}, not
+     * {@code '1'}), which keeps it right on any database where the column really
+     * is text. Where it is an int, the padding is dropped by the conversion and
+     * the screen pads it back on the way in.
+     */
+    private String stateCode(String value) {
+        String trimmed = value == null ? "" : value.trim();
+        return trimmed.isEmpty() ? null : upper(trimmed);
     }
 }

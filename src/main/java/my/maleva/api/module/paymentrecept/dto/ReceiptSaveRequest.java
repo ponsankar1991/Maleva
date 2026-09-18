@@ -120,6 +120,17 @@ public class ReceiptSaveRequest {
     @JsonProperty("serviceTaxType")
     private String serviceTaxType;
 
+    /**
+     * One key per new receipt from the page, kept when a save fails or times
+     * out, so pressing SAVE again replays the receipt already created instead
+     * of numbering a second one. Ignored on updates.
+     *
+     * @see my.maleva.api.module.paymentrecept.service.ReceiptCreateGuard
+     */
+    @JsonAlias({"ClientRequestId", "clientRequestId"})
+    @JsonProperty("clientRequestId")
+    private String clientRequestId;
+
     @JsonAlias({"ReceiptDetails", "receiptDetails", "details", "Details"})
     @JsonProperty("receiptDetails")
     private List<ReceiptBillDto> receiptDetails;

@@ -1,6 +1,7 @@
 package my.maleva.api.module.invoice.service;
 
 import lombok.RequiredArgsConstructor;
+import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.invoice.dto.SaleInvoiceDetailRequestDTO;
 import my.maleva.api.module.invoice.dto.SaleInvoiceRequestDTO;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -139,6 +140,7 @@ public class SaleInvoiceWriter {
             stampSaleOrder(request.getSaleOrderMasterNo(), invoiceId, companyId);
         } else {
             invoiceId = request.getId();
+            requireEditTarget(invoiceId, companyId, request.getCNumberDisplay());
             clearPreviousVersion(invoiceId, companyId);
             updateHeader(request, invoiceId);
         }
@@ -311,6 +313,48 @@ public class SaleInvoiceWriter {
     }
 
     // ─────────────────────────────────────────────────── edit house-keeping ──
+
+    /**
+     * Refuses an edit whose id is not an invoice of this company, or not the
+     * invoice the screen says it is saving - before anything is deleted.
+     *
+     * <p>Nothing else would notice. SET NOCOUNT ON makes every UPDATE report -1
+     * rows, so rewriting a header that does not exist looks exactly like
+     * rewriting one that does; the first thing to object was the line insert's
+     * FK_SaleDetails_SaleMaster, as a 500 (2026-09-17). That was the lucky
+     * case. The screen had copied a SALE ORDER's id into the invoice id when a
+     * job was added, and had that number also been a real invoice id, this
+     * method's absence meant the save would have rewritten a different invoice,
+     * deleted its lines and released its jobs - silently.
+     *
+     * <p>UPDLOCK also holds the row for the rest of the transaction, so two
+     * edits of one invoice cannot interleave their delete-and-reinsert.
+     *
+     * @param expectedNumber the invoice number the screen showed, when it sent
+     *     one; a mismatch means the id and the form disagree about which invoice
+     *     this is
+     */
+    private void requireEditTarget(Integer invoiceId, Integer companyId, String expectedNumber) {
+        List<String> numbers = jdbc.query(
+                "SELECT ISNULL(CNumberDisplay, '') AS InvoiceNo FROM SaleMaster WITH (UPDLOCK, ROWLOCK) "
+                        + "WHERE Id = :invoiceId AND CompanyRefId = :companyId",
+                new MapSqlParameterSource()
+                        .addValue("invoiceId", invoiceId)
+                        .addValue("companyId", companyId),
+                (rs, rowNum) -> rs.getString("InvoiceNo"));
+        if (numbers.isEmpty()) {
+            throw new InvalidRequestException("Invoice id " + invoiceId
+                    + " does not exist for this company, so there is nothing to update. Nothing was saved."
+                    + " Clear the form and open the invoice again from the list.");
+        }
+        String stored = numbers.get(0) == null ? "" : numbers.get(0).trim();
+        String expected = expectedNumber == null ? "" : expectedNumber.trim();
+        if (!expected.isEmpty() && !"0".equals(expected) && !expected.equalsIgnoreCase(stored)) {
+            throw new InvalidRequestException("This save is for invoice " + expected
+                    + " but its id points at invoice " + (stored.isEmpty() ? "#" + invoiceId : stored)
+                    + ". Nothing was saved. Clear the form and open the invoice again from the list.");
+        }
+    }
 
     /**
      * Undoes what the previous version of this invoice claimed.

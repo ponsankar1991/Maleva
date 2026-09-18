@@ -32,6 +32,9 @@ public class StatementMailJobRequest extends StatementRequest {
     /** "", "Reminder 1" or "Reminder 2" — the same wording for every customer in the run. */
     private String reminder;
 
+    /** PDF (default), EXCEL or BOTH - the same file(s) for every customer in the run. */
+    private String attach;
+
     @Data
     public static class Recipient {
 

@@ -497,6 +497,8 @@ public class TruckOrderServiceImpl implements TruckOrderService {
         order.setCustomerRefId(customerRefId);
         order.setQuantity(quantity);
         order.setQuantityUnit(unit == null ? null : unit.getCode());
+        order.setOrigin(normalisePlace(request.getOrigin()));
+        order.setDestination(normalisePlace(request.getDestination()));
         order.setEmployeeRefId(nullIfZero(request.getEmployeeRefId()));
         order.setOrderDate(request.getOrderDate());
         order.setStatus(status);
@@ -590,6 +592,8 @@ public class TruckOrderServiceImpl implements TruckOrderService {
                 .customerName(customerName)
                 .quantity(order.getQuantity())
                 .quantityUnit(order.getQuantityUnit())
+                .origin(order.getOrigin())
+                .destination(order.getDestination())
                 .employeeRefId(order.getEmployeeRefId())
                 .status(order.getStatus())
                 .remarks(order.getRemarks())
@@ -738,6 +742,48 @@ public class TruckOrderServiceImpl implements TruckOrderService {
         return truck.getWorkshopUntil() == null
                 ? plate + " is in the workshop."
                 : plate + " is in the workshop until " + DAY_LABEL.format(truck.getWorkshopUntil()) + ".";
+    }
+
+    /** Most place names a suggestion list needs; more is noise. */
+    private static final int MAX_PLACES = 300;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> places(Integer companyRefId) {
+        requireCompany(companyRefId);
+        // Both sources, counted together so the places people actually use come
+        // first. Sale orders are limited to a year: older spellings are the ones
+        // this list exists to stop.
+        return jdbcTemplate.queryForList(
+                "SELECT TOP " + MAX_PLACES + " Place FROM ("
+                        + " SELECT UPPER(LTRIM(RTRIM(Origin))) AS Place FROM TruckOrderMaster WITH (NOLOCK)"
+                        + "  WHERE CompanyRefId = ? AND Active = 1 AND NULLIF(LTRIM(RTRIM(Origin)), '') IS NOT NULL"
+                        + " UNION ALL"
+                        + " SELECT UPPER(LTRIM(RTRIM(Destination))) FROM TruckOrderMaster WITH (NOLOCK)"
+                        + "  WHERE CompanyRefId = ? AND Active = 1 AND NULLIF(LTRIM(RTRIM(Destination)), '') IS NOT NULL"
+                        + " UNION ALL"
+                        + " SELECT UPPER(LTRIM(RTRIM(Origin))) FROM SaleOrderMaster WITH (NOLOCK)"
+                        + "  WHERE CompanyRefId = ? AND PickupDate >= DATEADD(month, -12, GETDATE())"
+                        + "    AND NULLIF(LTRIM(RTRIM(Origin)), '') IS NOT NULL"
+                        + " UNION ALL"
+                        + " SELECT UPPER(LTRIM(RTRIM(Destination))) FROM SaleOrderMaster WITH (NOLOCK)"
+                        + "  WHERE CompanyRefId = ? AND PickupDate >= DATEADD(month, -12, GETDATE())"
+                        + "    AND NULLIF(LTRIM(RTRIM(Destination)), '') IS NOT NULL"
+                        + ") used GROUP BY Place ORDER BY COUNT(*) DESC, Place",
+                String.class, companyRefId, companyRefId, companyRefId, companyRefId);
+    }
+
+    /**
+     * A place as it is stored: trimmed, inner spaces collapsed to one, capitals.
+     * "  singapore " and "SINGAPORE" are one place, and the search can then find
+     * both. Blank means not recorded.
+     */
+    private static String normalisePlace(String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = value.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ENGLISH);
+        return cleaned.isEmpty() ? null : cleaned;
     }
 
     /** The truck's plate for a message, or a neutral phrase when it has none. */

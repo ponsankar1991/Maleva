@@ -5,7 +5,9 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import my.maleva.api.common.exception.InvalidRequestException;
 import my.maleva.api.module.common.service.EmailService;
+import my.maleva.api.module.common.service.EmailService.EmailAttachment;
 import my.maleva.api.module.customerstatement.dto.CustomerStatement;
+import my.maleva.api.module.customerstatement.dto.StatementAttach;
 import my.maleva.api.module.customerstatement.dto.StatementMailJobRequest;
 import my.maleva.api.module.customerstatement.dto.StatementMailJobView;
 import my.maleva.api.module.customerstatement.dto.StatementRequest;
@@ -13,6 +15,7 @@ import my.maleva.api.module.customerstatement.dto.StatementResult;
 import my.maleva.api.module.customerstatement.mail.CustomerStatementMailService.PreparedStatementMail;
 import my.maleva.api.module.customerstatement.mail.StatementMailJob.Item;
 import my.maleva.api.module.customerstatement.mail.StatementMailJob.ItemStatus;
+import my.maleva.api.module.customerstatement.print.CustomerStatementExcelService;
 import my.maleva.api.module.customerstatement.print.CustomerStatementPdfService;
 import my.maleva.api.module.customerstatement.print.CustomerStatementPdfService.RenderedStatement;
 import my.maleva.api.module.customerstatement.service.CustomerStatementService;
@@ -72,6 +75,7 @@ public class StatementMailJobService {
 
     private final CustomerStatementService statements;
     private final CustomerStatementPdfService pdf;
+    private final CustomerStatementExcelService excel;
     private final CustomerStatementMailService mail;
     private final EmailService email;
     private final int batchSize;
@@ -81,10 +85,11 @@ public class StatementMailJobService {
 
     @Autowired
     public StatementMailJobService(CustomerStatementService statements, CustomerStatementPdfService pdf,
+                                   CustomerStatementExcelService excel,
                                    CustomerStatementMailService mail, EmailService email,
                                    @Value("${mail.statement.batch-size:10}") int batchSize,
                                    @Value("${mail.statement.pause-between-batches-ms:0}") long pauseBetweenBatchesMs) {
-        this(statements, pdf, mail, email, batchSize, pauseBetweenBatchesMs,
+        this(statements, pdf, excel, mail, email, batchSize, pauseBetweenBatchesMs,
                 Executors.newSingleThreadExecutor(r -> {
                     Thread t = new Thread(r, "statement-mail");
                     t.setDaemon(true);
@@ -96,8 +101,16 @@ public class StatementMailJobService {
     StatementMailJobService(CustomerStatementService statements, CustomerStatementPdfService pdf,
                             CustomerStatementMailService mail, EmailService email,
                             int batchSize, long pauseBetweenBatchesMs, Executor worker) {
+        this(statements, pdf, new CustomerStatementExcelService(), mail, email, batchSize, pauseBetweenBatchesMs, worker);
+    }
+
+    StatementMailJobService(CustomerStatementService statements, CustomerStatementPdfService pdf,
+                            CustomerStatementExcelService excel,
+                            CustomerStatementMailService mail, EmailService email,
+                            int batchSize, long pauseBetweenBatchesMs, Executor worker) {
         this.statements = statements;
         this.pdf = pdf;
+        this.excel = excel;
         this.mail = mail;
         this.email = email;
         this.batchSize = Math.max(1, batchSize);
@@ -159,11 +172,11 @@ public class StatementMailJobService {
         }
 
         StatementMailJob job = new StatementMailJob(UUID.randomUUID().toString(), companyId,
-                request.getReminder(), requestedBy, result, items);
+                request.getReminder(), StatementAttach.of(request.getAttach()), requestedBy, result, items);
         jobs.put(job.id(), job);
         StatementMailJobView queued = job.view();
-        log.info("Statement run {} queued by {} - company {}, {} customer(s): {} to send, {} skipped, wording '{}'",
-                job.id(), requestedBy, companyId, queued.total(), queued.pending(), queued.skipped(), job.reminder());
+        log.info("Statement run {} queued by {} - company {}, {} customer(s): {} to send, {} skipped, wording '{}', attaching {}",
+                job.id(), requestedBy, companyId, queued.total(), queued.pending(), queued.skipped(), job.reminder(), job.attach());
         worker.execute(() -> run(job));
         // Snapshot after hand-off: the worker may already be on it, and the
         // screen's first poll should not show a run as queued that is running.
@@ -241,8 +254,7 @@ public class StatementMailJobService {
         for (Item item : batch) {
             item.status = ItemStatus.SENDING;
             try {
-                RenderedStatement rendered = pdf.renderOne(job.result(), item.statement);
-                PreparedStatementMail message = mail.prepare(item.statement, rendered, item.emails, job.reminder());
+                PreparedStatementMail message = prepare(job, item);
                 byMessage.put(message.message(), item);
                 prepared.put(item, message);
             } catch (RuntimeException ex) {
@@ -271,6 +283,25 @@ public class StatementMailJobService {
             mail.record(job.companyId(), item.statement, message.to(), message.subject(), message.attachmentName(),
                     message.messageId(), job.reminder(), error == null ? "SENT" : "FAILED", error, job.id(), job.requestedBy());
         }
+    }
+
+    /**
+     * One customer's message with the run's file(s): the PDF alone takes the
+     * original path; Excel, or both, renders the workbook for that customer too.
+     */
+    private PreparedStatementMail prepare(StatementMailJob job, Item item) {
+        StatementAttach attach = job.attach();
+        if (attach == StatementAttach.PDF) {
+            RenderedStatement rendered = pdf.renderOne(job.result(), item.statement);
+            return mail.prepare(item.statement, rendered, item.emails, job.reminder());
+        }
+        List<EmailAttachment> files = new ArrayList<>(2);
+        if (attach.pdf()) {
+            files.add(CustomerStatementMailService.pdfAttachment(pdf.renderOne(job.result(), item.statement)));
+        }
+        CustomerStatementExcelService.RenderedWorkbook workbook = excel.renderOne(job.result(), item.statement);
+        files.add(new EmailAttachment(workbook.fileName(), workbook.content(), CustomerStatementExcelService.CONTENT_TYPE));
+        return mail.prepare(item.statement, files, item.emails, job.reminder(), CustomerStatementMailService.MailOverrides.NONE);
     }
 
     private void purgeExpired() {

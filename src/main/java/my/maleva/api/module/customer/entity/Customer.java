@@ -70,6 +70,15 @@ public class Customer {
     @Column(name = "Zipcode", length = 50)
     private String zipcode;
 
+    /**
+     * The LHDN state code, not a country — the legacy screen posts
+     * {@code Country: StateCode}. Read and written as text, but the database
+     * column is an integer one guarded by {@code FK_Customer_Country} against
+     * {@code CountryMaster.Id}, so a code is stored as the number it parses to
+     * and "no state" must be NULL: an empty string converts to 0 and the
+     * constraint refuses the whole statement. See
+     * {@code CustomerWriter.stateCode}. The country itself is {@link #countryId}.
+     */
     @Column(name = "Country", length = 50)
     private String country;
 

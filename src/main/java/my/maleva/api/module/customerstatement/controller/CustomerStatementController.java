@@ -4,7 +4,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import my.maleva.api.common.dto.ApiResponse;
 import my.maleva.api.common.exception.InvalidRequestException;
+import my.maleva.api.module.customerstatement.dto.CustomerStatement;
 import my.maleva.api.module.customerstatement.dto.StatementLastSent;
+import my.maleva.api.module.customerstatement.dto.StatementMailPreview;
 import my.maleva.api.module.customerstatement.dto.StatementMailJobRequest;
 import my.maleva.api.module.customerstatement.dto.StatementMailJobView;
 import my.maleva.api.module.customerstatement.dto.StatementRequest;
@@ -14,7 +16,9 @@ import my.maleva.api.module.customerstatement.dto.StatementSendResult;
 import my.maleva.api.module.customerstatement.mail.CustomerStatementMailService;
 import my.maleva.api.module.customerstatement.mail.StatementMailJobService;
 import my.maleva.api.module.customerstatement.mail.StatementMailLogRepository;
+import my.maleva.api.module.customerstatement.print.CustomerStatementExcelService;
 import my.maleva.api.module.customerstatement.print.CustomerStatementPdfService;
+import my.maleva.api.module.common.service.EmailService.EmailAttachment;
 import my.maleva.api.module.customerstatement.print.CustomerStatementPdfService.RenderedStatement;
 import my.maleva.api.module.customerstatement.service.CustomerStatementService;
 import my.maleva.api.module.invoice.print.PrintStash;
@@ -52,6 +56,7 @@ public class CustomerStatementController {
 
     private final CustomerStatementService service;
     private final CustomerStatementPdfService pdf;
+    private final CustomerStatementExcelService excel;
     private final PrintStash stash;
     private final CustomerStatementMailService mail;
     private final StatementMailJobService jobs;
@@ -70,6 +75,25 @@ public class CustomerStatementController {
                 ? "No outstanding invoices for these filters"
                 : result.getCustomerCount() + " customer(s), " + result.getLineCount() + " line(s)";
         return ResponseEntity.ok(ApiResponse.success(result, message));
+    }
+
+    /**
+     * The statement as an Excel workbook - the report's Excel option, and what
+     * the send window lets the operator check before attaching it. One sheet
+     * per customer; every customer with something outstanding when none is
+     * chosen. Downloaded by the page with its token (an XHR blob), so no ticket.
+     */
+    @PostMapping("/excel")
+    public ResponseEntity<byte[]> excel(@Valid @RequestBody StatementRequest request) {
+        StatementResult result = service.build(request);
+        if (result.getCustomerCount() == 0) {
+            throw new InvalidRequestException("No outstanding invoices for these filters; nothing to export.");
+        }
+        CustomerStatementExcelService.RenderedWorkbook workbook = excel.render(result);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(CustomerStatementExcelService.CONTENT_TYPE))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + workbook.fileName() + "\"")
+                .body(workbook.content());
     }
 
     /**
@@ -128,9 +152,42 @@ public class CustomerStatementController {
      * <p>The statement is rebuilt from the filters at send time, so the PDF
      * attached and the figures quoted are the same object — not a stale
      * render and not a browser-side number.
+     *
+     * <p>{@code cc}, {@code subject} and {@code body} carry what the operator
+     * changed on the preview; left out, the wording's own template is sent.
      */
     @PostMapping("/send")
     public ResponseEntity<ApiResponse<StatementSendResult>> send(@Valid @RequestBody StatementSendRequest request) {
+        return sendStatement(request);
+    }
+
+    /**
+     * The statement mail as Send would build it - subject, filled HTML body,
+     * To and CC - for one customer and wording, without rendering the PDF or
+     * sending anything. The screen shows it, lets the operator change it, and
+     * posts the edited mail to {@code /send}.
+     */
+    @PostMapping("/mail-preview")
+    public ResponseEntity<ApiResponse<StatementMailPreview>> mailPreview(@Valid @RequestBody StatementSendRequest request) {
+        if (!request.isSingleCustomer()) {
+            throw new InvalidRequestException("Select one customer to preview the statement mail for.");
+        }
+        StatementResult result = service.build(request);
+        if (result.getCustomerCount() == 0) {
+            throw new InvalidRequestException("This customer has no outstanding invoices under these filters; nothing to send.");
+        }
+        CustomerStatement statement = result.getStatements().get(0);
+        // The addresses asked for, else the customer's own statement addresses.
+        List<String> to = request.getEmails() == null
+                ? statement.getEmails()
+                : CustomerStatementMailService.splitAddresses(request.getEmails());
+        return ResponseEntity.ok(ApiResponse.success(
+                mail.preview(statement, to, request.getReminder(), CustomerStatementPdfService.fileNameFor(result),
+                        CustomerStatementExcelService.fileNameFor(result)),
+                "Statement mail preview"));
+    }
+
+    private ResponseEntity<ApiResponse<StatementSendResult>> sendStatement(StatementSendRequest request) {
         if (!request.isSingleCustomer()) {
             throw new InvalidRequestException("Select one customer to send a statement to.");
         }
@@ -138,9 +195,21 @@ public class CustomerStatementController {
         if (result.getCustomerCount() == 0) {
             throw new InvalidRequestException("This customer has no outstanding invoices under these filters; nothing to send.");
         }
-        RenderedStatement rendered = pdf.render(result);
-        StatementSendResult sent = mail.send(request.getCompanyId(), result.getStatements().get(0), rendered,
-                request.getEmails(), request.getReminder(), currentUser());
+        // What the operator chose to attach: the PDF (default), the Excel workbook, or both.
+        List<EmailAttachment> files = new java.util.ArrayList<>(2);
+        if (request.attachPdf()) {
+            RenderedStatement rendered = pdf.render(result);
+            files.add(new EmailAttachment(rendered.fileName(), rendered.pdf(), "application/pdf"));
+        }
+        if (request.attachExcel()) {
+            CustomerStatementExcelService.RenderedWorkbook workbook = excel.render(result);
+            files.add(new EmailAttachment(workbook.fileName(), workbook.content(), CustomerStatementExcelService.CONTENT_TYPE));
+        }
+        CustomerStatementMailService.MailOverrides overrides = new CustomerStatementMailService.MailOverrides(
+                request.getSubject(), request.getBody(),
+                request.getCc() == null ? null : CustomerStatementMailService.splitAddresses(request.getCc()));
+        StatementSendResult sent = mail.send(request.getCompanyId(), result.getStatements().get(0), files,
+                request.getEmails(), request.getReminder(), currentUser(), overrides);
         return ResponseEntity.ok(ApiResponse.success(sent,
                 "Statement sent to " + String.join(", ", sent.sentTo())));
     }

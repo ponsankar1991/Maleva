@@ -36,6 +36,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CustomerStatementMailServiceTest {
 
+    private static final String CRLF = String.valueOf((char) 13) + (char) 10;
+
     @Mock private EmailService email;
     @Mock private StatementMailLogRepository logs;
     @Captor private ArgumentCaptor<List<String>> toCaptor;
@@ -174,5 +176,94 @@ class CustomerStatementMailServiceTest {
     void moneyFormat() {
         assertThat(CustomerStatementMailService.money("SGD", new BigDecimal("18836.45"))).isEqualTo("SGD 18,836.45");
         assertThat(CustomerStatementMailService.money(null, new BigDecimal("5"))).isEqualTo("5.00");
+    }
+
+    @Test
+    @DisplayName("the preview is the template mail Send would build: subject, filled body, To asked for, configured CC")
+    void previewIsTheTemplateMail() {
+        var preview = service.preview(acs(), List.of("cayden@acs.example"), "Reminder 1", "CustomerStatement_ACS_20260911.pdf",
+                "CustomerStatement_ACS_20260911.xlsx");
+
+        assertThat(preview.reminder()).isEqualTo("Reminder 1");
+        assertThat(preview.subject()).isEqualTo("Friendly Payment Reminder – Outstanding Balance - ACS FREIGHT & SERVICES PTE LTD");
+        assertThat(preview.body()).contains("ACS FREIGHT &amp; SERVICES PTE LTD").contains("SGD 18,836.45")
+                .doesNotContain("{Customer Name}").doesNotContain("{SIGNATURE}");
+        assertThat(preview.to()).containsExactly("cayden@acs.example");
+        assertThat(preview.cc()).containsExactly("receivable@maleva.com.my", "mala@maleva.com.my");
+        assertThat(preview.attachmentName()).isEqualTo("CustomerStatement_ACS_20260911.pdf");
+        assertThat(preview.excelAttachmentName()).isEqualTo("CustomerStatement_ACS_20260911.xlsx");
+        verify(email, never()).sendPrepared(anyList());
+    }
+
+    @Test
+    @DisplayName("PDF and Excel chosen: both files attached in that order, both names in the result and the log")
+    void attachesTheChosenFiles() {
+        when(email.prepareHtmlMail(anyList(), anyList(), anyString(), anyString(), anyList())).thenReturn(message);
+        when(email.sendPrepared(anyList())).thenReturn(Map.of());
+        var files = List.of(
+                new EmailAttachment("CustomerStatement_ACS_20260911.pdf", "%PDF".getBytes(), "application/pdf"),
+                new EmailAttachment("CustomerStatement_ACS_20260911.xlsx", new byte[]{80, 75},
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+
+        StatementSendResult result = service.send(1, acs(), files, "cayden@acs.example", "", "mala",
+                CustomerStatementMailService.MailOverrides.NONE);
+
+        verify(email).prepareHtmlMail(toCaptor.capture(), ccCaptor.capture(), subjectCaptor.capture(),
+                bodyCaptor.capture(), attachmentCaptor.capture());
+        assertThat(attachmentCaptor.getValue()).extracting(EmailAttachment::fileName)
+                .containsExactly("CustomerStatement_ACS_20260911.pdf", "CustomerStatement_ACS_20260911.xlsx");
+        assertThat(result.attachmentName())
+                .isEqualTo("CustomerStatement_ACS_20260911.pdf, CustomerStatement_ACS_20260911.xlsx");
+        verify(logs).insert(logCaptor.capture());
+        assertThat(logCaptor.getValue().attachmentName()).isEqualTo(result.attachmentName());
+    }
+
+    @Test
+    @DisplayName("nothing chosen to attach is refused before anything is sent")
+    void refusesNoAttachment() {
+        assertThatThrownBy(() -> service.send(1, acs(), List.of(), "cayden@acs.example", "", "mala",
+                CustomerStatementMailService.MailOverrides.NONE))
+                .isInstanceOf(InvalidRequestException.class);
+        verify(email, never()).sendPrepared(anyList());
+    }
+
+    @Test
+    @DisplayName("what was changed on the preview is what goes out: subject, body and CC, and the log row says so")
+    void sendsTheEditedMail() {
+        when(email.prepareHtmlMail(anyList(), anyList(), anyString(), anyString(), anyList())).thenReturn(message);
+        when(email.sendPrepared(anyList())).thenReturn(Map.of());
+
+        StatementSendResult result = service.send(1, acs(), pdf(), "cayden@acs.example", "Reminder 2", "mala",
+                new CustomerStatementMailService.MailOverrides("Statement for Sept" + CRLF + "Bcc: evil@x.example",
+                        "<p>Dear Cayden, as discussed.</p>", List.of("mala@maleva.com.my")));
+
+        verify(email).prepareHtmlMail(toCaptor.capture(), ccCaptor.capture(), subjectCaptor.capture(),
+                bodyCaptor.capture(), attachmentCaptor.capture());
+        assertThat(subjectCaptor.getValue()).isEqualTo("Statement for Sept Bcc: evil@x.example");
+        assertThat(bodyCaptor.getValue()).isEqualTo("<p>Dear Cayden, as discussed.</p>");
+        assertThat(ccCaptor.getValue()).containsExactly("mala@maleva.com.my");
+        assertThat(attachmentCaptor.getValue()).hasSize(1);
+        assertThat(result.cc()).containsExactly("mala@maleva.com.my");
+        assertThat(result.subject()).isEqualTo("Statement for Sept Bcc: evil@x.example");
+
+        verify(logs).insert(logCaptor.capture());
+        assertThat(logCaptor.getValue().cc()).containsExactly("mala@maleva.com.my");
+        assertThat(logCaptor.getValue().subject()).isEqualTo("Statement for Sept Bcc: evil@x.example");
+    }
+
+    @Test
+    @DisplayName("blank overrides and an empty CC: template subject and body, sent without CC")
+    void blankOverridesKeepTheTemplate() {
+        when(email.prepareHtmlMail(anyList(), anyList(), anyString(), anyString(), anyList())).thenReturn(message);
+        when(email.sendPrepared(anyList())).thenReturn(Map.of());
+
+        service.send(1, acs(), pdf(), "cayden@acs.example", "", "mala",
+                new CustomerStatementMailService.MailOverrides("  ", "", List.of()));
+
+        verify(email).prepareHtmlMail(toCaptor.capture(), ccCaptor.capture(), subjectCaptor.capture(),
+                bodyCaptor.capture(), attachmentCaptor.capture());
+        assertThat(subjectCaptor.getValue()).isEqualTo("Statement of Account & Payment Request - ACS FREIGHT & SERVICES PTE LTD");
+        assertThat(bodyCaptor.getValue()).contains("SGD 18,836.45");
+        assertThat(ccCaptor.getValue()).isEmpty();
     }
 }

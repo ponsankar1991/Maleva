@@ -95,6 +95,15 @@ public interface TruckOrderService {
     TruckAvailabilityDto availability(Integer companyRefId, LocalDate orderDate,
                                       String sizeClass, Integer excludeId);
 
+    /**
+     * Place names already used as an origin or destination, most used first.
+     *
+     * <p>Read from this calendar's own orders and from the last year of sale
+     * orders, so the list is useful from the first day. Capped, trimmed and in
+     * capitals.
+     */
+    List<String> places(Integer companyRefId);
+
     /** Soft delete: {@code Active = 2}, matching the other fleet documents. */
     void delete(Integer id, Integer companyRefId, String username);
 }

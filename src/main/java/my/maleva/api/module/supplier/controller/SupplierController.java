@@ -263,6 +263,21 @@ public class SupplierController {
     }
 
     /**
+     * The supplier list's "Push to QNE" — sends one supplier the push after
+     * Save did not get into QNE. Always 200 with the outcome (PUSHED,
+     * ALREADY_IN_QNE, DISABLED, or FAILED with QNE's own message); a supplier
+     * that is not the company's, is deleted, or is already being pushed answers
+     * 400 with the reason.
+     * POST /api/suppliers/{id}/push-qne?companyId=6
+     */
+    @PostMapping("/{id}/push-qne")
+    public ResponseEntity<ApiResponse<SupplierQneOutcome>> pushToQne(@PathVariable Integer id,
+                                                                    @RequestParam Integer companyId) {
+        SupplierQneOutcome outcome = qneService.pushOne(id, companyId);
+        return ResponseEntity.ok(ApiResponse.success(outcome.message(), outcome));
+    }
+
+    /**
      * The screen's DELETE — legacy {@code DeleteSupplier}, which sets Active = 2.
      * PUT /api/suppliers/{id}/soft-delete?companyId=6
      */

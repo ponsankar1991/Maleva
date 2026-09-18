@@ -8,6 +8,7 @@ import my.maleva.api.module.common.service.EmailService;
 import my.maleva.api.module.common.service.EmailService.EmailAttachment;
 import my.maleva.api.module.common.service.ImapSentFolderService;
 import my.maleva.api.module.customerstatement.dto.CustomerStatement;
+import my.maleva.api.module.customerstatement.dto.StatementMailPreview;
 import my.maleva.api.module.customerstatement.dto.StatementSendResult;
 import my.maleva.api.module.customerstatement.print.CustomerStatementPdfService.RenderedStatement;
 import org.springframework.beans.factory.annotation.Value;
@@ -127,26 +128,79 @@ public class CustomerStatementMailService {
      */
     public StatementSendResult send(int companyId, CustomerStatement statement, RenderedStatement pdf,
                                     String emails, String reminder, String sentBy) {
+        return send(companyId, statement, pdf, emails, reminder, sentBy, MailOverrides.NONE);
+    }
+
+    /**
+     * The same send, with what the operator changed on the preview: CC,
+     * subject and body. Anything left null (or a blank subject/body) is the
+     * wording's own, so a caller that changes nothing sends exactly the template.
+     */
+    public StatementSendResult send(int companyId, CustomerStatement statement, RenderedStatement pdf,
+                                    String emails, String reminder, String sentBy, MailOverrides overrides) {
+        return send(companyId, statement, List.of(pdfAttachment(pdf)), emails, reminder, sentBy, overrides);
+    }
+
+    /**
+     * The same send with the files chosen on the preview - the PDF, the Excel
+     * workbook, or both - attached in that order.
+     */
+    public StatementSendResult send(int companyId, CustomerStatement statement, List<EmailAttachment> files,
+                                    String emails, String reminder, String sentBy, MailOverrides overrides) {
         List<String> to = splitAddresses(emails);
         if (to.isEmpty()) {
             throw new InvalidRequestException("Enter at least one e-mail address to send the statement to.");
         }
+        if (files == null || files.isEmpty()) {
+            throw new InvalidRequestException("Choose the statement file to attach.");
+        }
 
-        PreparedStatementMail prepared = prepare(statement, pdf, to, reminder);
+        PreparedStatementMail prepared = prepare(statement, files, to, reminder, overrides);
         Map<MimeMessage, String> refused = email.sendPrepared(List.of(prepared.message()));
         String error = refused.get(prepared.message());
-        record(companyId, statement, prepared.to(), prepared.subject(), prepared.attachmentName(), prepared.messageId(),
-                reminder, error == null ? "SENT" : "FAILED", error, null, sentBy);
+        logs.insert(new StatementMailLogRepository.Entry(
+                companyId, statement.getCustomerId(), statement.getCustomerName(),
+                prepared.to(), prepared.cc(), prepared.subject(), wordingKey(reminder),
+                statement.getStatementDate(), statement.getOverdueAmount(), statement.getCurrency(),
+                prepared.attachmentName(), error == null ? "SENT" : "FAILED", error, null, sentBy, LocalDateTime.now(),
+                StatementMailLogRepository.KIND_STATEMENT, prepared.messageId(), null, null));
         if (error != null) {
             throw new IllegalStateException("The mail server refused the message: " + error);
         }
         fileSentCopy(prepared.message(), "statement " + statement.getCustomerName());
 
-        log.info("Customer statement mailed - {} to {} recipient(s), wording '{}', {} bytes attached",
-                statement.getCustomerName(), to.size(), wordingName(reminder), pdf.pdf().length);
+        log.info("Customer statement mailed - {} to {} recipient(s), wording '{}', attached {}",
+                statement.getCustomerName(), to.size(), wordingName(reminder), prepared.attachmentName());
 
-        return new StatementSendResult(statement.getCustomerName(), prepared.subject(), to, cc, pdf.fileName(),
-                statement.getOverdueAmount(), statement.getCurrency(), LocalDateTime.now());
+        return new StatementSendResult(statement.getCustomerName(), prepared.subject(), to, prepared.cc(),
+                prepared.attachmentName(), statement.getOverdueAmount(), statement.getCurrency(), LocalDateTime.now());
+    }
+
+    /**
+     * What the operator changed on the preview before sending.
+     *
+     * @param subject the edited subject, or blank for the wording's own
+     * @param body    the edited HTML body, or blank for the wording's own
+     * @param cc      the CC to use, or {@code null} for the configured CC (an empty list sends no CC)
+     */
+    public record MailOverrides(String subject, String body, List<String> cc) {
+        public static final MailOverrides NONE = new MailOverrides(null, null, null);
+    }
+
+    /** Longest edited body accepted - the template is ~3 KB; this is room for real edits, not a payload. */
+    static final int MAX_BODY_LENGTH = 200_000;
+
+    /**
+     * The mail Send would build for this statement and wording, without
+     * rendering the PDF or sending anything - what the preview screen shows
+     * and lets the operator edit.
+     */
+    public StatementMailPreview preview(CustomerStatement statement, List<String> to, String reminder,
+                                        String attachmentName, String excelAttachmentName) {
+        return new StatementMailPreview(statement.getCustomerName(), wordingKey(reminder),
+                subjectFor(reminder, statement.getCustomerName()), bodyFor(reminder, statement),
+                to == null ? List.of() : to, cc, attachmentName, excelAttachmentName,
+                statement.getOverdueAmount(), statement.getCurrency());
     }
 
     /**
@@ -156,12 +210,38 @@ public class CustomerStatementMailService {
      */
     public PreparedStatementMail prepare(CustomerStatement statement, RenderedStatement pdf,
                                          List<String> to, String reminder) {
-        String subject = subjectFor(reminder, statement.getCustomerName());
-        String body = bodyFor(reminder, statement);
-        MimeMessage message = email.prepareHtmlMail(to, cc, subject, body,
-                List.of(new EmailAttachment(pdf.fileName(), pdf.pdf(), "application/pdf")));
+        return prepare(statement, pdf, to, reminder, MailOverrides.NONE);
+    }
+
+    PreparedStatementMail prepare(CustomerStatement statement, RenderedStatement pdf,
+                                  List<String> to, String reminder, MailOverrides overrides) {
+        return prepare(statement, List.of(pdfAttachment(pdf)), to, reminder, overrides);
+    }
+
+    static EmailAttachment pdfAttachment(RenderedStatement pdf) {
+        return new EmailAttachment(pdf.fileName(), pdf.pdf(), "application/pdf");
+    }
+
+    PreparedStatementMail prepare(CustomerStatement statement, List<EmailAttachment> files,
+                                  List<String> to, String reminder, MailOverrides overrides) {
+        MailOverrides o = overrides == null ? MailOverrides.NONE : overrides;
+        String subject = o.subject() == null || o.subject().isBlank()
+                ? subjectFor(reminder, statement.getCustomerName())
+                // one header line: a pasted CR/LF must not start another header
+                : o.subject().replaceAll("[\\r\\n]+", " ").trim();
+        String body;
+        if (o.body() == null || o.body().isBlank()) {
+            body = bodyFor(reminder, statement);
+        } else if (o.body().length() > MAX_BODY_LENGTH) {
+            throw new InvalidRequestException("The mail body is too long to send.");
+        } else {
+            body = o.body();
+        }
+        List<String> copy = o.cc() == null ? cc : o.cc();
+        MimeMessage message = email.prepareHtmlMail(to, copy, subject, body, files);
         String messageId = stamp(message, "statement");
-        return new PreparedStatementMail(message, subject, to, cc, pdf.fileName(), messageId);
+        String names = String.join(", ", files.stream().map(EmailAttachment::fileName).toList());
+        return new PreparedStatementMail(message, subject, to, copy, names, messageId);
     }
 
     /**

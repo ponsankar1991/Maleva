@@ -354,6 +354,26 @@ class SupplierServiceIT {
     }
 
     @Test
+    @DisplayName("'not in QNE' finds suppliers without a QNE code and leaves out those with one")
+    void notInQneSearch() {
+        int missing = service.create(newSupplier(tag + " Not Pushed", "VENDOR")).getId();
+        int linked = service.createFromQne(newSupplier(tag + " Pushed", "VENDOR"), "guid-" + tag, "QIT-" + tag);
+
+        List<Integer> found = ids(search(q -> { q.setKeyword(tag); q.setNotInQne(true); }));
+
+        assertThat(found).contains(missing).doesNotContain(linked);
+        assertThat(ids(search(q -> q.setKeyword(tag)))).contains(missing, linked);
+    }
+
+    @Test
+    @DisplayName("the list's push is answered DISABLED here, so a test can never reach QNE")
+    void listPushIsSafeInTests() {
+        int id = service.create(newSupplier(tag + " Push Guard", "VENDOR")).getId();
+
+        assertThat(qneService.pushOne(id, COMPANY).status()).isEqualTo(SupplierQneOutcome.Status.DISABLED);
+    }
+
+    @Test
     @DisplayName("the sync's reads run, and a deleted supplier still counts as known")
     void syncReadsIncludeDeletedSuppliers() {
         String code = "QIT-" + tag;
@@ -406,7 +426,8 @@ class SupplierServiceIT {
                 "/api/suppliers/qne/sync",
                 "/api/suppliers/msic-codes",
                 "/api/suppliers/self-billed-types",
-                "/api/suppliers/{id}/soft-delete");
+                "/api/suppliers/{id}/soft-delete",
+                "/api/suppliers/{id}/push-qne");
     }
 
     // ─── helpers ────────────────────────────────────────────────────────

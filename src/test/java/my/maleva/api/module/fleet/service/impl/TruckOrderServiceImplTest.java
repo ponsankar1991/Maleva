@@ -425,6 +425,47 @@ class TruckOrderServiceImplTest {
         assertThrows(InvalidRequestException.class, () -> service.availability(COMPANY, null, null, null));
     }
 
+    // ------------------------------------------------------------ the route
+
+    /** Stored one way, so "  singapore " and "SINGAPORE" are one place to the search. */
+    @Test
+    void theRouteIsStoredTrimmedAndInCapitals() {
+        savesWork(0);
+        TruckOrderSaveRequest request = request("OWN", 10);
+        request.setOrigin("  singapore ");
+        request.setDestination("pasir   gudang");
+
+        TruckOrderDto saved = service.save(request, "tester");
+
+        assertEquals("SINGAPORE", saved.getOrigin());
+        assertEquals("PASIR GUDANG", saved.getDestination(), "inner spaces collapse to one");
+    }
+
+    @Test
+    void aBlankRouteIsNotRecorded() {
+        savesWork(0);
+        TruckOrderSaveRequest request = request("OWN", 10);
+        request.setOrigin("   ");
+
+        TruckOrderDto saved = service.save(request, "tester");
+
+        assertNull(saved.getOrigin());
+        assertNull(saved.getDestination());
+    }
+
+    @Test
+    void placesAreTheNamesAlreadyInUseMostUsedFirst() {
+        lenient().when(jdbc.queryForList(anyString(), eq(String.class), eq(COMPANY), eq(COMPANY), eq(COMPANY), eq(COMPANY)))
+                .thenReturn(List.of("SINGAPORE", "PTP", "WESTPORT"));
+
+        assertEquals(List.of("SINGAPORE", "PTP", "WESTPORT"), service.places(COMPANY));
+    }
+
+    @Test
+    void placesNeedACompany() {
+        assertThrows(InvalidRequestException.class, () -> service.places(0));
+    }
+
     // --------------------------------------------------- how full a truck is
 
     @Test

@@ -1,5 +1,7 @@
 package my.maleva.api.module.fleet.specification;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import my.maleva.api.module.fleet.dto.request.TruckOrderSearchRequest;
 import my.maleva.api.module.fleet.entity.TruckOrder;
@@ -7,6 +9,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Builds the WHERE clause of the truck order calendar.
@@ -55,7 +58,38 @@ public final class TruckOrderSpecification {
                     predicates.add(root.get("status").in(wanted));
                 }
             }
+            if (hasText(request.getOrigin())) {
+                predicates.add(placeMatches(builder, root.get("origin"), request.getOrigin()));
+            }
+            if (hasText(request.getDestination())) {
+                predicates.add(placeMatches(builder, root.get("destination"), request.getDestination()));
+            }
             return builder.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    /**
+     * "Contains", ignoring case and spaces on both sides.
+     *
+     * <p>Place names are typed by hand - {@code WEST PORT} and {@code WESTPORT},
+     * {@code PASIR GUDANG} and {@code PASIRGUDANG} are all in the data - so the
+     * stored value has its spaces squeezed out before it is compared. The typed
+     * text is escaped, so a {@code %} or {@code _} in it is matched literally
+     * rather than acting as a wildcard.
+     */
+    private static Predicate placeMatches(CriteriaBuilder builder,
+                                          Expression<String> column,
+                                          String wanted) {
+        String key = wanted.replace(" ", "").toUpperCase(Locale.ENGLISH)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        Expression<String> squeezed = builder.upper(
+                builder.function("REPLACE", String.class, column, builder.literal(" "), builder.literal("")));
+        return builder.like(squeezed, "%" + key + "%", '\\');
     }
 }

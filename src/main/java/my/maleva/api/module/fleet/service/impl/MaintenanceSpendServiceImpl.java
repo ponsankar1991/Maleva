@@ -8,6 +8,8 @@ import my.maleva.api.module.fleet.service.MaintenanceSpendService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,17 +28,42 @@ import java.util.function.BiConsumer;
  * MaintenanceSpendServiceImpl
  *
  * Aggregation queries behind the CFO spending view of the maintenance
- * dashboard. Read-only native SQL through JdbcTemplate: every block is a
- * GROUP BY over one source table, merged in Java so a truck (or a date) that
+ * dashboard. Read-only native SQL, merged in Java so a truck (or a date) that
  * appears in several sources becomes one row.
  *
- * Cost sources: JobOrderMaster, BillsOrderMaster (purchases), FuelEntry,
- * AutoPassEntry, TollEntry, LeviEntry. RTIMaster is counted only - how many
- * orders were delivered - because its amount columns are trip payment figures,
- * not customer revenue, so reporting them as income would mislead.
+ * <p><b>Seven statements, not thirty-one.</b> This screen reads seven tables
+ * three ways - per truck, per day, and as a single total - which began as one
+ * query per table per view. The work SQL Server does is the same either way,
+ * but the driver was waiting on thirty-one round trips to build one page. They
+ * are now four shapes:
+ * <ul>
+ *   <li>{@link #TRUCK_SPEND_SQL} - the seven per-truck groups, UNION ALL with a
+ *       source tag;</li>
+ *   <li>{@link #DAILY_SPEND_SQL} - the same again per calendar day;</li>
+ *   <li>{@link #TOTALS_SQL} - every single-row figure as scalar subqueries;</li>
+ *   <li>four list queries whose result shapes genuinely differ (job types, bill
+ *       descriptions, the purchase order detail, voucher descriptions).</li>
+ * </ul>
+ * The union queries pad to a common column shape and CAST their money columns:
+ * several Amount columns are float, and type precedence would otherwise drag the
+ * decimal ones across to float mid-union.
  *
- * Date semantics: JobOrderMaster.JobDate is a DATE and is compared inclusive;
- * every other table carries DATETIME SaleDate, compared as [from, to + 1 day).
+ * <p><b>Cost sources:</b> JobOrderMaster, BillsOrderMaster (purchase orders),
+ * FuelEntry, AutoPassEntry, TollEntry, LeviEntry. RTIMaster is counted only -
+ * how many orders were delivered - because its amount columns are trip payment
+ * figures, not customer revenue, so reporting them as income would mislead.
+ *
+ * <p><b>What the total means:</b> money leaves through a purchase order or a
+ * payment voucher, so those two are the total. The cost sources above are
+ * records of what was bought, and that buying is settled by one of those two
+ * documents - adding both sides would count the same ringgit twice. They are
+ * reported as {@code recordedCostTotal}, a breakdown, not a second total.
+ *
+ * <p><b>Date semantics:</b> JobOrderMaster.JobDate and SubcdiyEntry.EntryDate
+ * are DATE columns and are compared inclusive; every other source carries a
+ * DATETIME and is compared half-open, [from, to + 1 day), so an entry stamped
+ * late on the last day is not dropped. The day-wise series covers every calendar
+ * day in the range, quiet days included, so the chart's time axis stays even.
  */
 @Service
 public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
@@ -45,9 +72,71 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /** Named parameters for {@link #TOTALS_SQL}; the positional template for the rest. */
+    private final NamedParameterJdbcTemplate namedJdbc;
+
     public MaintenanceSpendServiceImpl(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+        this.namedJdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
     }
+
+    /**
+     * The one row {@link #TOTALS_SQL} returns.
+     *
+     * A record rather than the array-of-one boxes this used to need: a
+     * RowCallbackHandler cannot return anything, so every figure was smuggled
+     * out through a {@code final BigDecimal[]}, and a reader had to remember
+     * that {@code fuelTotals[1]} meant litres.
+     */
+    private record Totals(
+            BigDecimal jobOrderTotal,
+            BigDecimal billOrderTotal,
+            long billOrderCount,
+            BigDecimal autoPassTotal,
+            BigDecimal tollTotal,
+            BigDecimal leviTotal,
+            BigDecimal fuelTotal,
+            BigDecimal fuelLiters,
+            long fuelEntryCount,
+            long rtiOrderCount,
+            BigDecimal fuelSubsidyTotal,
+            BigDecimal fuelVoucherTotal,
+            BigDecimal billTotal,
+            long billCount,
+            BigDecimal voucherTotal,
+            long voucherCount,
+            BigDecimal standaloneVoucherTotal,
+            long standaloneVoucherCount,
+            BigDecimal settledTotal,
+            long settledCount,
+            BigDecimal outstandingTotal,
+            long outstandingCount) {
+    }
+
+    /** Reads by column label, so adding a figure to the SELECT cannot shift the others. */
+    private static final RowMapper<Totals> TOTALS_MAPPER = (rs, i) -> new Totals(
+            nz(rs.getBigDecimal("jobOrderTotal")),
+            nz(rs.getBigDecimal("billOrderTotal")),
+            rs.getLong("billOrderCount"),
+            nz(rs.getBigDecimal("autoPassTotal")),
+            nz(rs.getBigDecimal("tollTotal")),
+            nz(rs.getBigDecimal("leviTotal")),
+            nz(rs.getBigDecimal("fuelTotal")),
+            nz(rs.getBigDecimal("fuelLiters")),
+            rs.getLong("fuelEntryCount"),
+            rs.getLong("rtiOrderCount"),
+            nz(rs.getBigDecimal("fuelSubsidyTotal")),
+            nz(rs.getBigDecimal("fuelVoucherTotal")),
+            nz(rs.getBigDecimal("billTotal")),
+            rs.getLong("billCount"),
+            nz(rs.getBigDecimal("voucherTotal")),
+            rs.getLong("voucherCount"),
+            nz(rs.getBigDecimal("standaloneVoucherTotal")),
+            rs.getLong("standaloneVoucherCount"),
+            nz(rs.getBigDecimal("settledTotal")),
+            rs.getLong("settledCount"),
+            nz(rs.getBigDecimal("outstandingTotal")),
+            rs.getLong("outstandingCount"));
 
     /** Job order cost: the actual cost once known, the estimate until then. */
     private static final String JOB_COST = "COALESCE(NULLIF(JOM.ActualCost, 0), JOM.EstimatedCost, 0)";
@@ -69,42 +158,93 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
 
     // ── Truck-wise ─────────────────────────────────────────────────────────
 
-    private static final String TRUCK_JOB_ORDER_SQL = """
-        SELECT TM.Id, TM.TruckName, SUM(%s) AS total
+    /**
+     * Every per-truck figure, in one statement.
+     *
+     * Seven GROUP BY blocks over seven tables, tagged with a source name and
+     * stacked with UNION ALL. They were seven separate queries, so producing one
+     * table cost seven round trips; the work SQL Server does is the same either
+     * way, but the driver now waits once.
+     *
+     * Every branch INNER JOINs TruckMaster on purpose: a row whose TruckRefid is
+     * null, zero, or points at a truck that no longer exists belongs to no line
+     * of this table, and is reported as the unassigned remainder rather than
+     * being quietly attached to some truck.
+     *
+     * The columns are padded to a common shape - total / liters / cnt - because
+     * a UNION needs one. Only FUEL fills all three and only FUEL and RTI use
+     * cnt; the rest carry zeros, which the switch that reads this never looks at.
+     *
+     * The money columns are CAST to DECIMAL rather than left to type
+     * precedence. Some of these Amount columns are float, and in a UNION the
+     * float branches would drag the decimal ones - job order cost is
+     * DECIMAL(12,2) - across to float, so a truck's job total would come back
+     * as a binary approximation of a figure the totals query reports exactly.
+     */
+    private static final String TRUCK_SPEND_SQL = """
+        SELECT 'JOB' AS src, TM.Id AS truckId, TM.TruckName AS truckName,
+               CAST(SUM(%s) AS DECIMAL(19,4)) AS total,
+               CAST(0 AS DECIMAL(19,4)) AS liters, 0 AS cnt
         FROM JobOrderMaster JOM
         INNER JOIN TruckMaster TM ON JOM.TruckMasterRefId = TM.Id
-        WHERE JOM.CompanyRefId = ? AND JOM.IsActive = 1
-          AND JOM.JobDate >= ? AND JOM.JobDate <= ?
+        WHERE JOM.CompanyRefId = :companyRefId AND JOM.IsActive = 1
+          AND JOM.JobDate >= :fromDate AND JOM.JobDate <= :toDate
         GROUP BY TM.Id, TM.TruckName
-        """.formatted(JOB_COST);
 
-    /** %s is the entry table name — only ever one of the three fixed pass tables. */
-    private static final String TRUCK_ENTRY_SQL_TEMPLATE = """
-        SELECT TM.Id, TM.TruckName, SUM(X.Amount) AS total
-        FROM %s X
-        INNER JOIN TruckMaster TM ON X.TruckRefid = TM.Id
-        WHERE X.CompanyRefId = ? AND X.Active = 1
-          AND X.SaleDate >= ? AND X.SaleDate < ?
-        GROUP BY TM.Id, TM.TruckName
-        """;
-
-    private static final String TRUCK_FUEL_SQL = """
-        SELECT TM.Id, TM.TruckName, SUM(%s) AS total, SUM(%s) AS liters, COUNT(*) AS cnt
+        UNION ALL
+        SELECT 'FUEL', TM.Id, TM.TruckName,
+               CAST(SUM(%s) AS DECIMAL(19,4)), CAST(SUM(%s) AS DECIMAL(19,4)), COUNT(*)
         FROM FuelEntry X
         INNER JOIN TruckMaster TM ON X.TruckRefid = TM.Id
-        WHERE X.CompanyRefId = ? AND X.Active = 1
-          AND X.SaleDate >= ? AND X.SaleDate < ?
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
         GROUP BY TM.Id, TM.TruckName
-        """.formatted(FUEL_COST, FUEL_LITERS);
 
-    private static final String TRUCK_RTI_SQL = """
-        SELECT TM.Id, TM.TruckName, COUNT(*) AS cnt
+        UNION ALL
+        SELECT 'BILL', TM.Id, TM.TruckName,
+               CAST(SUM(BOM.Amount) AS DECIMAL(19,4)), CAST(0 AS DECIMAL(19,4)), 0
+        FROM BillsOrderMaster BOM
+        INNER JOIN TruckMaster TM ON BOM.TruckRefid = TM.Id
+        WHERE BOM.CompanyRefId = :companyRefId AND BOM.Active = 1
+          AND BOM.SaleDate >= :fromTs AND BOM.SaleDate < :toTs
+        GROUP BY TM.Id, TM.TruckName
+
+        UNION ALL
+        SELECT 'AUTOPASS', TM.Id, TM.TruckName,
+               CAST(SUM(X.Amount) AS DECIMAL(19,4)), CAST(0 AS DECIMAL(19,4)), 0
+        FROM AutoPassEntry X
+        INNER JOIN TruckMaster TM ON X.TruckRefid = TM.Id
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
+        GROUP BY TM.Id, TM.TruckName
+
+        UNION ALL
+        SELECT 'TOLL', TM.Id, TM.TruckName,
+               CAST(SUM(X.Amount) AS DECIMAL(19,4)), CAST(0 AS DECIMAL(19,4)), 0
+        FROM TollEntry X
+        INNER JOIN TruckMaster TM ON X.TruckRefid = TM.Id
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
+        GROUP BY TM.Id, TM.TruckName
+
+        UNION ALL
+        SELECT 'LEVI', TM.Id, TM.TruckName,
+               CAST(SUM(X.Amount) AS DECIMAL(19,4)), CAST(0 AS DECIMAL(19,4)), 0
+        FROM LeviEntry X
+        INNER JOIN TruckMaster TM ON X.TruckRefid = TM.Id
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
+        GROUP BY TM.Id, TM.TruckName
+
+        UNION ALL
+        SELECT 'RTI', TM.Id, TM.TruckName,
+               CAST(0 AS DECIMAL(19,4)), CAST(0 AS DECIMAL(19,4)), COUNT(*)
         FROM RTIMaster R
         INNER JOIN TruckMaster TM ON R.TruckRefid = TM.Id
-        WHERE R.CompanyRefId = ? AND R.Active = 1
-          AND R.SaleDate >= ? AND R.SaleDate < ?
+        WHERE R.CompanyRefId = :companyRefId AND R.Active = 1
+          AND R.SaleDate >= :fromTs AND R.SaleDate < :toTs
         GROUP BY TM.Id, TM.TruckName
-        """;
+        """.formatted(JOB_COST, FUEL_COST, FUEL_LITERS);
 
     // ── Breakdowns ─────────────────────────────────────────────────────────
 
@@ -129,15 +269,6 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
         ORDER BY total DESC
         """;
 
-    // ── Totals ─────────────────────────────────────────────────────────────
-
-    private static final String JOB_ORDER_TOTAL_SQL = """
-        SELECT COALESCE(SUM(%s), 0)
-        FROM JobOrderMaster JOM
-        WHERE JOM.CompanyRefId = ? AND JOM.IsActive = 1
-          AND JOM.JobDate >= ? AND JOM.JobDate <= ?
-        """.formatted(JOB_COST);
-
     /** The individual purchase orders, newest first; capped so the payload stays light. */
     private static final String BILL_DETAIL_SQL = """
         SELECT TOP 300
@@ -157,75 +288,222 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
         ORDER BY BOM.SaleDate DESC
         """;
 
-    private static final String BILL_TOTAL_SQL = """
-        SELECT COALESCE(SUM(BOM.Amount), 0)
+    // ── Payment side: committed (purchase order) vs released (bill, voucher) ──
+
+    /**
+     * Each purchase order in the range, flagged with whether anything settles it.
+     *
+     * EXISTS rather than a join: an order with two vouchers against it must
+     * still count once, and a join would multiply its amount by the number of
+     * settling documents. Neither EXISTS is date-bounded - an order raised in
+     * March and paid in April is settled, not outstanding.
+     */
+    private static final String ORDER_SETTLEMENT_SUBQUERY = """
+        SELECT BOM.Amount,
+               CASE WHEN EXISTS (SELECT 1 FROM BillMaster BM
+                                  WHERE BM.BillsOrderMasterRefId = BOM.Id AND BM.Active = 1)
+                      OR EXISTS (SELECT 1 FROM PaymentVoucherMaster PVM
+                                  WHERE PVM.BillsOrderMasterRefId = BOM.Id AND PVM.Active = 1)
+                    THEN 1 ELSE 0 END AS settled
         FROM BillsOrderMaster BOM
-        WHERE BOM.CompanyRefId = ? AND BOM.Active = 1
-          AND BOM.SaleDate >= ? AND BOM.SaleDate < ?
+        WHERE BOM.CompanyRefId = :companyRefId AND BOM.Active = 1
+          AND BOM.SaleDate >= :fromTs AND BOM.SaleDate < :toTs
         """;
 
-    private static final String ENTRY_TOTAL_SQL_TEMPLATE = """
-        SELECT COALESCE(SUM(X.Amount), 0)
-        FROM %s X
-        WHERE X.CompanyRefId = ? AND X.Active = 1
-          AND X.SaleDate >= ? AND X.SaleDate < ?
+    /**
+     * Every single-row figure on this screen, in one round trip.
+     *
+     * These were thirteen separate statements, each fetching one row and each
+     * paying a full network round trip to SQL Server. As scalar subqueries in a
+     * one-row SELECT they run exactly as often as before - once each - but the
+     * driver waits once instead of thirteen times, which is what the request
+     * actually spent its time doing. The settlement figures come from a derived
+     * table rather than four more scalar subqueries, so that EXISTS scan also
+     * runs once instead of four times.
+     *
+     * Named parameters rather than positional: with this many subqueries a
+     * question-mark list would be forty-odd placeholders whose order nothing
+     * checks, and one transposed pair would silently mis-date a total.
+     *
+     * The date parameters are not interchangeable. JobDate and EntryDate are
+     * DATE columns and take :fromDate / :toDate inclusive; every other source is
+     * a DATETIME and takes the half-open :fromTs / :toTs, so an entry stamped
+     * late on the last day is not dropped.
+     */
+    private static final String TOTALS_SQL = """
+        SELECT
+          (SELECT COALESCE(SUM(%s), 0) FROM JobOrderMaster JOM
+            WHERE JOM.CompanyRefId = :companyRefId AND JOM.IsActive = 1
+              AND JOM.JobDate >= :fromDate AND JOM.JobDate <= :toDate)      AS jobOrderTotal,
+
+          (SELECT COALESCE(SUM(BOM.Amount), 0) FROM BillsOrderMaster BOM
+            WHERE BOM.CompanyRefId = :companyRefId AND BOM.Active = 1
+              AND BOM.SaleDate >= :fromTs AND BOM.SaleDate < :toTs)         AS billOrderTotal,
+          (SELECT COUNT(*) FROM BillsOrderMaster BOM
+            WHERE BOM.CompanyRefId = :companyRefId AND BOM.Active = 1
+              AND BOM.SaleDate >= :fromTs AND BOM.SaleDate < :toTs)         AS billOrderCount,
+
+          (SELECT COALESCE(SUM(X.Amount), 0) FROM AutoPassEntry X
+            WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+              AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs)             AS autoPassTotal,
+          (SELECT COALESCE(SUM(X.Amount), 0) FROM TollEntry X
+            WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+              AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs)             AS tollTotal,
+          (SELECT COALESCE(SUM(X.Amount), 0) FROM LeviEntry X
+            WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+              AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs)             AS leviTotal,
+
+          (SELECT COALESCE(SUM(%s), 0) FROM FuelEntry X
+            WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+              AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs)             AS fuelTotal,
+          (SELECT COALESCE(SUM(%s), 0) FROM FuelEntry X
+            WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+              AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs)             AS fuelLiters,
+          (SELECT COUNT(*) FROM FuelEntry X
+            WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+              AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs)             AS fuelEntryCount,
+
+          (SELECT COUNT(*) FROM RTIMaster R
+            WHERE R.CompanyRefId = :companyRefId AND R.Active = 1
+              AND R.SaleDate >= :fromTs AND R.SaleDate < :toTs)             AS rtiOrderCount,
+
+          -- SubcdiyEntry is not company-scoped and EntryDate is a DATE, so this
+          -- is an inclusive comparison. Active is deliberately not filtered:
+          -- SubcdiyEntryServiceImpl.create defaults it to 0 when the caller
+          -- leaves it null, so "Active = 1" would drop real subsidy money.
+          (SELECT COALESCE(SUM(S.Amount), 0) FROM SubcdiyEntry S
+            WHERE S.EntryDate >= :fromDate AND S.EntryDate <= :toDate)      AS fuelSubsidyTotal,
+
+          (SELECT COALESCE(SUM(PVM.Amount), 0) FROM PaymentVoucherMaster PVM
+            WHERE PVM.CompanyRefId = :companyRefId AND PVM.Active = 1
+              AND PVM.Description = 'FUEL'
+              AND PVM.PaymentVoucherDate >= :fromTs
+              AND PVM.PaymentVoucherDate < :toTs)                           AS fuelVoucherTotal,
+
+          (SELECT COALESCE(SUM(BM.Amount), 0) FROM BillMaster BM
+            WHERE BM.CompanyRefId = :companyRefId AND BM.Active = 1
+              AND BM.SaleDate >= :fromTs AND BM.SaleDate < :toTs)           AS billTotal,
+          (SELECT COUNT(*) FROM BillMaster BM
+            WHERE BM.CompanyRefId = :companyRefId AND BM.Active = 1
+              AND BM.SaleDate >= :fromTs AND BM.SaleDate < :toTs)           AS billCount,
+
+          (SELECT COALESCE(SUM(PVM.Amount), 0) FROM PaymentVoucherMaster PVM
+            WHERE PVM.CompanyRefId = :companyRefId AND PVM.Active = 1
+              AND PVM.PaymentVoucherDate >= :fromTs
+              AND PVM.PaymentVoucherDate < :toTs)                           AS voucherTotal,
+          (SELECT COUNT(*) FROM PaymentVoucherMaster PVM
+            WHERE PVM.CompanyRefId = :companyRefId AND PVM.Active = 1
+              AND PVM.PaymentVoucherDate >= :fromTs
+              AND PVM.PaymentVoucherDate < :toTs)                           AS voucherCount,
+
+          -- Vouchers settling no order: the only ones carrying money the order
+          -- side has not already counted, and so the only ones in the total.
+          (SELECT COALESCE(SUM(PVM.Amount), 0) FROM PaymentVoucherMaster PVM
+            WHERE PVM.CompanyRefId = :companyRefId AND PVM.Active = 1
+              AND COALESCE(PVM.BillsOrderMasterRefId, 0) = 0
+              AND PVM.PaymentVoucherDate >= :fromTs
+              AND PVM.PaymentVoucherDate < :toTs)                           AS standaloneVoucherTotal,
+          (SELECT COUNT(*) FROM PaymentVoucherMaster PVM
+            WHERE PVM.CompanyRefId = :companyRefId AND PVM.Active = 1
+              AND COALESCE(PVM.BillsOrderMasterRefId, 0) = 0
+              AND PVM.PaymentVoucherDate >= :fromTs
+              AND PVM.PaymentVoucherDate < :toTs)                           AS standaloneVoucherCount,
+
+          st.settledTotal, st.settledCount, st.outstandingTotal, st.outstandingCount
+        FROM (
+          SELECT COALESCE(SUM(CASE WHEN settled = 1 THEN o.Amount ELSE 0 END), 0) AS settledTotal,
+                 COALESCE(SUM(CASE WHEN settled = 1 THEN 1 ELSE 0 END), 0)        AS settledCount,
+                 COALESCE(SUM(CASE WHEN settled = 0 THEN o.Amount ELSE 0 END), 0) AS outstandingTotal,
+                 COALESCE(SUM(CASE WHEN settled = 0 THEN 1 ELSE 0 END), 0)        AS outstandingCount
+          FROM (%s) o
+        ) st
+        """.formatted(JOB_COST, FUEL_COST, FUEL_LITERS, ORDER_SETTLEMENT_SUBQUERY);
+
+    /** What the vouchers in the range were for. */
+    private static final String VOUCHER_DESCRIPTION_SQL = """
+        SELECT COALESCE(NULLIF(LTRIM(RTRIM(PVM.Description)), ''), '(No description)') AS descr,
+               COUNT(*) AS cnt,
+               SUM(PVM.Amount) AS total
+        FROM PaymentVoucherMaster PVM
+        WHERE PVM.CompanyRefId = ? AND PVM.Active = 1
+          AND PVM.PaymentVoucherDate >= ? AND PVM.PaymentVoucherDate < ?
+        GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(PVM.Description)), ''), '(No description)')
+        ORDER BY total DESC
         """;
 
-    private static final String FUEL_TOTAL_SQL = """
-        SELECT COALESCE(SUM(%s), 0), COALESCE(SUM(%s), 0), COUNT(*)
-        FROM FuelEntry X
-        WHERE X.CompanyRefId = ? AND X.Active = 1
-          AND X.SaleDate >= ? AND X.SaleDate < ?
-        """.formatted(FUEL_COST, FUEL_LITERS);
-
-    private static final String RTI_TOTAL_SQL = """
-        SELECT COUNT(*)
-        FROM RTIMaster R
-        WHERE R.CompanyRefId = ? AND R.Active = 1
-          AND R.SaleDate >= ? AND R.SaleDate < ?
-        """;
 
     // ── Day-wise ───────────────────────────────────────────────────────────
 
-    private static final String DAILY_JOB_SQL = """
-        SELECT JOM.JobDate AS d, SUM(%s) AS total
+    /**
+     * Every day-wise figure, in one statement — the same UNION shape as
+     * {@link #TRUCK_SPEND_SQL}, and for the same reason: this was seven queries
+     * to fill one chart.
+     *
+     * No truck join here, deliberately. The chart is the company's day, so an
+     * entry that names no truck still belongs on it; that is also why these
+     * totals can exceed what the truck table accounts for.
+     *
+     * AutoPass, Toll and Levi all report as PASS because the chart stacks them
+     * as one band, and the reader adds them per day rather than the database.
+     * Money columns are CAST so the float branches cannot drag the decimal ones
+     * into a binary approximation across the UNION.
+     */
+    private static final String DAILY_SPEND_SQL = """
+        SELECT 'JOB' AS src, JOM.JobDate AS d,
+               CAST(SUM(%s) AS DECIMAL(19,4)) AS total, 0 AS cnt
         FROM JobOrderMaster JOM
-        WHERE JOM.CompanyRefId = ? AND JOM.IsActive = 1
-          AND JOM.JobDate >= ? AND JOM.JobDate <= ?
+        WHERE JOM.CompanyRefId = :companyRefId AND JOM.IsActive = 1
+          AND JOM.JobDate >= :fromDate AND JOM.JobDate <= :toDate
         GROUP BY JOM.JobDate
-        """.formatted(JOB_COST);
 
-    private static final String DAILY_BILL_SQL = """
-        SELECT CAST(BOM.SaleDate AS DATE) AS d, SUM(BOM.Amount) AS total
+        UNION ALL
+        SELECT 'BILL', CAST(BOM.SaleDate AS DATE),
+               CAST(SUM(BOM.Amount) AS DECIMAL(19,4)), 0
         FROM BillsOrderMaster BOM
-        WHERE BOM.CompanyRefId = ? AND BOM.Active = 1
-          AND BOM.SaleDate >= ? AND BOM.SaleDate < ?
+        WHERE BOM.CompanyRefId = :companyRefId AND BOM.Active = 1
+          AND BOM.SaleDate >= :fromTs AND BOM.SaleDate < :toTs
         GROUP BY CAST(BOM.SaleDate AS DATE)
-        """;
 
-    private static final String DAILY_FUEL_SQL = """
-        SELECT CAST(X.SaleDate AS DATE) AS d, SUM(%s) AS total
+        UNION ALL
+        SELECT 'FUEL', CAST(X.SaleDate AS DATE),
+               CAST(SUM(%s) AS DECIMAL(19,4)), 0
         FROM FuelEntry X
-        WHERE X.CompanyRefId = ? AND X.Active = 1
-          AND X.SaleDate >= ? AND X.SaleDate < ?
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
         GROUP BY CAST(X.SaleDate AS DATE)
-        """.formatted(FUEL_COST);
 
-    private static final String DAILY_ENTRY_SQL_TEMPLATE = """
-        SELECT CAST(X.SaleDate AS DATE) AS d, SUM(X.Amount) AS total
-        FROM %s X
-        WHERE X.CompanyRefId = ? AND X.Active = 1
-          AND X.SaleDate >= ? AND X.SaleDate < ?
+        UNION ALL
+        SELECT 'PASS', CAST(X.SaleDate AS DATE),
+               CAST(SUM(X.Amount) AS DECIMAL(19,4)), 0
+        FROM AutoPassEntry X
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
         GROUP BY CAST(X.SaleDate AS DATE)
-        """;
 
-    private static final String DAILY_RTI_SQL = """
-        SELECT CAST(R.SaleDate AS DATE) AS d, COUNT(*) AS cnt
+        UNION ALL
+        SELECT 'PASS', CAST(X.SaleDate AS DATE),
+               CAST(SUM(X.Amount) AS DECIMAL(19,4)), 0
+        FROM TollEntry X
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
+        GROUP BY CAST(X.SaleDate AS DATE)
+
+        UNION ALL
+        SELECT 'PASS', CAST(X.SaleDate AS DATE),
+               CAST(SUM(X.Amount) AS DECIMAL(19,4)), 0
+        FROM LeviEntry X
+        WHERE X.CompanyRefId = :companyRefId AND X.Active = 1
+          AND X.SaleDate >= :fromTs AND X.SaleDate < :toTs
+        GROUP BY CAST(X.SaleDate AS DATE)
+
+        UNION ALL
+        SELECT 'RTI', CAST(R.SaleDate AS DATE),
+               CAST(0 AS DECIMAL(19,4)), COUNT(*)
         FROM RTIMaster R
-        WHERE R.CompanyRefId = ? AND R.Active = 1
-          AND R.SaleDate >= ? AND R.SaleDate < ?
+        WHERE R.CompanyRefId = :companyRefId AND R.Active = 1
+          AND R.SaleDate >= :fromTs AND R.SaleDate < :toTs
         GROUP BY CAST(R.SaleDate AS DATE)
-        """;
+        """.formatted(JOB_COST, FUEL_COST);
 
     @Override
     @Transactional(readOnly = true)
@@ -235,6 +513,22 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
         Timestamp fromTs = Timestamp.valueOf(fromDate.atStartOfDay());
         Timestamp toTsExclusive = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
 
+        /*
+         * One parameter set for every named query on this screen.
+         *
+         * The two pairs are not interchangeable: fromDate/toDate are for the DATE
+         * columns (JobDate, EntryDate) and compare inclusively, fromTs/toTs are
+         * for the DATETIME columns and are half-open, so an entry stamped late on
+         * the last day still counts. Sharing one map keeps that distinction in a
+         * single place rather than at each call site.
+         */
+        Map<String, Object> params = Map.of(
+                "companyRefId", companyRefId,
+                "fromDate", fromDate,
+                "toDate", toDate,
+                "fromTs", fromTs,
+                "toTs", toTsExclusive);
+
         // ── Truck-wise: merge the six sources on truck id ─────────────────
         Map<Integer, TruckSpend> byTruck = new LinkedHashMap<>();
         BiConsumer<Integer, String> ensureTruck = (id, name) ->
@@ -242,6 +536,7 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
                         .truckId(id)
                         .truckName(name)
                         .jobOrderAmount(BigDecimal.ZERO)
+                        .purchaseAmount(BigDecimal.ZERO)
                         .fuelAmount(BigDecimal.ZERO)
                         .fuelLiters(BigDecimal.ZERO)
                         .fuelEntryCount(0L)
@@ -252,41 +547,36 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
                         .rtiOrderCount(0L)
                         .build());
 
-        jdbcTemplate.query(TRUCK_JOB_ORDER_SQL, rs -> {
-            ensureTruck.accept(rs.getInt(1), rs.getString(2));
-            byTruck.get(rs.getInt(1)).setJobOrderAmount(nz(rs.getBigDecimal(3)));
-        }, companyRefId, fromDate, toDate);
-
-        jdbcTemplate.query(TRUCK_FUEL_SQL, rs -> {
-            ensureTruck.accept(rs.getInt(1), rs.getString(2));
-            TruckSpend truck = byTruck.get(rs.getInt(1));
-            truck.setFuelAmount(nz(rs.getBigDecimal(3)));
-            truck.setFuelLiters(nz(rs.getBigDecimal(4)));
-            truck.setFuelEntryCount(rs.getLong(5));
-        }, companyRefId, fromTs, toTsExclusive);
-
-        jdbcTemplate.query(TRUCK_ENTRY_SQL_TEMPLATE.formatted("AutoPassEntry"), rs -> {
-            ensureTruck.accept(rs.getInt(1), rs.getString(2));
-            byTruck.get(rs.getInt(1)).setAutoPassAmount(nz(rs.getBigDecimal(3)));
-        }, companyRefId, fromTs, toTsExclusive);
-
-        jdbcTemplate.query(TRUCK_ENTRY_SQL_TEMPLATE.formatted("TollEntry"), rs -> {
-            ensureTruck.accept(rs.getInt(1), rs.getString(2));
-            byTruck.get(rs.getInt(1)).setTollAmount(nz(rs.getBigDecimal(3)));
-        }, companyRefId, fromTs, toTsExclusive);
-
-        jdbcTemplate.query(TRUCK_ENTRY_SQL_TEMPLATE.formatted("LeviEntry"), rs -> {
-            ensureTruck.accept(rs.getInt(1), rs.getString(2));
-            byTruck.get(rs.getInt(1)).setLeviAmount(nz(rs.getBigDecimal(3)));
-        }, companyRefId, fromTs, toTsExclusive);
-
-        jdbcTemplate.query(TRUCK_RTI_SQL, rs -> {
-            ensureTruck.accept(rs.getInt(1), rs.getString(2));
-            byTruck.get(rs.getInt(1)).setRtiOrderCount(rs.getLong(3));
-        }, companyRefId, fromTs, toTsExclusive);
+        /*
+         * One statement, seven sources. Each branch of the UNION groups its own
+         * table and tags the rows with a source name; the switch below puts each
+         * group on the right field. Reading them one query at a time cost seven
+         * round trips to produce one table.
+         */
+        namedJdbc.query(TRUCK_SPEND_SQL, params, rs -> {
+            int truckId = rs.getInt("truckId");
+            ensureTruck.accept(truckId, rs.getString("truckName"));
+            TruckSpend truck = byTruck.get(truckId);
+            BigDecimal total = nz(rs.getBigDecimal("total"));
+            switch (rs.getString("src")) {
+                case "JOB" -> truck.setJobOrderAmount(total);
+                case "BILL" -> truck.setPurchaseAmount(total);
+                case "AUTOPASS" -> truck.setAutoPassAmount(total);
+                case "TOLL" -> truck.setTollAmount(total);
+                case "LEVI" -> truck.setLeviAmount(total);
+                case "RTI" -> truck.setRtiOrderCount(rs.getLong("cnt"));
+                case "FUEL" -> {
+                    truck.setFuelAmount(total);
+                    truck.setFuelLiters(nz(rs.getBigDecimal("liters")));
+                    truck.setFuelEntryCount(rs.getLong("cnt"));
+                }
+                default -> logger.warn("Unknown truck spend source {}", rs.getString("src"));
+            }
+        });
 
         List<TruckSpend> truckSpend = new ArrayList<>(byTruck.values());
         truckSpend.forEach(t -> t.setTotalAmount(t.getJobOrderAmount()
+                .add(t.getPurchaseAmount())
                 .add(t.getFuelAmount())
                 .add(t.getAutoPassAmount())
                 .add(t.getTollAmount())
@@ -331,53 +621,121 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
                         .rtiOrderCount(0L)
                         .build());
 
-        jdbcTemplate.query(DAILY_JOB_SQL, rs -> {
-            day.apply(rs.getDate(1).toLocalDate()).setJobOrderAmount(nz(rs.getBigDecimal(2)));
-        }, companyRefId, fromDate, toDate);
-
-        jdbcTemplate.query(DAILY_BILL_SQL, rs -> {
-            day.apply(rs.getDate(1).toLocalDate()).setPurchaseAmount(nz(rs.getBigDecimal(2)));
-        }, companyRefId, fromTs, toTsExclusive);
-
-        jdbcTemplate.query(DAILY_FUEL_SQL, rs -> {
-            day.apply(rs.getDate(1).toLocalDate()).setFuelAmount(nz(rs.getBigDecimal(2)));
-        }, companyRefId, fromTs, toTsExclusive);
-
-        for (String table : new String[] {"AutoPassEntry", "TollEntry", "LeviEntry"}) {
-            jdbcTemplate.query(DAILY_ENTRY_SQL_TEMPLATE.formatted(table), rs -> {
-                DailySpend row = day.apply(rs.getDate(1).toLocalDate());
-                row.setPassAmount(row.getPassAmount().add(nz(rs.getBigDecimal(2))));
-            }, companyRefId, fromTs, toTsExclusive);
+        /*
+         * Seed every calendar day in the range before the queries run.
+         *
+         * Without this the series only carries days that had activity, and the
+         * chart plots them on a categorical axis - so a quiet week closes up and
+         * the line joins two dates a fortnight apart as though they were
+         * consecutive. A day-by-day chart has to keep its days, including the
+         * empty ones, or the shape it draws is not the shape of the spend.
+         */
+        for (LocalDate d = fromDate; !d.isAfter(toDate); d = d.plusDays(1)) {
+            day.apply(d);
         }
 
-        jdbcTemplate.query(DAILY_RTI_SQL, rs -> {
-            day.apply(rs.getDate(1).toLocalDate()).setRtiOrderCount(rs.getLong(2));
-        }, companyRefId, fromTs, toTsExclusive);
+        /*
+         * Same shape as the truck query: seven sources, one statement, a source
+         * tag per row. PASS accumulates because AutoPass, Toll and Levi all
+         * report under it and a day can have all three.
+         */
+        namedJdbc.query(DAILY_SPEND_SQL, params, rs -> {
+            DailySpend row = day.apply(rs.getDate("d").toLocalDate());
+            BigDecimal total = nz(rs.getBigDecimal("total"));
+            switch (rs.getString("src")) {
+                case "JOB" -> row.setJobOrderAmount(total);
+                case "BILL" -> row.setPurchaseAmount(total);
+                case "FUEL" -> row.setFuelAmount(total);
+                case "PASS" -> row.setPassAmount(row.getPassAmount().add(total));
+                case "RTI" -> row.setRtiOrderCount(rs.getLong("cnt"));
+                default -> logger.warn("Unknown daily spend source {}", rs.getString("src"));
+            }
+        });
 
         byDay.values().forEach(d -> d.setTotalSpend(
                 d.getJobOrderAmount().add(d.getPurchaseAmount()).add(d.getFuelAmount()).add(d.getPassAmount())));
 
-        // ── Overall totals (no truck join, so entries without a truck count too) ──
-        BigDecimal jobOrderTotal = scalar(JOB_ORDER_TOTAL_SQL, companyRefId, fromDate, toDate);
-        BigDecimal billOrderTotal = scalar(BILL_TOTAL_SQL, companyRefId, fromTs, toTsExclusive);
-        BigDecimal autoPassTotal = scalar(ENTRY_TOTAL_SQL_TEMPLATE.formatted("AutoPassEntry"), companyRefId, fromTs, toTsExclusive);
-        BigDecimal tollTotal = scalar(ENTRY_TOTAL_SQL_TEMPLATE.formatted("TollEntry"), companyRefId, fromTs, toTsExclusive);
-        BigDecimal leviTotal = scalar(ENTRY_TOTAL_SQL_TEMPLATE.formatted("LeviEntry"), companyRefId, fromTs, toTsExclusive);
+        // ── Every single-row figure, in one round trip ────────────────────
+        Totals totals = namedJdbc.queryForObject(TOTALS_SQL, params, TOTALS_MAPPER);
 
-        final BigDecimal[] fuelTotals = {BigDecimal.ZERO, BigDecimal.ZERO};
-        final long[] fuelCount = {0};
-        jdbcTemplate.query(FUEL_TOTAL_SQL, rs -> {
-            fuelTotals[0] = nz(rs.getBigDecimal(1));
-            fuelTotals[1] = nz(rs.getBigDecimal(2));
-            fuelCount[0] = rs.getLong(3);
-        }, companyRefId, fromTs, toTsExclusive);
+        BigDecimal jobOrderTotal = totals.jobOrderTotal();
+        BigDecimal billOrderTotal = totals.billOrderTotal();
+        BigDecimal autoPassTotal = totals.autoPassTotal();
+        BigDecimal tollTotal = totals.tollTotal();
+        BigDecimal leviTotal = totals.leviTotal();
 
-        final long[] rtiCount = {0};
-        jdbcTemplate.query(RTI_TOTAL_SQL, rs -> {
-            rtiCount[0] = rs.getLong(1);
-        }, companyRefId, fromTs, toTsExclusive);
+        /*
+         * The remainder row: company total minus whatever the trucks account
+         * for, column by column.
+         *
+         * Derived rather than queried on purpose. A "TruckRefid IS NULL OR = 0"
+         * query would only approximate it - it would miss rows pointing at a
+         * truck that has since been removed, which the truck-wise INNER JOINs
+         * also drop. Subtracting is exact by construction, so the table always
+         * adds up to the recorded cost however odd the data is.
+         */
+        TruckSpend unassignedSpend = TruckSpend.builder()
+                .truckId(0)
+                .truckName("Not tied to a truck")
+                .jobOrderAmount(jobOrderTotal.subtract(sumOf(truckSpend, TruckSpend::getJobOrderAmount)))
+                .purchaseAmount(billOrderTotal.subtract(sumOf(truckSpend, TruckSpend::getPurchaseAmount)))
+                .fuelAmount(totals.fuelTotal().subtract(sumOf(truckSpend, TruckSpend::getFuelAmount)))
+                .fuelLiters(totals.fuelLiters().subtract(sumOf(truckSpend, TruckSpend::getFuelLiters)))
+                .fuelEntryCount(totals.fuelEntryCount()
+                        - truckSpend.stream().mapToLong(TruckSpend::getFuelEntryCount).sum())
+                .autoPassAmount(autoPassTotal.subtract(sumOf(truckSpend, TruckSpend::getAutoPassAmount)))
+                .tollAmount(tollTotal.subtract(sumOf(truckSpend, TruckSpend::getTollAmount)))
+                .leviAmount(leviTotal.subtract(sumOf(truckSpend, TruckSpend::getLeviAmount)))
+                .rtiOrderCount(totals.rtiOrderCount()
+                        - truckSpend.stream().mapToLong(TruckSpend::getRtiOrderCount).sum())
+                .build();
+        unassignedSpend.setTotalAmount(unassignedSpend.getJobOrderAmount()
+                .add(unassignedSpend.getPurchaseAmount())
+                .add(unassignedSpend.getFuelAmount())
+                .add(unassignedSpend.getAutoPassAmount())
+                .add(unassignedSpend.getTollAmount())
+                .add(unassignedSpend.getLeviAmount()));
 
-        BigDecimal grandTotal = jobOrderTotal.add(billOrderTotal).add(fuelTotals[0])
+
+        List<NamedSpend> voucherByDescription = jdbcTemplate.query(
+                VOUCHER_DESCRIPTION_SQL, (rs, i) -> NamedSpend.builder()
+                        .name(rs.getString(1))
+                        .entryCount(rs.getLong(2))
+                        .totalAmount(nz(rs.getBigDecimal(3)))
+                        .build(), companyRefId, fromTs, toTsExclusive);
+
+        MaintenanceSpendDto.PaymentRelease paymentRelease = MaintenanceSpendDto.PaymentRelease.builder()
+                .purchaseOrderTotal(totals.billOrderTotal())
+                .purchaseOrderCount(totals.billOrderCount())
+                .billTotal(totals.billTotal())
+                .billCount(totals.billCount())
+                .voucherTotal(totals.voucherTotal())
+                .voucherCount(totals.voucherCount())
+                .standaloneVoucherTotal(totals.standaloneVoucherTotal())
+                .standaloneVoucherCount(totals.standaloneVoucherCount())
+                .voucherAgainstOrderTotal(totals.voucherTotal().subtract(totals.standaloneVoucherTotal()))
+                .settledTotal(totals.settledTotal())
+                .settledCount(totals.settledCount())
+                .outstandingTotal(totals.outstandingTotal())
+                .outstandingCount(totals.outstandingCount())
+                .voucherByDescription(voucherByDescription)
+                .build();
+
+        /*
+         * Money out is the two documents that release it: the purchase order
+         * and the payment voucher.
+         *
+         * The category figures below - fuel, job orders, toll, AutoPass, levi -
+         * are records of what was bought, and that buying is settled through an
+         * order or a voucher. Adding them to this would count the same ringgit
+         * twice, which is why they are reported as a breakdown of the spend
+         * rather than as parts of it. Only vouchers with no order behind them
+         * are added, for the same reason.
+         */
+        BigDecimal grandTotal = billOrderTotal.add(totals.standaloneVoucherTotal());
+
+        /** What the money was spent on, across the expense tables. Not the total. */
+        BigDecimal recordedCostTotal = jobOrderTotal.add(billOrderTotal).add(totals.fuelTotal())
                 .add(autoPassTotal).add(tollTotal).add(leviTotal);
 
         return MaintenanceSpendDto.builder()
@@ -385,14 +743,19 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
                 .toDate(toDate)
                 .jobOrderTotal(jobOrderTotal)
                 .billOrderTotal(billOrderTotal)
-                .fuelTotal(fuelTotals[0])
-                .fuelLiters(fuelTotals[1])
-                .fuelEntryCount(fuelCount[0])
+                .fuelTotal(totals.fuelTotal())
+                .fuelLiters(totals.fuelLiters())
+                .fuelEntryCount(totals.fuelEntryCount())
                 .autoPassTotal(autoPassTotal)
                 .tollTotal(tollTotal)
                 .leviTotal(leviTotal)
                 .grandTotal(grandTotal)
-                .rtiOrderCount(rtiCount[0])
+                .recordedCostTotal(recordedCostTotal)
+                .unassignedSpend(unassignedSpend)
+                .fuelSubsidyTotal(totals.fuelSubsidyTotal())
+                .fuelPaymentVoucherTotal(totals.fuelVoucherTotal())
+                .paymentRelease(paymentRelease)
+                .rtiOrderCount(totals.rtiOrderCount())
                 .truckSpend(truckSpend)
                 .jobTypeSpend(jobTypeSpend)
                 .billDescriptionSpend(billDescriptionSpend)
@@ -401,9 +764,11 @@ public class MaintenanceSpendServiceImpl implements MaintenanceSpendService {
                 .build();
     }
 
-    private BigDecimal scalar(String sql, Object... args) {
-        BigDecimal value = jdbcTemplate.queryForObject(sql, BigDecimal.class, args);
-        return nz(value);
+
+    /** Column total across the truck rows, for working out the unassigned remainder. */
+    private static BigDecimal sumOf(List<TruckSpend> trucks,
+                                    java.util.function.Function<TruckSpend, BigDecimal> column) {
+        return trucks.stream().map(column).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private static BigDecimal nz(BigDecimal value) {

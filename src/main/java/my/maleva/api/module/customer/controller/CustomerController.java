@@ -51,6 +51,20 @@ public class CustomerController {
     }
 
     /**
+     * The customer list's "Push to QNE" — sends one customer the automatic push
+     * after Save did not get into QNE. Create-once: a customer that already has
+     * a QNE code is not sent again. Like every push endpoint, a QNE refusal
+     * answers 200 with IsSuccess=false and QNE's own message; a missing or
+     * deleted customer, a push already running, or QNE switched off are real
+     * 4xx errors.
+     * POST /api/customers/{id}/push-qne?companyId=6
+     */
+    @PostMapping("/{id}/push-qne")
+    public ResponseEntity<?> pushToQne(@PathVariable Integer id, @RequestParam Integer companyId) {
+        return QnePushResponses.toResponse(customerQneService.push(id, companyId));
+    }
+
+    /**
      * QNE-hosted customer statement URL for one month, addressed by the
      * customer's QNE id — gated by qne.report-view, the one QNE report gate
      * the legacy system shipped enabled.

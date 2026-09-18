@@ -127,6 +127,16 @@ class SupplierWriterTest {
     }
 
     @Test
+    @DisplayName("a table is read before the lock, so the implicit transaction exists to own it")
+    void tableReadOpensTransactionBeforeLock() {
+        // Under IMPLICIT_TRANSACTIONS an EXEC opens no transaction; a SELECT from
+        // a table does. Lock first on a fresh request = -999 on every Save.
+        int firstTableRead = INSERT_PRECHECK_SQL.indexOf("FROM AccountsGroupMaster");
+        assertThat(firstTableRead).isPositive();
+        assertThat(firstTableRead).isLessThan(INSERT_PRECHECK_SQL.indexOf("sp_getapplock"));
+    }
+
+    @Test
     @DisplayName("a save that cannot get the numbering lock is refused, not written unguarded")
     void insertRefusedWhenLockTimesOut() {
         insertChecks.put("LockStatus", -1);

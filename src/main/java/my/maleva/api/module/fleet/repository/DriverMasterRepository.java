@@ -2,6 +2,8 @@ package my.maleva.api.module.fleet.repository;
 
 import my.maleva.api.module.fleet.entity.DriverMaster;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -28,6 +30,17 @@ public interface DriverMasterRepository extends JpaRepository<DriverMaster, Inte
      * Find driver by account reference ID
      */
     List<DriverMaster> findByAccountRefid(Integer accountRefid);
+
+    /**
+     * The highest CNumber this company has handed out, 0 when it has none.
+     *
+     * <p>Answered by the database, as for trucks. The service used to load every
+     * driver of the company to take the maximum in memory. Deleted drivers
+     * (Active = 2) still count: their number stays theirs, so the next driver
+     * must not be given it again.
+     */
+    @Query("select coalesce(max(d.cNumber), 0) from DriverMaster d where d.companyRefId = :companyRefId")
+    Integer findMaxCNumber(@Param("companyRefId") Integer companyRefId);
 
     /**
      * Check if driver exists with specific criteria

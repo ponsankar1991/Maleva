@@ -127,7 +127,7 @@ public class CustomerStatementPdfService {
             JasperPrint print = JasperFillManager.getInstance(fonts.context())
                     .fill(template(), parameters, new JRBeanCollectionDataSource(rows));
             byte[] pdf = toCompressedPdf(print);
-            String fileName = fileName(result);
+            String fileName = fileNameFor(result);
             log.debug("Customer statement rendered: {} customers, {} lines, {} pages, {} bytes in {} ms",
                     result.getCustomerCount(), rows.size(), print.getPages().size(), pdf.length,
                     (System.nanoTime() - started) / 1_000_000);
@@ -162,7 +162,7 @@ public class CustomerStatementPdfService {
      * {@code CustomerStatement<customerId>.pdf} and reused the name, so a
      * browser offered the same file name for every customer.
      */
-    private static String fileName(StatementResult result) {
+    public static String fileNameFor(StatementResult result) {
         String who = result.getCustomerCount() == 1
                 ? result.getStatements().get(0).getCustomerName()
                 : "All";

@@ -26,6 +26,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import my.maleva.api.module.paymentrecept.service.ReceiptCreateGuard;
+import my.maleva.api.module.paymentrecept.service.ReceiptNumberAllocator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -66,6 +70,12 @@ public class ReceiptServiceImpl implements ReceiptService {
 
     @Autowired
     private ReceiptMapper mapper;
+
+    @Autowired
+    private ReceiptCreateGuard createGuard;
+
+    @Autowired
+    private ReceiptNumberAllocator numberAllocator;
 
     @Override
     public List<ReceiptDto> getAllByCompanyId(Integer companyRefId) {
@@ -248,6 +258,67 @@ public class ReceiptServiceImpl implements ReceiptService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ReceiptSaveResponseDto insertReceipt(List<ReceiptSaveRequest> requestList, Integer headerCompanyId) {
+        ReceiptSaveRequest first = requestList == null || requestList.isEmpty() ? null : requestList.get(0);
+        boolean create = first != null && (first.getId() == null || first.getId() <= 0);
+        String key = create && first.getClientRequestId() != null && !first.getClientRequestId().isBlank()
+                ? first.getClientRequestId().trim()
+                : null;
+        if (key == null) {
+            // An update, or a caller that sends no key: nothing here can tell a
+            // repeated request from a new receipt.
+            return saveReceipt(requestList, headerCompanyId);
+        }
+
+        ReceiptCreateGuard.Claim claim = createGuard.begin(key);
+        if (claim instanceof ReceiptCreateGuard.Finished finished) {
+            // This exact create already committed - the page gave up waiting and
+            // SAVE was pressed again. Hand back that receipt, not a second one.
+            return finished.result();
+        }
+        if (claim instanceof ReceiptCreateGuard.Running) {
+            return ReceiptSaveResponseDto.builder()
+                    .ok(false)
+                    .isSuccess(false)
+                    .message(ReceiptCreateGuard.STILL_SAVING_MESSAGE)
+                    .build();
+        }
+        try {
+            ReceiptSaveResponseDto result = saveReceipt(requestList, headerCompanyId);
+            recordCreateOnCommit(key, result);
+            return result;
+        } catch (RuntimeException failed) {
+            createGuard.abandon(key);
+            throw failed;
+        }
+    }
+
+    /**
+     * Marks the create finished only once the transaction has committed and the
+     * save succeeded, so a rolled-back or refused create is never replayed.
+     */
+    private void recordCreateOnCommit(String key, ReceiptSaveResponseDto result) {
+        boolean saved = Boolean.TRUE.equals(result.getOk()) && result.getId() != null && result.getId() > 0;
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            if (saved) {
+                createGuard.complete(key, result);
+            } else {
+                createGuard.abandon(key);
+            }
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED && saved) {
+                    createGuard.complete(key, result);
+                } else {
+                    createGuard.abandon(key);
+                }
+            }
+        });
+    }
+
+    private ReceiptSaveResponseDto saveReceipt(List<ReceiptSaveRequest> requestList, Integer headerCompanyId) {
         if (requestList == null || requestList.isEmpty()) {
             return ReceiptSaveResponseDto.builder()
                     .ok(false)
@@ -377,29 +448,11 @@ public class ReceiptServiceImpl implements ReceiptService {
             // Save first to get identity ID
             receipt = receiptRepository.save(receipt);
 
-            // Sequence allocation matching SP_Receipt
-            int nextSeq;
-            Integer maxSeq = sequenceNoMasterRepository.findMaxSequenceNoByCompanyAndSequenceName(companyId, "Receipt");
-            if (maxSeq == null || maxSeq == 0) {
-                nextSeq = 1;
-            } else {
-                nextSeq = maxSeq + 1;
-            }
-
-            SequenceNoMaster seqEntity = sequenceNoMasterRepository
-                    .findByCompanyRefIdAndSequenceName(companyId, "Receipt")
-                    .orElseGet(() -> {
-                        SequenceNoMaster fresh = new SequenceNoMaster();
-                        fresh.setCompanyRefId(companyId);
-                        fresh.setSequenceName("Receipt");
-                        fresh.setSequenceDate(LocalDateTime.now());
-                        return fresh;
-                    });
-            seqEntity.setSequenceNo(nextSeq);
-            seqEntity.setSequenceDate(LocalDateTime.now());
-            sequenceNoMasterRepository.save(seqEntity);
-
-            billNoDisplay = "RC" + String.format("%09d", nextSeq);
+            // The SP_Receipt "Receipt" counter, incremented and read in one
+            // statement: the old read-MAX-add-save gave two simultaneous saves
+            // the same receipt number.
+            int nextSeq = numberAllocator.next(companyId);
+            billNoDisplay = ReceiptNumberAllocator.display(nextSeq);
             receipt.setCNumber(nextSeq);
             receipt.setCNumberDisplay(billNoDisplay);
             receipt = receiptRepository.save(receipt);
