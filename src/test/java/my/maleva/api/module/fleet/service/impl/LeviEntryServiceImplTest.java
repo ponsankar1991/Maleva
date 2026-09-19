@@ -34,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -304,6 +305,68 @@ class LeviEntryServiceImplTest {
 
         assertEquals(4.67, response.getItems().get(0).getAmount(),
                 "a 4-byte float reaches Java as 4.670000076293945");
+    }
+
+    // --------------------------------------------------- list for one RTI
+
+    @Test
+    void listsTheEntriesOfOneRtiWithoutADateRange() {
+        // The RTI screen has no date filter, so search() would reject this call.
+        when(leviEntryRepository.findAll(any(Specification.class), any(Sort.class)))
+                .thenReturn(List.of(entry(1, 12.5), entry(2, 7.25)));
+        when(truckMasterRepository.findAllById(Set.of(72))).thenReturn(List.of(
+                TruckMaster.builder().id(72).companyRefId(COMPANY).truckName("FORKLIFT WORKSHOP").build()));
+        when(driverMasterRepository.findAllById(Set.of(5))).thenReturn(List.of(
+                DriverMaster.builder().id(5).companyRefId(COMPANY).driverName("RAJU").build()));
+        when(rtiMasterRepository.findAllById(Set.of(10))).thenReturn(List.of(rti(10, "RTI000000118")));
+
+        PassEntryListResponse response = service.listByRti(10, COMPANY);
+
+        assertEquals(2, response.getItems().size());
+        assertEquals(19.75, response.getEntriesTotal());
+        assertEquals("RTI000000118", response.getItems().get(0).getRtiNumber());
+    }
+
+    /**
+     * The window that calls this opens in front of the user, so it must not
+     * read the company's whole truck, driver and RTI tables to label one or two
+     * rows - which is what the full list does.
+     */
+    @Test
+    void resolvesOnlyTheIdsTheRtiSEntriesReference() {
+        when(leviEntryRepository.findAll(any(Specification.class), any(Sort.class)))
+                .thenReturn(List.of(entry(1, 12.5), entry(2, 7.25)));
+
+        service.listByRti(10, COMPANY);
+
+        verify(truckMasterRepository).findAllById(Set.of(72));
+        verify(driverMasterRepository).findAllById(Set.of(5));
+        verify(rtiMasterRepository).findAllById(Set.of(10));
+        verify(truckMasterRepository, never()).findByCompanyRefId(anyInt());
+        verify(driverMasterRepository, never()).findByCompanyRefId(anyInt());
+        verify(rtiMasterRepository, never()).findByCompanyRefId(anyInt());
+    }
+
+    @Test
+    void refusesAnRtiListWithoutAnRti() {
+        assertThrows(InvalidRequestException.class, () -> service.listByRti(null, COMPANY));
+        assertThrows(InvalidRequestException.class, () -> service.listByRti(0, COMPANY));
+    }
+
+    @Test
+    void refusesAnRtiListWithoutACompany() {
+        assertThrows(InvalidRequestException.class, () -> service.listByRti(10, null));
+    }
+
+    @Test
+    void returnsAnEmptyListWhenTheRtiHasNoEntries() {
+        when(leviEntryRepository.findAll(any(Specification.class), any(Sort.class)))
+                .thenReturn(List.of());
+
+        PassEntryListResponse response = service.listByRti(10, COMPANY);
+
+        assertTrue(response.getItems().isEmpty());
+        assertEquals(0.0, response.getEntriesTotal());
     }
 
     // ------------------------------------------------------------------ read

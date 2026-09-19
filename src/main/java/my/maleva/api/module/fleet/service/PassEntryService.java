@@ -46,6 +46,16 @@ public interface PassEntryService {
     /** Soft delete. Legacy: {@code Delete<Doc>}. */
     void delete(Integer id, Integer companyRefId, String username);
 
+    /**
+     * Every entry filed against one RTI, newest document date first.
+     *
+     * {@link #search} cannot answer this: it refuses a request without a date
+     * range unless a document number is given, because the legacy list always
+     * had both dates on screen. The RTI screen has neither - it knows only the
+     * RTI it is editing - so this reads by {@code RTIRefId} alone.
+     */
+    PassEntryListResponse listByRti(Integer rtiRefId, Integer companyRefId);
+
     /** Options for the screen's RTI dropdown. Legacy: {@code SelectRTINo}. */
     List<RtiOptionDto> rtiOptions(Integer companyRefId);
 }

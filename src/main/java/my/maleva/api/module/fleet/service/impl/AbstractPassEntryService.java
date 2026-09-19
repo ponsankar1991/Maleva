@@ -31,8 +31,10 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The truck pass algorithm, written once for levi and auto pass entries.
@@ -122,10 +124,100 @@ public abstract class AbstractPassEntryService<T extends PassEntry> implements P
         List<T> entries = repository.findAll(
                 PassEntrySpecification.from(request), PassEntryRepository.DEFAULT_SORT);
 
-        Map<Integer, String> truckNames = truckNames(request.getCompanyRefId());
-        Map<Integer, String> driverNames = driverNames(request.getCompanyRefId());
-        Map<Integer, String> rtiNumbers = rtiNumbers(request.getCompanyRefId());
+        return toListResponse(entries, request.getCompanyRefId());
+    }
 
+    /**
+     * Every entry filed against one RTI.
+     *
+     * Deliberately not routed through {@link #search}: that method requires a
+     * date range, and the RTI screen has no date filter to give it. The
+     * specification already leaves the date predicate out when both dates are
+     * null, so the same WHERE builder serves both callers.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public PassEntryListResponse listByRti(Integer rtiRefId, Integer companyRefId) {
+        requireCompany(companyRefId);
+        if (rtiRefId == null || rtiRefId == 0) {
+            throw new InvalidRequestException("rtiRefId is required");
+        }
+
+        List<T> entries = repository.findAll(
+                PassEntrySpecification.from(PassEntrySearchRequest.builder()
+                        .companyRefId(companyRefId)
+                        .rtiRefId(rtiRefId)
+                        .build()),
+                PassEntryRepository.DEFAULT_SORT);
+
+        return toListResponseForFewRows(entries);
+    }
+
+    /**
+     * The same mapping as {@link #toListResponse}, but resolving only the ids
+     * these rows actually reference.
+     *
+     * {@link #toListResponse} reads every truck, driver and RTI of the company
+     * to build its lookup maps. That is the right trade for the full list,
+     * which can show hundreds of rows, but wrong for one RTI's handful: it made
+     * this endpoint read the company's entire RTIMaster table - thousands of
+     * rows - to label one or two entries, and the RTI screen opens a window on
+     * the result, so the wait was in front of the user. Here the maps are built
+     * from the distinct ids on the rows, which is a few primary-key reads.
+     */
+    private PassEntryListResponse toListResponseForFewRows(List<T> entries) {
+        Map<Integer, String> truckNames = new HashMap<>();
+        for (TruckMaster truck : truckMasterRepository.findAllById(
+                distinctIds(entries, PassEntry::getTruckRefid))) {
+            truckNames.put(truck.getId(), truck.getTruckName());
+        }
+
+        Map<Integer, String> driverNames = new HashMap<>();
+        for (DriverMaster driver : driverMasterRepository.findAllById(
+                distinctIds(entries, PassEntry::getDriverRefId))) {
+            driverNames.put(driver.getId(), driver.getDriverName());
+        }
+
+        Map<Integer, String> rtiNumbers = new HashMap<>();
+        for (RTIMaster rti : rtiMasterRepository.findAllById(
+                distinctIds(entries, PassEntry::getRtiRefId))) {
+            rtiNumbers.put(rti.getId(), rti.getCNumberDisplay());
+        }
+
+        return buildListResponse(entries, truckNames, driverNames, rtiNumbers);
+    }
+
+    /** The non-null, non-zero ids one column carries across these rows. */
+    private Set<Integer> distinctIds(List<T> entries,
+                                     java.util.function.Function<T, Integer> column) {
+        Set<Integer> ids = new HashSet<>();
+        for (T entry : entries) {
+            Integer id = column.apply(entry);
+            if (id != null && id != 0) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Maps entries onto the list DTO and sums their amounts.
+     *
+     * The three name lookups are bulk reads per company rather than a join per
+     * row, which is what the legacy query did.
+     */
+    private PassEntryListResponse toListResponse(List<T> entries, Integer companyRefId) {
+        return buildListResponse(entries,
+                truckNames(companyRefId),
+                driverNames(companyRefId),
+                rtiNumbers(companyRefId));
+    }
+
+    /** Row mapping and total, over whichever lookup maps the caller resolved. */
+    private PassEntryListResponse buildListResponse(List<T> entries,
+                                                    Map<Integer, String> truckNames,
+                                                    Map<Integer, String> driverNames,
+                                                    Map<Integer, String> rtiNumbers) {
         List<PassEntryListItemDto> items = entries.stream()
                 .map(entry -> PassEntryListItemDto.builder()
                         .id(entry.getId())

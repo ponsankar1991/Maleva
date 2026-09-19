@@ -24,7 +24,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * The seven endpoints a truck pass screen needs.
+ * The endpoints a truck pass screen needs.
  *
  * Levi and auto pass entries had byte-identical legacy controllers, so the
  * routes are declared once here and each subclass supplies only its base path,
@@ -84,6 +84,24 @@ public abstract class AbstractPassEntryController {
                 .build());
 
         return ResponseEntity.ok(ApiResponse.success(data, documentLabel() + " list retrieved"));
+    }
+
+    /**
+     * Every entry filed against one RTI.
+     *
+     * The RTI screen opens this window knowing only the RTI it is editing, so
+     * it has no date range to send and {@link #search} would reject the call.
+     * No legacy equivalent: the legacy screens were reachable only from their
+     * own list.
+     */
+    @GetMapping("/by-rti/{rtiRefId}")
+    public ResponseEntity<ApiResponse<PassEntryListResponse>> listByRti(
+            @PathVariable Integer rtiRefId,
+            @RequestParam Integer companyRefId) {
+
+        PassEntryListResponse data = service().listByRti(rtiRefId, companyRefId);
+        return ResponseEntity.ok(
+                ApiResponse.success(data, documentLabel() + " list for RTI " + rtiRefId));
     }
 
     /**
